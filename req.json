@@ -1,0 +1,22 @@
+{
+  "selectedArea": {
+    "type": "Point",
+    "coordinates": [
+      100,
+      100
+    ]
+  },
+  "zonalStatistic": "mean",
+  "timeRange": [
+    {
+      "year": 1500
+    },
+    {
+      "year": 1800
+    }
+  ],
+  "smoother": {
+    "type": "NoSmoothing"
+  },
+  "coordinateTransform": "none"
+}
