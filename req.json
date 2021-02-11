@@ -2,8 +2,8 @@
   "selectedArea": {
     "type": "Point",
     "coordinates": [
-      100,
-      100
+      -120,
+      42.5
     ]
   },
   "zonalStatistic": "mean",

@@ -7,4 +7,5 @@ dependencies:
   - fastapi
   - ipython
   - rasterio
+  - scipy
   - uvicorn
