@@ -16,7 +16,11 @@
     }
   ],
   "smoother": {
-    "type": "NoSmoothing"
+    "type": "NoSmoother"
+  },
+  "roller": {
+    "type": "ZScoreRoller",
+    "width": 3
   },
   "coordinateTransform": "none"
 }
