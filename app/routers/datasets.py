@@ -142,13 +142,22 @@ class AnalysisRequest(BaseModel):
     roller: Union[ZScoreRoller, NoRoller]
     coordinateTransform: Union[ZScoreCoordinateTransform, NoCoordinateTransform]
 
+    def open_raster(self, dataset_id: str):
+        return rasterio.open(f'data/{dataset_id}.tif')
+
+    def extract_slice(self, dataset: rasterio.DatasetReader):
+        return self.selectedArea.extract(dataset, self.zonalStatistic)
+
+    def transform_series(self, xs):
+        xs = self.smoother.smooth(xs)
+        xs = self.roller.roll(xs)
+        xs = self.coordinateTransform.transform(xs)
+        return xs
+
     def extract(self, dataset_id: str):
-        with rasterio.open(f'data/{dataset_id}.tif') as dataset:
-            w = self.selectedArea.extract(dataset, self.zonalStatistic)
-        w = self.smoother.smooth(w)
-        w = self.roller.roll(w)
-        w = self.coordinateTransform.transform(w)
-        return w
+        xs = self.extract_slice(self.open_raster(dataset_id))
+        xs = self.transform_series(xs)
+        return xs
 
 
 class AnalysisResponse(BaseModel):
