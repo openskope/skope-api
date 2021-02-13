@@ -120,13 +120,36 @@ class CoordinateTransform(str, Enum):
             return stats.zscore(xs)
 
 
+class NoCoordinateTransform(BaseModel):
+    type = 'NoCoordinateTransform'
+
+    def transform(self, xs):
+        return xs
+
+
+class ZScoreCoordinateTransform(BaseModel):
+    type = 'ZScoreCoordinateTransform'
+    time_range: Tuple[YearMonth, YearMonth]
+
+    def transform(self, xs):
+        return stats.zscore(xs)
+
+
 class AnalysisRequest(BaseModel):
     selectedArea: Union[Point, Polygon]
     zonalStatistic: ZonalStatistic
     timeRange: Tuple[YearMonth, YearMonth]
     smoother: Union[MovingAverageSmoother, NoSmoother]
     roller: Union[ZScoreRoller, NoRoller]
-    coordinateTransform: CoordinateTransform
+    coordinateTransform: Union[ZScoreCoordinateTransform, NoCoordinateTransform]
+
+    def extract(self, dataset_id: str):
+        with rasterio.open(f'data/{dataset_id}.tif') as dataset:
+            w = self.selectedArea.extract(dataset, self.zonalStatistic)
+        w = self.smoother.smooth(w)
+        w = self.roller.roll(w)
+        w = self.coordinateTransform.transform(w)
+        return w
 
 
 class AnalysisResponse(BaseModel):
@@ -143,10 +166,6 @@ app = FastAPI()
 
 # add request timeout middleware https://github.com/tiangolo/fastapi/issues/1752
 @app.post("/datasets/{dataset_id}", response_model=AnalysisResponse, operation_id='retrieveTimeseries')
-def extractTimeseries(dataset_id: str, data: AnalysisRequest):
-    with rasterio.open(f'data/{dataset_id}.tif') as dataset:
-        w = data.selectedArea.extract(dataset, data.zonalStatistic)
-    w = data.smoother.smooth(w)
-    w = data.roller.roll(w)
-    w = data.coordinateTransform.transform(w)
+def extract_timeseries(dataset_id: str, data: AnalysisRequest):
+    w = data.extract(dataset_id)
     return AnalysisResponse(timeRange=(YearMonth(year=1500), YearMonth(year=1800)), values=list(w))

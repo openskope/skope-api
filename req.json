@@ -19,8 +19,9 @@
     "type": "NoSmoother"
   },
   "roller": {
-    "type": "ZScoreRoller",
-    "width": 3
+    "type": "NoRoller"
   },
-  "coordinateTransform": "none"
+  "coordinateTransform": {
+    "type": "NoCoordinateTransform"
+  }
 }
