@@ -1,11 +1,10 @@
 FROM python:3.8
 
-COPY requirements.txt /code/
-COPY
+COPY requirements /code/requirements
 
 WORKDIR /code
 
-RUN pip install -r requirements.txt
+RUN pip install -r requirements/base.txt -r requirements/dev.txt
 
 COPY app /code/
 
