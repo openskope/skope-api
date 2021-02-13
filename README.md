@@ -26,3 +26,9 @@ Try out the analysis endpoint
 ```bash
 http --json POST localhost:8002/datasets/monthly_5x5x60_dataset_float32_variable < req.json
 ```
+
+Run the tests
+
+```bash
+make test
+```
