@@ -5,6 +5,7 @@ from pydantic import BaseModel
 import rasterio
 import numpy as np
 import logging
+import yaml
 from rasterio.windows import Window
 from rasterio.mask import raster_geometry_mask
 from scipy import stats
@@ -162,6 +163,13 @@ class OutOfBoundsError(ValueError):
 
 
 app = FastAPI()
+
+with open("metadata.yml") as f:
+    _metadata = yaml.safe_load(f)
+
+@app.get("/metadata")
+def metadata():
+    return _metadata
 
 
 # add request timeout middleware https://github.com/tiangolo/fastapi/issues/1752

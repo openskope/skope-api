@@ -1,5 +1,6 @@
 fastapi
 ipython
+pyyaml
 rasterio
 scipy
 uvicorn

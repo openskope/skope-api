@@ -1,6 +1,6 @@
 FROM python:3.8
 
-COPY requirements.txt main.py /code/
+COPY requirements.txt metadata.yml main.py /code/
 
 WORKDIR /code
 
