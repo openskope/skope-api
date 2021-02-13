@@ -1,11 +1,14 @@
 FROM python:3.8
 
-COPY requirements /code/requirements
-COPY deploy/logging.yml /code/deploy/logging.yml
+ARG ENVIR
+ENV SETTINGS_MODULE="app.settings.${ENVIR}"
+
+COPY deploy/requirements /code/deploy/requirements
+COPY deploy/logging/${ENVIR}.yml /code/deploy/logging/${ENVIR}.yml
 
 WORKDIR /code
 
-RUN pip install -r requirements/base.txt -r requirements/dev.txt
+RUN pip install -r deploy/requirements/base.txt -r deploy/requirements/${ENVIR}.txt
 
 COPY app /code/
 

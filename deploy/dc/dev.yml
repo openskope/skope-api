@@ -2,7 +2,11 @@ version: '3.7'
 services:
   server:
     build:
-      context: .
+      args:
+        ENVIR: dev
       dockerfile: deploy/Dockerfile
-    restart: always
     image: openskope/server/dev:latest
+    volumes:
+      - .:/code
+    ports:
+    - "127.0.0.1:8002:8000"

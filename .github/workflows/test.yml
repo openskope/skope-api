@@ -17,4 +17,4 @@ jobs:
           pip install -r requirements/base.txt -r requirements/dev.txt
       - name: Run the tests
         run: |
-          pytest
+          SETTINGS_MODULE=app.settings.dev pytest
