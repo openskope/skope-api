@@ -1,6 +1,7 @@
 FROM python:3.8
 
 COPY requirements /code/requirements
+COPY deploy/logging.yml /code/deploy/logging.yml
 
 WORKDIR /code
 

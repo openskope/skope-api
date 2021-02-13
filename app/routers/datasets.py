@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import rasterio
 
@@ -10,6 +11,7 @@ from scipy import stats
 from typing import List, Optional, Tuple, Union
 
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/datasets", tags=['datasets'])
 
 
@@ -34,9 +36,9 @@ class Point(Geometry):
     coordinates: Tuple[float, float]
 
     def extract(self, dataset: rasterio.DatasetReader, zonal_statistic: ZonalStatistic):
-        print(f'extracting point: {self.to_string()}')
+        logger.info('extracting point: %s', self)
         px, py = dataset.index(self.coordinates[0], self.coordinates[1])
-        print(f'indices: ({px}, {py})')
+        logging.info('indices: %s', (px, py))
         return dataset.read(window=Window(px, py, 1, 1)).flatten()
 
 
@@ -45,7 +47,7 @@ class Polygon(Geometry):
     coordinates: List[Tuple[float, float]]
 
     def extract(self, dataset: rasterio.DatasetReader, zonal_statistic: ZonalStatistic):
-        print(f'extracting polygon: {self.to_string()}')
+        logger.info('extracting polygon: %s', self)
         zonal_func = zonal_statistic.to_numpy_call()
         masked, transform, window = raster_geometry_mask(dataset, [self], crop=True, all_touched=True)
         result = np.zeros(dataset.count, dtype=dataset.dtypes[0])
@@ -70,7 +72,6 @@ class NoSmoother(Smoother):
     type = 'NoSmoother'
 
     def smooth(self, xs):
-        print('smoother: none')
         return xs
 
 
@@ -85,7 +86,6 @@ class MovingAverageSmoother(Smoother):
     width: int
 
     def smooth(self, xs):
-        print(f'smoother: moving average {self.width}')
         return np.convolve(xs, np.ones(self.width) / self.width, 'valid')
 
 

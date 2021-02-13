@@ -1,0 +1,25 @@
+version: 1
+disable_existing_loggers: false
+
+formatters:
+  standard:
+    format: '%(asctime)s %(levelname)-7s %(name)s:%(funcName)s:%(lineno)d %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+
+handlers:
+  console:
+    class: 'logging.StreamHandler'
+    level: DEBUG
+    formatter: standard
+  file:
+    class: 'logging.handlers.WatchedFileHandler'
+    level: DEBUG
+    formatter: standard
+    filename: 'docker/log.txt'
+
+loggers:
+  app:
+    level: DEBUG
+    handlers:
+      - console
+      - file
