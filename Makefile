@@ -1,5 +1,8 @@
 include config.mk
 
+UID=$(shell id -u)
+GID=$(shell id -g)
+
 .PHONY: build
 build: docker-compose.yml
 	docker-compose build --pull
@@ -12,4 +15,4 @@ docker-compose.yml: deploy/base.yml deploy/$(ENVIR).yml deploy/Dockerfile
 
 .PHONY: test
 test:
-	docker-compose run --rm -v $(PWD):/code server pytest
+	docker-compose run --user "$(UID):$(GID)" --rm -v $(PWD):/code server pytest
