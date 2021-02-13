@@ -1,18 +1,16 @@
-from enum import Enum, unique
-from typing import Optional, List, Tuple, Union
-from fastapi import FastAPI
-from pydantic import BaseModel
-import rasterio
 import numpy as np
-import logging
-import yaml
-from rasterio.windows import Window
+import rasterio
+
+from enum import Enum
+from fastapi import APIRouter
+from pydantic import BaseModel
 from rasterio.mask import raster_geometry_mask
+from rasterio.windows import Window
 from scipy import stats
+from typing import List, Optional, Tuple, Union
 
 
-logger = logging.getLogger(__name__)
-logger.setLevel('DEBUG')
+router = APIRouter(prefix="/datasets", tags=['datasets'])
 
 
 class ZonalStatistic(str, Enum):
@@ -99,7 +97,7 @@ class ZScoreRoller(BaseModel):
         n = len(xs) - self.width
         results = np.zeros(n)
         for i in range(n):
-            results[i] = (xs[i+self.width] - np.mean(xs[i:(i+self.width)]))/np.std(xs[i:(i+self.width)])
+            results[i] = (xs[i + self.width] - np.mean(xs[i:(i + self.width)])) / np.std(xs[i:(i + self.width)])
         return results
 
 
@@ -158,22 +156,8 @@ class AnalysisResponse(BaseModel):
     values: List[float]
 
 
-class OutOfBoundsError(ValueError):
-    pass
-
-
-app = FastAPI()
-
-with open("metadata.yml") as f:
-    _metadata = yaml.safe_load(f)
-
-@app.get("/metadata")
-def metadata():
-    return _metadata
-
-
 # add request timeout middleware https://github.com/tiangolo/fastapi/issues/1752
-@app.post("/datasets/{dataset_id}", response_model=AnalysisResponse, operation_id='retrieveTimeseries')
+@router.post("/{dataset_id}", response_model=AnalysisResponse, operation_id='retrieveTimeseries')
 def extract_timeseries(dataset_id: str, data: AnalysisRequest):
     w = data.extract(dataset_id)
     return AnalysisResponse(timeRange=(YearMonth(year=1500), YearMonth(year=1800)), values=list(w))
