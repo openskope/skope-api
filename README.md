@@ -3,20 +3,26 @@ Backend services for dataset metadata and timeseries data for SKOPE
 
 ## Project Setup (Development)
 
-Install the dependencies
+Put into `dev` configuration
 
 ```bash
-conda env create -n timeseries-api -f environment.yml
+./configure dev
+```
+
+Build the project
+
+```bash
+make build
 ```
 
 Run the server
 
 ```bash
-uvicorn main:app --reload
+docker-compose up -d
 ```
 
 Try out the analysis endpoint
 
 ```bash
-http --json POST localhost:8000/datasets/monthly_5x5x60_dataset_float32_variable < req.json
+http --json POST localhost:8002/datasets/monthly_5x5x60_dataset_float32_variable < req.json
 ```

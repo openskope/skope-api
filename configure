@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+set -o nounset
+set -o pipefail
+set -o errexit
+
+ENVIR=${1:-dev} # dev|staging|prod
+
+echo "configuring for **${ENVIR}** environment"
+
+envsubst > config.mk <<EOF
+ENVIR=$ENVIR
+EOF

@@ -1,0 +1,5 @@
+fastapi
+ipython
+rasterio
+scipy
+uvicorn
