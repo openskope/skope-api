@@ -1,27 +1,14 @@
 {
-  "selectedArea": {
+  "resolution": "year",
+  "dataset_id": "annual_5x5x5_dataset",
+  "variable_id": "float32_variable",
+  "selected_area": {
     "type": "Point",
     "coordinates": [
       -120,
       42.5
     ]
   },
-  "zonalStatistic": "mean",
-  "timeRange": [
-    {
-      "year": 1500
-    },
-    {
-      "year": 1800
-    }
-  ],
-  "smoother": {
-    "type": "NoSmoother"
-  },
-  "roller": {
-    "type": "NoRoller"
-  },
-  "coordinateTransform": {
-    "type": "NoCoordinateTransform"
-  }
+  "zonal_statistic": "mean",
+  "transforms": []
 }

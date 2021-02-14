@@ -8,8 +8,9 @@ from pydantic import BaseModel
 from rasterio.mask import raster_geometry_mask
 from rasterio.windows import Window
 from scipy import stats
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Literal
 
+from ..stores import YearRange, YearMonthRange, dataset_repo
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/datasets", tags=['datasets'])
@@ -32,7 +33,7 @@ class Geometry(BaseModel):
 
 
 class Point(Geometry):
-    type = 'Point'
+    type: Literal['Point']
     coordinates: Tuple[float, float]
 
     def extract(self, dataset: rasterio.DatasetReader, zonal_statistic: ZonalStatistic):
@@ -43,7 +44,7 @@ class Point(Geometry):
 
 
 class Polygon(Geometry):
-    type = 'Polygon'
+    type: Literal['Polygon']
     coordinates: List[Tuple[float, float]]
 
     def extract(self, dataset: rasterio.DatasetReader, zonal_statistic: ZonalStatistic):
@@ -59,17 +60,12 @@ class Polygon(Geometry):
         return result
 
 
-class YearMonth(BaseModel):
-    year: int
-    month: Optional[int]
-
-
 class Smoother(BaseModel):
     type: str
 
 
 class NoSmoother(Smoother):
-    type = 'NoSmoother'
+    type: Literal['NoSmoother']
 
     def smooth(self, xs):
         return xs
@@ -81,19 +77,19 @@ class WindowType(str, Enum):
 
 
 class MovingAverageSmoother(Smoother):
-    type = 'MovingAverageSmoother'
+    type: Literal['MovingAverageSmoother']
     method: WindowType
     width: int
 
-    def smooth(self, xs):
+    def apply(self, xs):
         return np.convolve(xs, np.ones(self.width) / self.width, 'valid')
 
 
 class ZScoreRoller(BaseModel):
-    type = 'ZScoreRoller'
+    type: Literal['ZScoreRoller']
     width: int
 
-    def roll(self, xs):
+    def apply(self, xs):
         n = len(xs) - self.width
         results = np.zeros(n)
         for i in range(n):
@@ -102,71 +98,61 @@ class ZScoreRoller(BaseModel):
 
 
 class NoRoller(BaseModel):
-    type = 'NoneRoller'
+    type: Literal['NoneRoller']
 
     def roll(self, xs):
         return xs
 
 
-class CoordinateTransform(str, Enum):
-    none = 'none'
-    zscore = 'zscore'
+class NoScaler(BaseModel):
+    type: Literal['NoScaler']
 
-    def transform(self, xs):
-        if self == self.none:
-            return xs
-        else:
-            return stats.zscore(xs)
-
-
-class NoCoordinateTransform(BaseModel):
-    type = 'NoCoordinateTransform'
-
-    def transform(self, xs):
+    def scale(self, xs):
         return xs
 
 
-class ZScoreCoordinateTransform(BaseModel):
-    type = 'ZScoreCoordinateTransform'
-    time_range: Tuple[YearMonth, YearMonth]
+class ZScoreScaler(BaseModel):
+    type: Literal['ZScoreScaler']
 
-    def transform(self, xs):
+    def aaply(self, xs):
         return stats.zscore(xs)
 
 
-class AnalysisRequest(BaseModel):
-    selectedArea: Union[Point, Polygon]
-    zonalStatistic: ZonalStatistic
-    timeRange: Tuple[YearMonth, YearMonth]
-    smoother: Union[MovingAverageSmoother, NoSmoother]
-    roller: Union[ZScoreRoller, NoRoller]
-    coordinateTransform: Union[ZScoreCoordinateTransform, NoCoordinateTransform]
-
-    def open_raster(self, dataset_id: str):
-        return rasterio.open(f'data/{dataset_id}.tif')
+class YearAnalysisRequest(BaseModel):
+    resolution: Literal['year']
+    dataset_id: str
+    variable_id: str
+    selected_area: Union[Point, Polygon]
+    zonal_statistic: ZonalStatistic
+    transforms: List[Union[MovingAverageSmoother, ZScoreRoller, ZScoreScaler]]
 
     def extract_slice(self, dataset: rasterio.DatasetReader):
-        return self.selectedArea.extract(dataset, self.zonalStatistic)
+        return self.selected_area.extract(dataset, self.zonal_statistic)
 
     def transform_series(self, xs):
-        xs = self.smoother.smooth(xs)
-        xs = self.roller.roll(xs)
-        xs = self.coordinateTransform.transform(xs)
+        for transform in self.transforms:
+            xs = transform.apply(xs)
         return xs
 
-    def extract(self, dataset_id: str):
-        xs = self.extract_slice(self.open_raster(dataset_id))
+    def extract(self):
+        dataset_meta = dataset_repo.get_dataset_meta(dataset_id=self.dataset_id, variable_id=self.variable_id)
+        with rasterio.open(dataset_meta.p) as ds:
+            xs = self.extract_slice(ds)
         xs = self.transform_series(xs)
         return xs
 
 
-class AnalysisResponse(BaseModel):
-    timeRange: Tuple[YearMonth, YearMonth]
+class YearAnalysisResponse(BaseModel):
+    time_range: YearRange
     values: List[float]
 
 
-# add request timeout middleware https://github.com/tiangolo/fastapi/issues/1752
-@router.post("/{dataset_id}", response_model=AnalysisResponse, operation_id='retrieveTimeseries')
-def extract_timeseries(dataset_id: str, data: AnalysisRequest):
-    w = data.extract(dataset_id)
-    return AnalysisResponse(timeRange=(YearMonth(year=1500), YearMonth(year=1800)), values=list(w))
+class MonthAnalysisResponse(BaseModel):
+    timeRange: YearMonthRange
+    values: List[float]
+
+
+@router.post("/yearly", operation_id='retrieveYearlyTimeseries')
+def extract_yearly_timeseries(data: YearAnalysisRequest):
+    xs = data.extract()
+    return YearAnalysisResponse(time_range=YearRange(gte=1500, lte=1800), values=list(xs))
