@@ -77,7 +77,7 @@ class WindowType(str, Enum):
 
 
 class MovingAverageSmoother(Smoother):
-    type: Literal['MovingAverageSmoother']
+    type: Literal['MovingAverageSmoother'] = 'MovingAverageSmoother'
     method: WindowType
     width: int
 
@@ -86,7 +86,7 @@ class MovingAverageSmoother(Smoother):
 
 
 class ZScoreRoller(BaseModel):
-    type: Literal['ZScoreRoller']
+    type: Literal['ZScoreRoller'] = 'ZScoreRoller'
     width: int
 
     def apply(self, xs):
@@ -97,22 +97,8 @@ class ZScoreRoller(BaseModel):
         return results
 
 
-class NoRoller(BaseModel):
-    type: Literal['NoneRoller']
-
-    def roll(self, xs):
-        return xs
-
-
-class NoScaler(BaseModel):
-    type: Literal['NoScaler']
-
-    def scale(self, xs):
-        return xs
-
-
 class ZScoreScaler(BaseModel):
-    type: Literal['ZScoreScaler']
+    type: Literal['ZScoreScaler'] = 'ZScoreScaler'
 
     def aaply(self, xs):
         return stats.zscore(xs)
