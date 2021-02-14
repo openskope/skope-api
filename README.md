@@ -1,7 +1,9 @@
 # skope-api
 Backend services for dataset metadata and timeseries data for SKOPE
 
-## Project Setup (Development)
+## Project Setup
+
+### Development
 
 Put into `dev` configuration
 
@@ -31,4 +33,24 @@ Run the tests
 
 ```bash
 make test
+```
+
+## Production
+
+Put into `prod` configuration
+
+```bash
+./configure prod
+```
+
+Build the project
+
+```bash
+make build
+```
+
+Run the server
+
+```bash
+docker-compose up -d
 ```
