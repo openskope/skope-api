@@ -1,0 +1,3 @@
+httptools>=0.1 # uvicorn needs this production but installation doesn't install it
+gunicorn>=20
+uvloop>=0.15

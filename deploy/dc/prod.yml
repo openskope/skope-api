@@ -1,0 +1,23 @@
+version: '3.7'
+services:
+  server:
+    build:
+      args:
+        ENVIR: prod
+      dockerfile: deploy/Dockerfile
+    # may need additional config to deal with X-Forwarded-*
+    # https://docs.gunicorn.org/en/stable/deploy.html#nginx-configuration
+    command:
+      - gunicorn
+      - "--bind"
+      - "0.0.0.0:8000"
+      - "--workers"
+      - "4"
+      - "--worker-class"
+      - "uvicorn.workers.UvicornWorker"
+      - "app.main:app"
+    image: openskope/server/prod:latest
+    volumes:
+      - .:/code
+    ports:
+    - "127.0.0.1:8002:8000"

@@ -4,7 +4,7 @@ ARG ENVIR
 ENV SETTINGS_MODULE="app.settings.${ENVIR}"
 
 COPY deploy/requirements /code/deploy/requirements
-COPY deploy/logging/${ENVIR}.yml /code/deploy/logging/${ENVIR}.yml
+COPY deploy/logging /code/deploy/logging
 
 WORKDIR /code
 

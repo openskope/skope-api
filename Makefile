@@ -9,8 +9,8 @@ build: docker-compose.yml
 
 docker-compose.yml: deploy/dc/base.yml deploy/dc/$(ENVIR).yml deploy/Dockerfile
 	case "$(ENVIR)" in \
-	  dev) docker-compose -f deploy/dc/base.yml -f "deploy/dc/$(ENVIR).yml" --project-directory . config > docker-compose.yml;; \
-	  *) echo "invalid environment. must be dev" 1>&2; exit 1;; \
+	  dev|prod) docker-compose -f deploy/dc/base.yml -f "deploy/dc/$(ENVIR).yml" --project-directory . config > docker-compose.yml;; \
+	  *) echo "invalid environment. must be dev or prod" 1>&2; exit 1;; \
 	esac
 
 .PHONY: test
