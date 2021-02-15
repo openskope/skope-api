@@ -9,7 +9,7 @@ from rasterio.mask import raster_geometry_mask
 from rasterio.windows import Window
 from scipy import stats
 from shapely import geometry as geom
-from typing import List, Optional, Tuple, Union, Literal, Sequence
+from typing import List, Optional, Tuple, Union, Literal, Sequence, Any
 
 from ..exceptions import SelectedAreaOutOfBoundsError
 from ..stores import YearRange, YearMonthRange, dataset_repo, TimeRange, BandRange
@@ -152,14 +152,11 @@ class ZScoreScaler(BaseModel):
         return stats.zscore(xs)
 
 
-class YearAnalysisRequest(BaseModel):
-    resolution: Literal['year']
+class BaseAnalysisRequest(BaseModel):
     dataset_id: str
     variable_id: str
-    time_range: YearRange
     selected_area: Union[Point, Polygon]
     zonal_statistic: ZonalStatistic
-    transforms: List[Union[MovingAverageSmoother, ZScoreRoller, ZScoreScaler]]
 
     def extract_slice(self, dataset: rasterio.DatasetReader, band_range: Sequence[int]):
         return self.selected_area.extract(dataset, self.zonal_statistic, band_range=band_range)
@@ -185,14 +182,27 @@ class YearAnalysisRequest(BaseModel):
             xs = transform.apply(xs)
         return xs
 
-    def extract(self) -> 'YearAnalysisResponse':
+    def extract(self):
         dataset_meta = dataset_repo.get_dataset_meta(dataset_id=self.dataset_id, variable_id=self.variable_id)
         band_range = self.get_band_range_to_extract(dataset_meta.time_range)
         with rasterio.open(dataset_meta.p) as ds:
             xs = self.extract_slice(ds, band_range=band_range)
         xs = self.transform_series(xs)
         yr = self.get_time_range_after_transforms(dataset_meta.time_range, band_range)
-        return YearAnalysisResponse(time_range=yr, values=list(xs))
+        values = xs.tolist()
+        return {'time_range': yr, 'values': values}
+
+
+class MonthAnalysisRequest(BaseAnalysisRequest):
+    resolution: Literal['month']
+    time_range: YearMonthRange
+    transforms: List[Union[MovingAverageSmoother, ZScoreRoller]]
+
+
+class YearAnalysisRequest(BaseAnalysisRequest):
+    resolution: Literal['year']
+    time_range: YearRange
+    transforms: List[Union[MovingAverageSmoother, ZScoreRoller, ZScoreScaler]]
 
 
 class YearAnalysisResponse(BaseModel):
@@ -201,10 +211,15 @@ class YearAnalysisResponse(BaseModel):
 
 
 class MonthAnalysisResponse(BaseModel):
-    timeRange: YearMonthRange
+    time_range: YearMonthRange
     values: List[float]
 
 
-@router.post("/yearly", operation_id='retrieveYearlyTimeseries')
-def extract_yearly_timeseries(data: YearAnalysisRequest):
+@router.post("/monthly", operation_id='retrieveMonthlyTimeseries')
+def extract_monthly_timeseries(data: MonthAnalysisRequest):
     return data.extract()
+
+
+@router.post("/yearly", operation_id='retrieveYearlyTimeseries')
+def extract_yearly_timeseries(data: YearAnalysisRequest) -> YearAnalysisResponse:
+    return YearAnalysisResponse(**data.extract())

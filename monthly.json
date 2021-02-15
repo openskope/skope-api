@@ -1,0 +1,30 @@
+{
+  "resolution": "month",
+  "dataset_id": "monthly_5x5x60_dataset",
+  "variable_id": "float32_variable",
+  "time_range": {
+    "gte": {
+      "year": 2002,
+      "month": 2
+    },
+    "lte": {
+      "year": 2007,
+      "month": 1
+    }
+  },
+  "selected_area": {
+    "type": "Point",
+    "coordinates": [
+      -120,
+      42.5
+    ]
+  },
+  "zonal_statistic": "mean",
+  "transforms": [
+    {
+      "type": "MovingAverageSmoother",
+      "method": "centered",
+      "width": 1
+    }
+  ]
+}

@@ -35,3 +35,11 @@ def test_band_range_conversions():
 def test_translate_band_range():
     assert yearly_cat_ds_avail.translate_band_range(BandRange(gte=1, lte=1)) == YearRange(gte=7, lte=7)
     assert monthly_cat_ds_avail.translate_band_range(BandRange(gte=1, lte=120)) == monthly_cat_ds_avail
+
+
+def test_year_month_round_trip():
+    ym = YearMonth(year=0, month=1)
+    assert ym == ym.from_index(ym.to_months_since_0ce())
+    ym = YearMonth(year=1974, month=12)
+    assert ym == ym.from_index(ym.to_months_since_0ce())
+    assert YearMonth(year=1975, month=1) == ym.from_index(ym.to_months_since_0ce() + 1)

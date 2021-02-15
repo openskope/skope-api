@@ -27,7 +27,7 @@ class BandRange(namedtuple('BandRange', ['gte', 'lte'])):
 
     @classmethod
     def from_numpy_pair(cls, xs):
-        return cls(gte=xs[0], lte=xs[1])
+        return cls(gte=int(xs[0]), lte=int(xs[1]))
 
     def __iter__(self):
         return iter(range(self.gte, self.lte + 1))
@@ -63,7 +63,7 @@ class YearMonth(BaseModel):
     @classmethod
     def from_index(cls, index: int) -> 'YearMonth':
         year = index // 12
-        month = index % 12
+        month = index % 12 + 1
         return cls.construct(year=year, month=month)
 
     def to_months_since_0ce(self):
@@ -96,11 +96,13 @@ class YearMonthRange(BaseModel):
 
     def translate_band_range(self, br: BandRange) -> 'YearMonthRange':
         months_offset = self.gte.to_months_since_0ce()
-        # don't have to subtract one here to undo raster band one based indexing
-        # because month is also one indexed
+        # convert from a one indexed raster band index to
+        # months since 0000-01 ce zero based index
+        gte = br.gte - 1
+        lte = br.lte - 1
         return self.__class__(
-            gte=YearMonth.from_index(months_offset + br.gte),
-            lte=YearMonth.from_index(months_offset + br.lte)
+            gte=YearMonth.from_index(months_offset + gte),
+            lte=YearMonth.from_index(months_offset + lte)
         )
 
 

@@ -26,7 +26,8 @@ docker-compose up -d
 Try out the analysis endpoint
 
 ```bash
-http --json POST localhost:8002/datasets/yearly < req.json 
+http --json POST localhost:8002/datasets/yearly < yearly.json 
+http --json POST localhost:8002/datasets/monthly < monthly.json 
 ```
 
 Run the tests
