@@ -3,4 +3,5 @@ ipython
 pyyaml
 rasterio
 scipy
+shapely
 uvicorn

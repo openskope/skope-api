@@ -1,6 +1,7 @@
 import pytest
 
-from ..stores import YearRange, YearMonthRange, YearMonth, BandRange, TimeRangeContainmentError
+from ..stores import YearRange, YearMonthRange, YearMonth, BandRange
+from ..exceptions import TimeRangeContainmentError
 
 yearly_cat_ds_avail = YearRange(gte=7, lte=20)
 monthly_cat_ds_avail = YearMonthRange(

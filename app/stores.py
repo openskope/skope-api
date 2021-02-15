@@ -3,21 +3,10 @@ from collections import namedtuple
 from functools import total_ordering
 from pathlib import Path
 
+from app.exceptions import DatasetNotFoundError, VariableNotFoundError, TimeRangeContainmentError
 from app.settings import settings
 from pydantic import BaseModel, Field
-from typing import Dict, List, Set, Union, Sequence
-
-
-class DatasetNotFound(KeyError):
-    pass
-
-
-class VariableNotFound(KeyError):
-    pass
-
-
-class TimeRangeContainmentError(IndexError):
-    pass
+from typing import Dict, Set, Union
 
 
 class BandRange(namedtuple('BandRange', ['gte', 'lte'])):
@@ -156,10 +145,10 @@ class DatasetRepo(BaseModel):
                 time_range = self.monthlies[dataset_id].time_range
 
         if not dataset_found:
-            raise DatasetNotFound(f'Dataset {dataset_id} not found')
+            raise DatasetNotFoundError(f'Dataset {dataset_id} not found')
 
         if not variable_found:
-            raise VariableNotFound(f'Variable {variable_id} not found in dataset {dataset_id}')
+            raise VariableNotFoundError(f'Variable {variable_id} not found in dataset {dataset_id}')
 
         p = settings.get_dataset_path(dataset_id=dataset_id, variable_id=variable_id)
         return DatasetMeta(p=p, time_range=time_range)

@@ -8,8 +8,10 @@ from pydantic import BaseModel
 from rasterio.mask import raster_geometry_mask
 from rasterio.windows import Window
 from scipy import stats
+from shapely import geometry as geom
 from typing import List, Optional, Tuple, Union, Literal, Sequence
 
+from ..exceptions import SelectedAreaOutOfBoundsError
 from ..stores import YearRange, YearMonthRange, dataset_repo, TimeRange, BandRange
 
 logger = logging.getLogger(__name__)
@@ -38,6 +40,14 @@ class Geometry(BaseModel):
     bbox: Optional[Tuple[float, float, float, float]]
 
 
+def bounding_box(bounds) -> geom.Polygon:
+    return geom.box(
+        minx=bounds.left,
+        miny=bounds.bottom,
+        maxx=bounds.right,
+        maxy=bounds.top)
+
+
 class Point(Geometry):
     type: Literal['Point']
     coordinates: Tuple[float, float]
@@ -46,6 +56,10 @@ class Point(Geometry):
                 dataset: rasterio.DatasetReader,
                 zonal_statistic: ZonalStatistic,
                 band_range: Sequence[int]):
+        box = bounding_box(dataset.bounds)
+        point = geom.Point(self.coordinates)
+        if not box.contains(point):
+            raise SelectedAreaOutOfBoundsError('selected area is outside the study area')
         logger.info('extracting point: %s', self)
         px, py = dataset.index(self.coordinates[0], self.coordinates[1])
         logging.info('indices: %s', (px, py))
@@ -60,6 +74,10 @@ class Polygon(Geometry):
                 dataset: rasterio.DatasetReader,
                 zonal_statistic: ZonalStatistic,
                 band_range: Sequence[int]):
+        box = bounding_box(dataset.bounds)
+        polygon = geom.Polygon(self.coordinates)
+        if not box.contains(polygon):
+            raise SelectedAreaOutOfBoundsError('selected area is outside the study area')
         logger.info('extracting polygon: %s', self)
         zonal_func = zonal_statistic.to_numpy_call()
         masked, transform, window = raster_geometry_mask(dataset, [self], crop=True, all_touched=True)
