@@ -2,6 +2,10 @@
   "resolution": "year",
   "dataset_id": "annual_5x5x5_dataset",
   "variable_id": "float32_variable",
+  "time_range": {
+    "gte": 500,
+    "lte": 504
+  },
   "selected_area": {
     "type": "Point",
     "coordinates": [
@@ -10,5 +14,11 @@
     ]
   },
   "zonal_statistic": "mean",
-  "transforms": []
+  "transforms": [
+    {
+      "type": "MovingAverageSmoother",
+      "method": "centered",
+      "width": 1
+    }
+  ]
 }

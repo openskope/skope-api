@@ -1,3 +1,5 @@
+import numpy as np
+from collections import namedtuple
 from functools import total_ordering
 from pathlib import Path
 
@@ -14,25 +16,49 @@ class VariableNotFound(KeyError):
     pass
 
 
-class TimeIndexOutOfBounds(IndexError):
+class TimeRangeContainmentError(IndexError):
     pass
+
+
+class BandRange(namedtuple('BandRange', ['gte', 'lte'])):
+    """
+    A range describing what bands of a raster to read
+
+    Raster bands are one-indexed so gte should be at least one
+    """
+    __slots__ = ()
+
+    def intersect(self, desired_br: 'BandRange') -> 'BandRange':
+        return self.__class__(
+            gte=max(self.gte, desired_br.gte),
+            lte=min(self.lte, desired_br.lte))
+
+    def to_numpy_pair(self):
+        return np.array([self.gte, self.lte])
+
+    @classmethod
+    def from_numpy_pair(cls, xs):
+        return cls(gte=xs[0], lte=xs[1])
+
+    def __iter__(self):
+        return iter(range(self.gte, self.lte + 1))
 
 
 class YearRange(BaseModel):
     gte: int = Field(..., ge=0, le=2100)
     lte: int = Field(..., ge=0, le=2100)
 
-    def contains(self, other: 'YearRange'):
-        return self.gte <= other.gte and self.lte >= other.lte
+    def contains(self, ymr: 'YearRange') -> bool:
+        return self.gte <= ymr.gte and self.lte >= ymr.lte
 
-    def select_raster_band_indices(self, selected_time_range: 'YearRange') -> Sequence[int]:
-        if not self.contains(selected_time_range):
-            raise TimeIndexOutOfBounds(f'{self} does not contain {selected_time_range}')
+    def find_band_range(self, yr: 'YearRange') -> BandRange:
+        if not self.contains(yr):
+            raise TimeRangeContainmentError(f'{self} does not contain {yr}')
+        # raster bands are one indexed hence the plus 1
+        return BandRange(yr.gte - self.gte + 1, yr.lte - self.gte + 1)
 
-        offset = self.gte
-        lb = selected_time_range.gte - offset
-        ub = selected_time_range.lte - offset + 1
-        return range(lb, ub)
+    def translate_band_range(self, br: BandRange) -> 'YearRange':
+        return self.__class__(gte=self.gte + br.gte - 1, lte=self.gte + br.lte - 1)
 
 
 class YearlyRepo(BaseModel):
@@ -45,9 +71,15 @@ class YearMonth(BaseModel):
     year: int = Field(..., ge=0, le=2100)
     month: int = Field(..., ge=1, le=12)
 
-    def to_index(self):
+    @classmethod
+    def from_index(cls, index: int) -> 'YearMonth':
+        year = index // 12
+        month = index % 12
+        return cls.construct(year=year, month=month)
+
+    def to_months_since_0ce(self):
         # assumes there are not any BCE dates (0 is 0000-01 CE)
-        return self.year*12 + self.month
+        return self.year*12 + self.month - 1
 
     def __eq__(self, other: 'YearMonth'):
         return self.year == other.year and self.month == other.month
@@ -60,21 +92,27 @@ class YearMonthRange(BaseModel):
     gte: YearMonth
     lte: YearMonth
 
-    def contains(self, other: 'YearMonthRange'):
-        return self.gte <= other.gte and self.lte >= other.lte
+    def contains(self, ymr: 'YearMonthRange') -> bool:
+        return self.gte <= ymr.gte and self.lte >= ymr.lte
 
-    def select_raster_band_indices(self, selected_time_range: 'YearMonthRange') -> Sequence[int]:
-        """
-        :param selected_time_range: time range to extract from raster
-        :return: range of integer indices to extract from raster
-        """
-        if not self.contains(selected_time_range):
-            raise TimeIndexOutOfBounds(f'{self} does not contain {selected_time_range}')
+    def find_band_range(self, ymr: 'YearMonthRange'):
+        if not self.contains(ymr):
+            raise TimeRangeContainmentError(f'{self} does not contain {ymr}')
+        months_offset = self.gte.to_months_since_0ce()
+        # raster bands are one indexed hence the plus one
+        return BandRange(
+            gte=ymr.gte.to_months_since_0ce() - months_offset + 1,
+            lte=ymr.lte.to_months_since_0ce() - months_offset + 1
+        )
 
-        offset = self.gte.to_index()
-        lb = selected_time_range.gte.to_index() - offset
-        ub = selected_time_range.lte.to_index() - offset + 1
-        return range(lb, ub)
+    def translate_band_range(self, br: BandRange) -> 'YearMonthRange':
+        months_offset = self.gte.to_months_since_0ce()
+        # don't have to subtract one here to undo raster band one based indexing
+        # because month is also one indexed
+        return self.__class__(
+            gte=YearMonth.from_index(months_offset + br.gte),
+            lte=YearMonth.from_index(months_offset + br.lte)
+        )
 
 
 class MonthlyRepo(BaseModel):
@@ -82,8 +120,11 @@ class MonthlyRepo(BaseModel):
     variables: Set[str]
 
 
+TimeRange = Union[YearRange, YearMonthRange]
+
+
 class DatasetMeta:
-    def __init__(self, p: Path, time_range: Union[YearRange, YearMonthRange]):
+    def __init__(self, p: Path, time_range: TimeRange):
         """
         :param p: path to the dataset
         :param time_range: span of time (and resolution) covered by the dataset
@@ -91,7 +132,7 @@ class DatasetMeta:
         self.time_range = time_range
         self.p = p
 
-    def select_raster_band_indices(self, time_range: Union[YearRange, YearMonthRange]):
+    def select_raster_band_indices(self, time_range: TimeRange):
         return self.time_range.select_raster_band_indices(time_range)
 
 
