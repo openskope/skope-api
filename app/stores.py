@@ -3,6 +3,8 @@ from collections import namedtuple
 from functools import total_ordering
 from pathlib import Path
 
+import yaml
+
 from app.exceptions import DatasetNotFoundError, VariableNotFoundError, TimeRangeContainmentError
 from app.settings import settings
 from pydantic import BaseModel, Field
@@ -156,20 +158,5 @@ class DatasetRepo(BaseModel):
         return DatasetMeta(p=p, time_range=time_range)
 
 
-dataset_repo = DatasetRepo(
-    yearlies={
-        'annual_5x5x5_dataset': YearlyRepo(
-            time_range=YearRange(gte=500, lte=504),
-            variables=['float32_variable']
-        )
-    },
-    monthlies={
-        'monthly_5x5x60_dataset': MonthlyRepo(
-            time_range=YearMonthRange(
-                gte=YearMonth(year=2002, month=2),
-                lte=YearMonth(year=2007, month=1)
-            ),
-            variables=['float32_variable']
-        )
-    }
-)
+with settings.metadata_path.open() as f:
+    dataset_repo = DatasetRepo(**yaml.safe_load(f))

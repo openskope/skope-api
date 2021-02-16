@@ -17,3 +17,7 @@ class Settings(BaseModel):
     def init(self):
         with open(f'deploy/logging/{self.envir}.yml') as f:
             logging.config.dictConfig(yaml.safe_load(f))
+
+    @property
+    def metadata_path(self):
+        return Path(f'deploy/metadata/{self.envir}.yml')

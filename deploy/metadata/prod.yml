@@ -1,0 +1,22 @@
+yearlies:
+  lbda:
+    time_range:
+      gte: 1
+      lte: 2017
+    variables:
+      - ldba_precipitation
+  srtm:
+    time_range:
+      gte: 2009
+      lte: 2009
+    variables:
+      - srtm_elevation
+  paleocar:
+    time_range:
+      gte: 1
+      lte: 2000
+    variables:
+      - paleocar_temperature
+      - paleocar_precipitation
+      - paleocar_crop_niche
+monthlies: {}
