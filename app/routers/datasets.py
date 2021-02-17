@@ -12,10 +12,10 @@ from shapely import geometry as geom
 from typing import List, Optional, Tuple, Union, Literal, Sequence, Any
 
 from ..exceptions import SelectedAreaOutOfBoundsError
-from ..stores import YearRange, YearMonthRange, dataset_repo, TimeRange, BandRange
+from ..stores import YearRange, YearMonthRange, dataset_repo, TimeRange, BandRange, YearMonth
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/datasets", tags=['datasets'])
+router = APIRouter(tags=['datasets'])
 
 
 class YearlySeries:
@@ -58,7 +58,7 @@ class Point(Geometry):
                 band_range: Sequence[int]):
         box = bounding_box(dataset.bounds)
         point = geom.Point(self.coordinates)
-        if not box.contains(point):
+        if not box.covers(point):
             raise SelectedAreaOutOfBoundsError('selected area is outside the study area')
         logger.info('extracting point: %s', self)
         px, py = dataset.index(self.coordinates[0], self.coordinates[1])
@@ -76,7 +76,7 @@ class Polygon(Geometry):
                 band_range: Sequence[int]):
         box = bounding_box(dataset.bounds)
         polygon = geom.Polygon(self.coordinates)
-        if not box.contains(polygon):
+        if not box.covers(polygon):
             raise SelectedAreaOutOfBoundsError('selected area is outside the study area')
         logger.info('extracting polygon: %s', self)
         zonal_func = zonal_statistic.to_numpy_call()
@@ -106,7 +106,7 @@ class WindowType(str, Enum):
 
     def get_window_size(self, width):
         if self == self.centered:
-            return width*2 + 1
+            return width * 2 + 1
         else:
             return width + 1
 
@@ -162,8 +162,9 @@ class BaseAnalysisRequest(BaseModel):
         return self.selected_area.extract(dataset, self.zonal_statistic, band_range=band_range)
 
     def get_band_range_to_extract(self, time_range_available: 'YearRange'):
+        time_range = self.time_range.normalize(time_range_available)
         br_avail = time_range_available.find_band_range(time_range_available)
-        desired_br = time_range_available.find_band_range(self.time_range).to_numpy_pair()
+        desired_br = time_range_available.find_band_range(time_range).to_numpy_pair()
         for transform in self.transforms:
             desired_br += transform.get_desired_band_range_adjustment()
         compromise_br = br_avail.intersect(BandRange.from_numpy_pair(desired_br))
@@ -193,15 +194,35 @@ class BaseAnalysisRequest(BaseModel):
         return {'time_range': yr, 'values': values}
 
 
+class OptionalYearRange(BaseModel):
+    gte: Optional[int]
+    lte: Optional[int]
+
+    def normalize(self, time_range_available: YearRange) -> YearRange:
+        return YearRange(
+            gte=self.gte if self.gte is not None else time_range_available.gte,
+            lte=self.lte if self.lte is not None else time_range_available.lte
+        )
+
+
+class OptionalYearMonthRange(BaseModel):
+    gte: Optional[YearMonth]
+    lte: Optional[YearMonth]
+
+    def normalize(self, time_range_available: YearMonthRange) -> YearMonthRange:
+        return YearMonthRange(
+            gte=self.gte if self.gte is not None else time_range_available.gte,
+            lte=self.lte if self.lte is not None else time_range_available.lte
+        )
+
+
 class MonthAnalysisRequest(BaseAnalysisRequest):
-    resolution: Literal['month']
-    time_range: YearMonthRange
+    time_range: OptionalYearMonthRange
     transforms: List[Union[MovingAverageSmoother, ZScoreRoller]]
 
 
 class YearAnalysisRequest(BaseAnalysisRequest):
-    resolution: Literal['year']
-    time_range: YearRange
+    time_range: OptionalYearRange
     transforms: List[Union[MovingAverageSmoother, ZScoreRoller, ZScoreScaler]]
 
 
@@ -215,11 +236,71 @@ class MonthAnalysisResponse(BaseModel):
     values: List[float]
 
 
-@router.post("/monthly", response_model=MonthAnalysisResponse, operation_id='retrieveMonthlyTimeseries')
+class TimeseriesV1Request(BaseModel):
+    datasetId: str
+    variableName: str
+    boundaryGeometry: Union[Point, Polygon]
+    start: Optional[str]
+    end: Optional[str]
+
+    def try_to_year_range(self, available_time_range: YearRange) -> YearRange:
+        return OptionalYearRange(gte=self.start, lte=self.end).normalize(available_time_range)
+
+    def try_to_year_month_range(self, available_time_range: YearMonthRange) -> YearMonthRange:
+        gte_year, gte_month = self.start.split('-', 1)
+        lte_year, lte_month = self.end.split('-', 1)
+        return OptionalYearMonthRange(
+            gte=YearMonth(year=gte_year, month=gte_month),
+            lte=YearMonth(year=lte_year, month=lte_month)
+        ).normalize(available_time_range)
+
+    def to_year_month_str(self, ym: YearMonth) -> str:
+        return f'{ym.year:04}-{ym.month:02}'
+
+    def to_year_str(self, y: int) -> str:
+        return f'{y}'
+
+    def extract(self):
+        dataset_meta = dataset_repo.get_dataset_meta(dataset_id=self.datasetId, variable_id=self.variableName)
+        if dataset_meta.resolution == 'year':
+            time_range = self.try_to_year_range(dataset_meta.time_range)
+            request_cls = YearAnalysisRequest
+            start = self.to_year_str(time_range.gte)
+            end = self.to_year_str(time_range.lte)
+        else:
+            time_range = self.try_to_year_month_range(dataset_meta.time_range)
+            request_cls = MonthAnalysisRequest
+            start = self.to_year_month_str(time_range.gte)
+            end = self.to_year_month_str(time_range.lte)
+        request = request_cls(
+            dataset_id=self.datasetId,
+            variable_id=self.variableName,
+            selected_area=self.boundaryGeometry,
+            zonal_statistic=ZonalStatistic.mean,
+            time_range=time_range,
+            transforms=[]
+        )
+        data = request.extract()
+        return {
+            'datasetId': self.datasetId,
+            'variableName': self.variableName,
+            'boundaryGeometry': self.boundaryGeometry,
+            'start': start,
+            'end': end,
+            'values': data['values']
+        }
+
+
+@router.post("/datasets/monthly", response_model=MonthAnalysisResponse, operation_id='retrieveMonthlyTimeseries')
 def extract_monthly_timeseries(data: MonthAnalysisRequest) -> MonthAnalysisResponse:
     return MonthAnalysisResponse(**data.extract())
 
 
-@router.post("/yearly", response_model=YearAnalysisResponse, operation_id='retrieveYearlyTimeseries')
+@router.post("/datasets/yearly", response_model=YearAnalysisResponse, operation_id='retrieveYearlyTimeseries')
 def extract_yearly_timeseries(data: YearAnalysisRequest) -> YearAnalysisResponse:
     return YearAnalysisResponse(**data.extract())
+
+
+@router.post('/timeseries-service/v1/api/timeseries')
+def timeseries_v1(data: TimeseriesV1Request):
+    return data.extract()

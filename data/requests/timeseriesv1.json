@@ -1,0 +1,10 @@
+{
+  "datasetId": "annual_5x5x5_dataset",
+  "variableName": "uint16_variable",
+  "boundaryGeometry": {
+    "type": "Point",
+    "coordinates": [-123, 45]
+  },
+  "start": 0,
+  "end": 4
+}

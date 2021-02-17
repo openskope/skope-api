@@ -8,7 +8,7 @@ import yaml
 from app.exceptions import DatasetNotFoundError, VariableNotFoundError, TimeRangeContainmentError
 from app.settings import settings
 from pydantic import BaseModel, Field
-from typing import Dict, Set, Union
+from typing import Dict, Set, Union, Literal
 
 
 class BandRange(namedtuple('BandRange', ['gte', 'lte'])):
@@ -55,6 +55,10 @@ class YearRange(BaseModel):
 class YearlyRepo(BaseModel):
     time_range: YearRange
     variables: Set[str]
+
+    @property
+    def resolution(self) -> Literal['year']:
+        return 'year'
 
 
 @total_ordering
@@ -112,18 +116,23 @@ class MonthlyRepo(BaseModel):
     time_range: YearMonthRange
     variables: Set[str]
 
+    @property
+    def resolution(self) -> Literal['month']:
+        return 'month'
+
 
 TimeRange = Union[YearRange, YearMonthRange]
 
 
 class DatasetMeta:
-    def __init__(self, p: Path, time_range: TimeRange):
+    def __init__(self, p: Path, time_range: TimeRange, resolution: Literal['year', 'month']):
         """
         :param p: path to the dataset
         :param time_range: span of time (and resolution) covered by the dataset
         """
         self.time_range = time_range
         self.p = p
+        self.resolution = resolution
 
     def select_raster_band_indices(self, time_range: TimeRange):
         return self.time_range.select_raster_band_indices(time_range)
@@ -134,28 +143,26 @@ class DatasetRepo(BaseModel):
     monthlies: Dict[str, MonthlyRepo]
 
     def get_dataset_meta(self, dataset_id: str, variable_id: str):
-        time_range = None
         dataset_found = False
-        variable_found = False
+        repo = None
         if dataset_id in self.yearlies:
+            repo = self.yearlies
             dataset_found = True
-            if variable_id in self.yearlies[dataset_id].variables:
-                variable_found = True
-                time_range = self.yearlies[dataset_id].time_range
         elif dataset_id in self.monthlies:
+            repo = self.monthlies
             dataset_found = True
-            if variable_id in self.monthlies[dataset_id].variables:
-                variable_found = True
-                time_range = self.monthlies[dataset_id].time_range
 
         if not dataset_found:
             raise DatasetNotFoundError(f'Dataset {dataset_id} not found')
 
-        if not variable_found:
+        if variable_id in repo[dataset_id].variables:
+            resolution = repo[dataset_id].resolution
+            time_range = repo[dataset_id].time_range
+        else:
             raise VariableNotFoundError(f'Variable {variable_id} not found in dataset {dataset_id}')
 
         p = settings.get_dataset_path(dataset_id=dataset_id, variable_id=variable_id)
-        return DatasetMeta(p=p, time_range=time_range)
+        return DatasetMeta(p=p, time_range=time_range, resolution=resolution)
 
 
 with settings.metadata_path.open() as f:
