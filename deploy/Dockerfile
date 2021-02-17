@@ -1,7 +1,7 @@
 FROM python:3.8
 
 ARG ENVIR
-ENV SETTINGS_MODULE="app.settings.${ENVIR}"
+ENV ENVIR="${ENVIR}"
 
 COPY deploy/requirements /code/deploy/requirements
 COPY deploy/logging /code/deploy/logging

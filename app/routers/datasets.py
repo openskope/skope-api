@@ -4,7 +4,7 @@ import rasterio
 
 from enum import Enum
 from fastapi import APIRouter
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from rasterio.mask import raster_geometry_mask
 from rasterio.windows import Window
 from scipy import stats
@@ -153,8 +153,8 @@ class ZScoreScaler(BaseModel):
 
 
 class BaseAnalysisRequest(BaseModel):
-    dataset_id: str
-    variable_id: str
+    dataset_id: str = Field(..., regex='^\w+$')
+    variable_id: str = Field(..., regex='^\w+$')
     selected_area: Union[Point, Polygon]
     zonal_statistic: ZonalStatistic
 
@@ -215,11 +215,11 @@ class MonthAnalysisResponse(BaseModel):
     values: List[float]
 
 
-@router.post("/monthly", operation_id='retrieveMonthlyTimeseries')
-def extract_monthly_timeseries(data: MonthAnalysisRequest):
-    return data.extract()
+@router.post("/monthly", response_model=MonthAnalysisResponse, operation_id='retrieveMonthlyTimeseries')
+def extract_monthly_timeseries(data: MonthAnalysisRequest) -> MonthAnalysisResponse:
+    return MonthAnalysisResponse(**data.extract())
 
 
-@router.post("/yearly", operation_id='retrieveYearlyTimeseries')
+@router.post("/yearly", response_model=YearAnalysisResponse, operation_id='retrieveYearlyTimeseries')
 def extract_yearly_timeseries(data: YearAnalysisRequest) -> YearAnalysisResponse:
     return YearAnalysisResponse(**data.extract())

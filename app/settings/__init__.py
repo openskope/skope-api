@@ -1,30 +1,26 @@
 import importlib
 import os
 
+from .base import Settings
+
 
 class MissedDeploymentSetting(KeyError):
     pass
 
 
-_VALID_SETTINGS_MODULES = ['app.settings.dev', 'app.settings.staging', 'app.settings.prod']
+_VALID_ENVIRONS = ['dev', 'staging', 'prod']
 
 
-def _get_settings_module():
+def _get_environ():
     try:
-        settings_module = os.environ['SETTINGS_MODULE']
-        if settings_module not in _VALID_SETTINGS_MODULES:
+        environ = os.environ['ENVIR']
+        if environ not in _VALID_ENVIRONS:
             raise MissedDeploymentSetting(
-                f'SETTINGS_MODULE variable "{settings_module}" not valid. Must be {", ".join(_VALID_SETTINGS_MODULES)}')
-        return settings_module
+                f'ENVIR variable "{environ}" not valid. Must be {", ".join(_VALID_ENVIRONS)}')
+        return environ
     except KeyError:
         raise MissedDeploymentSetting(
-            f'Unset SETTINGS_MODULE environment variable to one of {", ".join(_VALID_SETTINGS_MODULES)}')
+            f'Unset ENVIR environment variable to one of {", ".join(_VALID_ENVIRONS)}')
 
 
-def _get_settings():
-    module_dynamic = _get_settings_module()
-    module = importlib.import_module(module_dynamic)
-    return getattr(module, 'settings')
-
-
-settings = _get_settings()
+settings = Settings.from_envir(_get_environ())

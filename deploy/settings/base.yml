@@ -1,0 +1,7 @@
+name: SKOPE Timeseries Service
+base_url: 'timeseries/api'
+max_processing_time: 5000
+store:
+  base_path: 'data'
+  template: 'data/{dataset_id}_{variable_id}.tif'
+  uncertainty_template: 'data/{dataset_id}_{variable_id}_uncertainty.tif'
