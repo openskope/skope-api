@@ -9,6 +9,10 @@ class TimeseriesError(Exception):
         return RequestValidationError([ErrorWrapper(self, ("body", self.field))])
 
 
+class SelectedAreaPolygonIsNotValid(TimeseriesError):
+    """Selected area polygon is not valid"""
+
+
 class SelectedAreaOutOfBoundsError(TimeseriesError):
     """Selected area was outside of the dataset boundaries"""
 

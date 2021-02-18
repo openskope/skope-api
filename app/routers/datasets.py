@@ -4,6 +4,7 @@ import rasterio
 
 from enum import Enum
 from fastapi import APIRouter
+from geojson_pydantic import geometries as geompyd
 from pydantic import BaseModel, Field
 from rasterio.mask import raster_geometry_mask
 from rasterio.windows import Window
@@ -11,7 +12,9 @@ from scipy import stats
 from shapely import geometry as geom
 from typing import List, Optional, Tuple, Union, Literal, Sequence, Any
 
-from ..exceptions import SelectedAreaOutOfBoundsError
+from shapely.validation import explain_validity
+
+from ..exceptions import SelectedAreaOutOfBoundsError, SelectedAreaPolygonIsNotValid
 from ..stores import YearRange, YearMonthRange, dataset_repo, TimeRange, BandRange, YearMonth
 
 logger = logging.getLogger(__name__)
@@ -35,11 +38,6 @@ class ZonalStatistic(str, Enum):
             return np.median
 
 
-class Geometry(BaseModel):
-    type: str
-    bbox: Optional[Tuple[float, float, float, float]]
-
-
 def bounding_box(bounds) -> geom.Polygon:
     return geom.box(
         minx=bounds.left,
@@ -48,10 +46,7 @@ def bounding_box(bounds) -> geom.Polygon:
         maxy=bounds.top)
 
 
-class Point(Geometry):
-    type: Literal['Point']
-    coordinates: Tuple[float, float]
-
+class Point(geompyd.Point):
     def extract(self,
                 dataset: rasterio.DatasetReader,
                 zonal_statistic: ZonalStatistic,
@@ -59,34 +54,36 @@ class Point(Geometry):
         box = bounding_box(dataset.bounds)
         point = geom.Point(self.coordinates)
         if not box.covers(point):
-            raise SelectedAreaOutOfBoundsError('selected area is outside the study area')
+            raise SelectedAreaOutOfBoundsError('selected area is not covered by the dataset region')
         logger.info('extracting point: %s', self)
         px, py = dataset.index(self.coordinates[0], self.coordinates[1])
         logging.info('indices: %s', (px, py))
         return dataset.read(list(band_range), window=Window(px, py, 1, 1)).flatten()
 
 
-class Polygon(Geometry):
-    type: Literal['Polygon']
-    coordinates: List[Tuple[float, float]]
-
+class Polygon(geompyd.Polygon):
     def extract(self,
                 dataset: rasterio.DatasetReader,
                 zonal_statistic: ZonalStatistic,
                 band_range: Sequence[int]):
         box = bounding_box(dataset.bounds)
-        polygon = geom.Polygon(self.coordinates)
-        if not box.covers(polygon):
-            raise SelectedAreaOutOfBoundsError('selected area is outside the study area')
+        polygon = geom.Polygon(*self.coordinates)
+        if not polygon.is_valid:
+            raise SelectedAreaPolygonIsNotValid(f'selected area is not a valid polygon: {explain_validity(polygon).lower()}')
+        # DE-9IM format
+        # https://giswiki.hsr.ch/images/3/3d/9dem_springer.pdf
+        # 'T********' means that the interior of the bounding box must intersect the interior of the selected area
+        if not box.relate_pattern(polygon, 'T********'):
+            raise SelectedAreaOutOfBoundsError('no interior point of the selected area intersects an interior point of the dataset region')
         logger.info('extracting polygon: %s', self)
         zonal_func = zonal_statistic.to_numpy_call()
         masked, transform, window = raster_geometry_mask(dataset, [self], crop=True, all_touched=True)
-        result = np.zeros(dataset.count, dtype=dataset.dtypes[0])
+        result = np.zeros(dataset.count, dtype=np.float64)
         for band in band_range:
             data = dataset.read(band, window=window)
             values = np.ma.array(data=data, mask=np.logical_or(np.equal(data, dataset.nodata), masked))
-            result[band] = zonal_func(values)
-
+            result[band - 1] = zonal_func(values)
+        logger.info('data: %s', result)
         return result
 
 
@@ -301,6 +298,6 @@ def extract_yearly_timeseries(data: YearAnalysisRequest) -> YearAnalysisResponse
     return YearAnalysisResponse(**data.extract())
 
 
-@router.post('/timeseries-service/v1/api/timeseries')
+@router.post('/timeseries-service/api/v1/timeseries')
 def timeseries_v1(data: TimeseriesV1Request):
     return data.extract()
