@@ -227,7 +227,7 @@ class BaseAnalysisQuery(BaseModel):
             # to reduce request time
             loop = asyncio.get_event_loop()
             future = loop.run_in_executor(None, self.extract_sync)
-            return await asyncio.wait_for(future, timeout=self.max_processing_time, loop=loop)
+            return await asyncio.wait_for(future, timeout=self.max_processing_time)
         except asyncio.TimeoutError as e:
             process_time = time.time() - start_time
             raise TimeseriesTimeoutError(

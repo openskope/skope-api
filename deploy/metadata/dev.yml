@@ -10,10 +10,11 @@ monthlies:
   monthly_5x5x60_dataset:
     time_range:
       gte:
-        year: 2002
-        month: 2
-      lte:
-        year: 2007
+        year: 1
         month: 1
+      lte:
+        year: 5
+        month: 12
     variables:
       - float32_variable
+      - int16_variable

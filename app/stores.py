@@ -169,7 +169,7 @@ class DatasetRepo(BaseModel):
     yearlies: Dict[str, YearlyRepo]
     monthlies: Dict[str, MonthlyRepo]
 
-    def get_dataset_meta(self, dataset_id: str, variable_id: str):
+    def _get_dataset(self, dataset_id: str):
         dataset_found = False
         repo = None
         if dataset_id in self.yearlies:
@@ -181,10 +181,18 @@ class DatasetRepo(BaseModel):
 
         if not dataset_found:
             raise DatasetNotFoundError(f'Dataset {dataset_id} not found')
+        return repo[dataset_id]
 
-        if variable_id in repo[dataset_id].variables:
-            resolution = repo[dataset_id].resolution
-            time_range = repo[dataset_id].time_range
+    def get_dataset_variables(self, dataset_id: str):
+        dataset = self._get_dataset(dataset_id)
+        return dataset.variables
+
+    def get_dataset_meta(self, dataset_id: str, variable_id: str):
+        dataset = self._get_dataset(dataset_id)
+
+        if variable_id in dataset.variables:
+            resolution = dataset.resolution
+            time_range = dataset.time_range
         else:
             raise VariableNotFoundError(f'Variable {variable_id} not found in dataset {dataset_id}')
 
