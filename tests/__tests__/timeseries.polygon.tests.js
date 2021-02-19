@@ -506,17 +506,6 @@ describe("When a GET request selects 1/4 of the top-left corner pixel of the flo
         expect(response.entity.values[3]).toBeCloseTo(400.0,3);
         expect(response.entity.values[4]).toBeCloseTo(500.0,3);
     });
-    
-    // it ('The data column should comprise the values of the top-left pixels in each band', async function() {
-    //     expect(response.entity.csv).toEqual(
-    //     		"index, float32_variable, range -, range +" + "\n" +
-    //     		"0,100.000,90.0000,110.000" 				+ "\n" +
-    //     		"1,200.000,180.000,220.000" 				+ "\n" +
-    //     		"2,300.000,270.000,330.000" 				+ "\n" +
-    //     		"3,400.000,360.000,440.000" 				+ "\n" +
-    //     		"4,500.000,450.000,550.000"					+ "\n"
-	// 	);
-    // });
 });
 
 
@@ -559,17 +548,6 @@ describe("When a GET request selects from a region exactly covering the 2x2 pixe
         expect(response.entity.values[3]).toBeCloseTo(435.5,3);
         expect(response.entity.values[4]).toBeCloseTo(535.5,3);
     });
-    
-    // it ('The data column should comprise the average of four pixels in each band', async function() {
-    //     expect(response.entity.csv).toEqual(
-    //     		"index, uint16_variable"	+ "\n" +
-    //     		"0,135.500"					+ "\n" +
-    //     		"1,235.500"					+ "\n" +
-    //     		"2,335.500"					+ "\n" +
-    //     		"3,435.500"					+ "\n" +
-    // 			"4,535.500"					+ "\n"
-	// 	);
-    // });
 });
 
 describe("When a GET request selects from a region exactly covering the 2x2 pixel area in southeast corner of uint16 variable with one NODATA pixel in each band", async () => {
@@ -646,17 +624,6 @@ describe("When a GET request selects from a region exactly covering the 2x2 pixe
     it ('The array should comprise the average of four pixels in each band', async function() {
         expect(response.entity.values).toEqual([null, null, null, null, null]);
     });
-    
-    // it ('The data column should comprise the average of four pixels in each band', async function() {
-    //     expect(response.entity.csv).toEqual(
-    //     		"index, float32_variable, range -, range +"	+ "\n" +
-    //     		"0,,,"				    					+ "\n" +
-    //     		"1,,,"				    					+ "\n" +
-    //     		"2,,,"				    					+ "\n" +
-    //     		"3,,,"				    					+ "\n" +
-    // 			"4,,,"				    					+ "\n"
-	// 	);
-    // });
 });
 
 
@@ -739,16 +706,5 @@ describe("When a GET request selects from a region exactly covering the 2x2 pixe
         expect(response.entity.values[3]).toBeCloseTo(418.850,3);
         expect(response.entity.values[4]).toBeCloseTo(518.850,3);
     });
-    
-    // it ('The data column should comprise the average of four pixels in each band', async function() {
-    //     expect(response.entity.csv).toEqual(
-    //     		"index, float32_variable, range -, range +"	+ "\n" +
-    //     		"0,118.850,107.000,130.700"					+ "\n" +
-    //     		"1,218.850,197.000,240.700"					+ "\n" +
-    //     		"2,,,"										+ "\n" +
-    //     		"3,418.850,377.000,460.700"					+ "\n" +
-    //     		"4,518.850,467.000,570.700"	 				+ "\n"
-	// 	);
-    // });
 });
 
