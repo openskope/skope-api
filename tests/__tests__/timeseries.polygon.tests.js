@@ -587,10 +587,10 @@ describe("When a GET request selects from a region exactly covering the 2x2 pixe
     		    "type": "Polygon",
     		    "coordinates": [[
 	    		    	[-120,42],
+	    		        [-118,42],
 	    		        [-118,40],
 	    		        [-120,40],
-	    		        [-120,42],
-	    		        [-118,42]
+	    		        [-120,42]
 	    		    	]]
 	    		},
 	    		start: 0,
@@ -627,10 +627,10 @@ describe("When a GET request selects from a region exactly covering the 2x2 pixe
     		    "type": "Polygon",
     		    "coordinates": [[
 	    		    	[-120,42],
+	    		        [-118,42],
 	    		        [-118,40],
 	    		        [-120,40],
-	    		        [-120,42],
-	    		        [-118,42]
+	    		        [-120,42]
 	    		    	]]
 	    		},
 	    		start: 0,
@@ -675,10 +675,10 @@ describe("When a GET request selects from a region exactly covering the 2x2 pixe
     		    "type": "Polygon",
     		    "coordinates": [[
 	    		    	[-120,43],
+	    		        [-118,43],
 	    		        [-118,41],
 	    		        [-120,41],
-	    		        [-120,43],
-	    		        [-118,43]
+	    		        [-120,43]
 	    		    	]]
 	    		},
 	    		start: 0,

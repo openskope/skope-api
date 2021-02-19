@@ -324,4 +324,4 @@ async def extract_yearly_timeseries(data: YearAnalysisQuery) -> YearAnalysisResp
 
 @router.post('/timeseries-service/api/v1/timeseries')
 async def timeseries_v1(data: TimeseriesV1Request):
-    return data.extract()
+    return await data.extract()
