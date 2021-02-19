@@ -12,7 +12,9 @@ settings.init()
 logger = logging.getLogger(__name__)
 
 
-app = FastAPI()
+app = FastAPI(
+    title='OpenSKOPE Time Series API'
+)
 
 @app.exception_handler(TimeseriesTimeoutError)
 async def timeseries_timeout_error_handler(request: Request, exc: TimeseriesTimeoutError):

@@ -65,6 +65,17 @@ class Point(geompyd.Point):
         logging.info('indices: %s', (px, py))
         return dataset.read(list(band_range), window=Window(px, py, 1, 1)).flatten()
 
+    class Config:
+        schema_extra = {
+            "example": {
+                "type": "Point",
+                "coordinates": [
+                    -120,
+                    42.5
+                ]
+            }
+        }
+
 
 class Polygon(geompyd.Polygon):
     def extract(self,
@@ -74,12 +85,14 @@ class Polygon(geompyd.Polygon):
         box = bounding_box(dataset.bounds)
         polygon = geom.Polygon(*self.coordinates)
         if not polygon.is_valid:
-            raise SelectedAreaPolygonIsNotValid(f'selected area is not a valid polygon: {explain_validity(polygon).lower()}')
+            raise SelectedAreaPolygonIsNotValid(
+                f'selected area is not a valid polygon: {explain_validity(polygon).lower()}')
         # DE-9IM format
         # https://giswiki.hsr.ch/images/3/3d/9dem_springer.pdf
         # 'T********' means that the interior of the bounding box must intersect the interior of the selected area
         if not box.relate_pattern(polygon, 'T********'):
-            raise SelectedAreaOutOfBoundsError('no interior point of the selected area intersects an interior point of the dataset region')
+            raise SelectedAreaOutOfBoundsError(
+                'no interior point of the selected area intersects an interior point of the dataset region')
         logger.info('extracting polygon: %s', self)
         zonal_func = zonal_statistic.to_numpy_call()
         masked, transform, window = raster_geometry_mask(dataset, [self], crop=True, all_touched=True)
@@ -127,6 +140,15 @@ class MovingAverageSmoother(Smoother):
     def apply(self, xs):
         window_size = self.method.get_window_size(self.width)
         return np.convolve(xs, np.ones(window_size) / window_size, 'valid')
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "type": "MovingAverageSmoother",
+                "method": WindowType.centered.value,
+                "width": 1
+            }
+        }
 
 
 class ZScoreRoller(BaseModel):
@@ -177,7 +199,7 @@ class BaseAnalysisQuery(BaseModel):
         """Get the year range after values after applying transformations"""
         inds = extract_br.to_numpy_pair()
         for transform in self.transforms:
-            inds += transform.get_desired_band_range_adjustment()*-1
+            inds += transform.get_desired_band_range_adjustment() * -1
         yr = time_range_available.translate_band_range(BandRange.from_numpy_pair(inds))
         return yr
 
@@ -235,10 +257,38 @@ class OptionalYearMonthRange(BaseModel):
             lte=self.lte if self.lte is not None else time_range_available.lte
         )
 
+    class Config:
+        schema_extra = {
+            "example": {
+                "gte": {
+                    "year": 2002,
+                    "month": 2
+                },
+                "lte": {
+                    "year": 2007,
+                    "month": 1
+                }
+            }
+        }
+
 
 class MonthAnalysisQuery(BaseAnalysisQuery):
     time_range: OptionalYearMonthRange
     transforms: List[Union[MovingAverageSmoother, ZScoreRoller]]
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "dataset_id": "monthly_5x5x60_dataset",
+                "variable_id": "float32_variable",
+                "time_range": OptionalYearMonthRange.Config.schema_extra['example'],
+                "selected_area": Point.Config.schema_extra['example'],
+                "zonal_statistic": ZonalStatistic.mean.value,
+                "transforms": [
+                    MovingAverageSmoother.Config.schema_extra['example']
+                ]
+            }
+        }
 
 
 class YearAnalysisQuery(BaseAnalysisQuery):
@@ -299,7 +349,8 @@ class TimeseriesV1Request(BaseModel):
             selected_area=self.boundaryGeometry,
             zonal_statistic=ZonalStatistic.mean,
             time_range=time_range,
-            transforms=[]
+            transforms=[],
+            max_processing_time=self.timeout
         )
         data = await query.extract()
         return {
@@ -314,12 +365,12 @@ class TimeseriesV1Request(BaseModel):
 
 @router.post("/datasets/monthly", response_model=MonthAnalysisResponse, operation_id='retrieveMonthlyTimeseries')
 async def extract_monthly_timeseries(data: MonthAnalysisQuery) -> MonthAnalysisResponse:
-    return MonthAnalysisResponse(** await data.extract())
+    return MonthAnalysisResponse(**await data.extract())
 
 
 @router.post("/datasets/yearly", response_model=YearAnalysisResponse, operation_id='retrieveYearlyTimeseries')
 async def extract_yearly_timeseries(data: YearAnalysisQuery) -> YearAnalysisResponse:
-    return YearAnalysisResponse(** await data.extract())
+    return YearAnalysisResponse(**await data.extract())
 
 
 @router.post('/timeseries-service/api/v1/timeseries')
