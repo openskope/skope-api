@@ -78,7 +78,6 @@ describe("When a values POST request selects first pixel of middle three bands i
     });
 
     it ('HTTP response status code should be 200 - success', async function() {
-    	console.log({response})
         expect(response.status.code).toBe(200);
     });
     
