@@ -2,6 +2,7 @@ import asyncio
 import logging
 import time
 
+import numba
 import numpy as np
 import math
 import rasterio
@@ -9,6 +10,7 @@ import rasterio
 from enum import Enum
 from fastapi import APIRouter
 from geojson_pydantic import geometries as geompyd
+from numba import prange
 from pydantic import BaseModel, Field
 from rasterio.mask import raster_geometry_mask
 from rasterio.windows import Window
@@ -151,6 +153,15 @@ class MovingAverageSmoother(Smoother):
         }
 
 
+@numba.jit(nopython=True, nogil=True)
+def rolling_z_score(xs, width):
+    n = len(xs) - width
+    results = np.zeros(n)
+    for i in prange(n):
+        results[i] = (xs[i + width] - np.mean(xs[i:(i + width)])) / np.std(xs[i:(i + width)])
+    return results
+
+
 class ZScoreRoller(BaseModel):
     type: Literal['ZScoreRoller'] = 'ZScoreRoller'
     width: int
@@ -159,11 +170,7 @@ class ZScoreRoller(BaseModel):
         return np.array([-self.width, 0])
 
     def apply(self, xs):
-        n = len(xs) - self.width
-        results = np.zeros(n)
-        for i in range(n):
-            results[i] = (xs[i + self.width] - np.mean(xs[i:(i + self.width)])) / np.std(xs[i:(i + self.width)])
-        return results
+        return rolling_z_score(xs, self.width)
 
 
 class ZScoreScaler(BaseModel):
