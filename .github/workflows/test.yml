@@ -18,3 +18,6 @@ jobs:
       - name: Run the tests
         run: |
           ENVIR=dev pytest
+          ENVIR=dev uvicorn --port 8001 app.main:app &
+          make integration-test
+          kill $!

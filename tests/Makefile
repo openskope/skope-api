@@ -1,8 +1,13 @@
-all: install test 
+all: install test
 
-install: 
+node_modules:
 	npm install
 
-test:
+.PHONY:
+install:
+	npm install
+
+.PHONY:
+test: | node_modules
 	npm test
 

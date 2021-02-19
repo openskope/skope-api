@@ -16,3 +16,7 @@ docker-compose.yml: deploy/dc/base.yml deploy/dc/$(ENVIR).yml deploy/Dockerfile 
 .PHONY: test
 test:
 	docker-compose run --user "$(UID):$(GID)" --rm -v $(PWD):/code server pytest
+
+.PHONY: integration-test
+integration-test:
+	make -C tests test
