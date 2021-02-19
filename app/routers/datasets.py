@@ -1,5 +1,9 @@
+import asyncio
 import logging
+import time
+
 import numpy as np
+import math
 import rasterio
 
 from enum import Enum
@@ -10,11 +14,12 @@ from rasterio.mask import raster_geometry_mask
 from rasterio.windows import Window
 from scipy import stats
 from shapely import geometry as geom
+from app.settings import settings
 from typing import List, Optional, Tuple, Union, Literal, Sequence, Any
 
 from shapely.validation import explain_validity
 
-from ..exceptions import SelectedAreaOutOfBoundsError, SelectedAreaPolygonIsNotValid
+from ..exceptions import SelectedAreaOutOfBoundsError, SelectedAreaPolygonIsNotValid, TimeseriesTimeoutError
 from ..stores import YearRange, YearMonthRange, dataset_repo, TimeRange, BandRange, YearMonth
 
 logger = logging.getLogger(__name__)
@@ -149,11 +154,12 @@ class ZScoreScaler(BaseModel):
         return stats.zscore(xs)
 
 
-class BaseAnalysisRequest(BaseModel):
+class BaseAnalysisQuery(BaseModel):
     dataset_id: str = Field(..., regex='^\w+$')
     variable_id: str = Field(..., regex='^\w+$')
     selected_area: Union[Point, Polygon]
     zonal_statistic: ZonalStatistic
+    max_processing_time: int = Field(settings.max_processing_time, ge=0, le=settings.max_processing_time)
 
     def extract_slice(self, dataset: rasterio.DatasetReader, band_range: Sequence[int]):
         return self.selected_area.extract(dataset, self.zonal_statistic, band_range=band_range)
@@ -180,15 +186,32 @@ class BaseAnalysisRequest(BaseModel):
             xs = transform.apply(xs)
         return xs
 
-    def extract(self):
+    def extract_sync(self):
         dataset_meta = dataset_repo.get_dataset_meta(dataset_id=self.dataset_id, variable_id=self.variable_id)
         band_range = self.get_band_range_to_extract(dataset_meta.time_range)
-        with rasterio.open(dataset_meta.p) as ds:
-            xs = self.extract_slice(ds, band_range=band_range)
+        with rasterio.Env():
+            with rasterio.open(dataset_meta.p) as ds:
+                xs = self.extract_slice(ds, band_range=band_range)
         xs = self.transform_series(xs)
         yr = self.get_time_range_after_transforms(dataset_meta.time_range, band_range)
-        values = xs.tolist()
+        values = [None if math.isnan(x) else x for x in xs.tolist()]
         return {'time_range': yr, 'values': values}
+
+    async def extract(self):
+        start_time = time.time()
+        try:
+            # may want to do something like
+            # https://github.com/mapbox/rasterio/blob/master/examples/async-rasterio.py
+            # to reduce request time
+            loop = asyncio.get_event_loop()
+            future = loop.run_in_executor(None, self.extract_sync)
+            return await asyncio.wait_for(future, timeout=self.max_processing_time, loop=loop)
+        except asyncio.TimeoutError as e:
+            process_time = time.time() - start_time
+            raise TimeseriesTimeoutError(
+                message='Request processing time exceeded limit',
+                processing_time=process_time
+            ) from e
 
 
 class OptionalYearRange(BaseModel):
@@ -213,12 +236,12 @@ class OptionalYearMonthRange(BaseModel):
         )
 
 
-class MonthAnalysisRequest(BaseAnalysisRequest):
+class MonthAnalysisQuery(BaseAnalysisQuery):
     time_range: OptionalYearMonthRange
     transforms: List[Union[MovingAverageSmoother, ZScoreRoller]]
 
 
-class YearAnalysisRequest(BaseAnalysisRequest):
+class YearAnalysisQuery(BaseAnalysisQuery):
     time_range: OptionalYearRange
     transforms: List[Union[MovingAverageSmoother, ZScoreRoller, ZScoreScaler]]
 
@@ -239,6 +262,7 @@ class TimeseriesV1Request(BaseModel):
     boundaryGeometry: Union[Point, Polygon]
     start: Optional[str]
     end: Optional[str]
+    timeout: int = settings.max_processing_time
 
     def try_to_year_range(self, available_time_range: YearRange) -> YearRange:
         return OptionalYearRange(gte=self.start, lte=self.end).normalize(available_time_range)
@@ -257,19 +281,19 @@ class TimeseriesV1Request(BaseModel):
     def to_year_str(self, y: int) -> str:
         return f'{y}'
 
-    def extract(self):
+    async def extract(self):
         dataset_meta = dataset_repo.get_dataset_meta(dataset_id=self.datasetId, variable_id=self.variableName)
         if dataset_meta.resolution == 'year':
             time_range = self.try_to_year_range(dataset_meta.time_range)
-            request_cls = YearAnalysisRequest
+            query_cls = YearAnalysisQuery
             start = self.to_year_str(time_range.gte)
             end = self.to_year_str(time_range.lte)
         else:
             time_range = self.try_to_year_month_range(dataset_meta.time_range)
-            request_cls = MonthAnalysisRequest
+            query_cls = MonthAnalysisQuery
             start = self.to_year_month_str(time_range.gte)
             end = self.to_year_month_str(time_range.lte)
-        request = request_cls(
+        query = query_cls(
             dataset_id=self.datasetId,
             variable_id=self.variableName,
             selected_area=self.boundaryGeometry,
@@ -277,7 +301,7 @@ class TimeseriesV1Request(BaseModel):
             time_range=time_range,
             transforms=[]
         )
-        data = request.extract()
+        data = await query.extract()
         return {
             'datasetId': self.datasetId,
             'variableName': self.variableName,
@@ -289,15 +313,15 @@ class TimeseriesV1Request(BaseModel):
 
 
 @router.post("/datasets/monthly", response_model=MonthAnalysisResponse, operation_id='retrieveMonthlyTimeseries')
-def extract_monthly_timeseries(data: MonthAnalysisRequest) -> MonthAnalysisResponse:
-    return MonthAnalysisResponse(**data.extract())
+async def extract_monthly_timeseries(data: MonthAnalysisQuery) -> MonthAnalysisResponse:
+    return MonthAnalysisResponse(** await data.extract())
 
 
 @router.post("/datasets/yearly", response_model=YearAnalysisResponse, operation_id='retrieveYearlyTimeseries')
-def extract_yearly_timeseries(data: YearAnalysisRequest) -> YearAnalysisResponse:
-    return YearAnalysisResponse(**data.extract())
+async def extract_yearly_timeseries(data: YearAnalysisQuery) -> YearAnalysisResponse:
+    return YearAnalysisResponse(** await data.extract())
 
 
 @router.post('/timeseries-service/api/v1/timeseries')
-def timeseries_v1(data: TimeseriesV1Request):
+async def timeseries_v1(data: TimeseriesV1Request):
     return data.extract()
