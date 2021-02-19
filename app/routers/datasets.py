@@ -246,6 +246,11 @@ class OptionalYearRange(BaseModel):
             lte=self.lte if self.lte is not None else time_range_available.lte
         )
 
+    class Config:
+        schema_extra = {
+            "example": YearRange.Config.schema_extra["example"]
+        }
+
 
 class OptionalYearMonthRange(BaseModel):
     gte: Optional[YearMonth]
@@ -259,16 +264,7 @@ class OptionalYearMonthRange(BaseModel):
 
     class Config:
         schema_extra = {
-            "example": {
-                "gte": {
-                    "year": 2002,
-                    "month": 2
-                },
-                "lte": {
-                    "year": 2007,
-                    "month": 1
-                }
-            }
+            "example": YearMonthRange.Config.schema_extra["example"]
         }
 
 

@@ -51,6 +51,14 @@ class YearRange(BaseModel):
     def translate_band_range(self, br: BandRange) -> 'YearRange':
         return self.__class__(gte=self.gte + br.gte - 1, lte=self.gte + br.lte - 1)
 
+    class Config:
+        schema_extra = {
+            "example": {
+                "gte": 1985,
+                "lte": 2010
+            }
+        }
+
 
 class YearlyRepo(BaseModel):
     time_range: YearRange
@@ -82,6 +90,14 @@ class YearMonth(BaseModel):
     def __lt__(self, other: 'YearMonth'):
         return (self.year, self.month) < (other.year, other.month)
 
+    class Config:
+        schema_extra = {
+            "example": {
+                "year": 1985,
+                "month": 5
+            }
+        }
+
 
 class YearMonthRange(BaseModel):
     gte: YearMonth
@@ -110,6 +126,17 @@ class YearMonthRange(BaseModel):
             gte=YearMonth.from_index(months_offset + gte),
             lte=YearMonth.from_index(months_offset + lte)
         )
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "gte": YearMonth.Config.schema_extra["example"],
+                "lte": {
+                    "year": 2010,
+                    "month": 8
+                }
+            }
+        }
 
 
 class MonthlyRepo(BaseModel):
