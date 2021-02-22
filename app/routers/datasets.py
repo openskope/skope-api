@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import time
+from concurrent.futures.thread import ThreadPoolExecutor
 
 import numba
 import numpy as np
@@ -184,8 +185,8 @@ class ZScoreScaler(BaseModel):
 
 
 class BaseAnalysisQuery(BaseModel):
-    dataset_id: str = Field(..., regex='^\w+$')
-    variable_id: str = Field(..., regex='^\w+$')
+    dataset_id: str = Field(..., regex='^[\w-]+$')
+    variable_id: str = Field(..., regex='^[\w-]+$')
     selected_area: Union[Point, Polygon]
     zonal_statistic: ZonalStatistic
     max_processing_time: int = Field(settings.max_processing_time, ge=0, le=settings.max_processing_time)
@@ -233,8 +234,9 @@ class BaseAnalysisQuery(BaseModel):
             # https://github.com/mapbox/rasterio/blob/master/examples/async-rasterio.py
             # to reduce request time
             loop = asyncio.get_event_loop()
-            future = loop.run_in_executor(None, self.extract_sync)
-            return await asyncio.wait_for(future, timeout=self.max_processing_time)
+            with ThreadPoolExecutor() as pool:
+                future = loop.run_in_executor(pool, self.extract_sync)
+                return await asyncio.wait_for(future, timeout=self.max_processing_time)
         except asyncio.TimeoutError as e:
             process_time = time.time() - start_time
             raise TimeseriesTimeoutError(
@@ -301,12 +303,12 @@ class YearAnalysisQuery(BaseAnalysisQuery):
 
 class YearAnalysisResponse(BaseModel):
     time_range: YearRange
-    values: List[float]
+    values: List[Optional[float]]
 
 
 class MonthAnalysisResponse(BaseModel):
     time_range: YearMonthRange
-    values: List[float]
+    values: List[Optional[float]]
 
 
 class TimeseriesV1Request(BaseModel):
