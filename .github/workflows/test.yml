@@ -22,4 +22,4 @@ jobs:
           ENVIR=dev pytest
           ENVIR=dev uvicorn --port 8001 app.main:app &
           ./configure dev
-          make integration-test
+          make test-integration
