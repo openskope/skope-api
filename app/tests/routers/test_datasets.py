@@ -1,3 +1,4 @@
+import copy
 import numpy as np
 import pytest
 
@@ -63,3 +64,28 @@ async def test_monthly_first_year(variable_id, time_range):
     assert response.json()['values'] == [i*100 for i in br]
 
 
+@pytest.mark.asyncio
+async def test_missing_property():
+    time_range = OptionalYearMonthRange(
+        gte=YearMonth(year=1, month=1),
+        lte=YearMonth(year=1, month=12)
+    )
+    maq = MonthAnalysisQuery(
+        dataset_id='monthly_5x5x60_dataset',
+        variable_id='float32_variable',
+        time_range=time_range,
+        selected_area=Point(
+            type='Point',
+            coordinates=(-123, 45)
+        ),
+        transforms=[],
+        zonal_statistic=ZonalStatistic.mean.value
+    )
+
+    async with AsyncClient(app=app, base_url='http://test') as ac:
+        for key in set(maq.dict().keys()).difference({'max_processing_time'}):
+            data = copy.deepcopy(maq)
+            data.__dict__.pop(key)
+            response = await ac.post('datasets/monthly', data=data.json())
+            assert response.status_code == 422
+            assert response.json()['detail'][0]['loc'] == ['body', key]
