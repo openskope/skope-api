@@ -1,0 +1,4 @@
+store:
+  base_path: 'data'
+  template: 'data/{dataset_id}_{variable_id}.tif'
+  uncertainty_template: 'data/{dataset_id}_{variable_id}_uncertainty.tif'

@@ -1,0 +1,16 @@
+{
+  "datasetId": "annual_5x5x5_dataset",
+  "variableName": "float32_variable",
+  "boundaryGeometry": {
+    "type": "Polygon",
+    "coordinates": [[
+	    		    	[-120,44],
+	    		        [-118,44],
+	    		        [-118,42],
+	    		        [-120,42],
+	    		        [-120,44]
+	    		    	]]
+  },
+  "start": 0,
+  "end": 4
+}

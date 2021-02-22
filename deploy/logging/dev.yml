@@ -17,9 +17,22 @@ handlers:
     formatter: standard
     filename: 'docker/log.txt'
 
+root:
+  level: WARNING
+  handlers:
+  - console
+  - file
+  propagate: false
+
 loggers:
   app:
     level: DEBUG
     handlers:
       - console
       - file
+  gunicorn:
+    error:
+      propagate: true
+  uvicorn:
+    error:
+      propagate: true

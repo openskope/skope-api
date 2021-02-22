@@ -1,22 +1,22 @@
 yearlies:
-  lbda:
+  lbda-v2:
     time_range:
       gte: 1
       lte: 2017
     variables:
-      - ldba_precipitation
+      - palmer_modified_drought_index
   srtm:
     time_range:
       gte: 2009
       lte: 2009
     variables:
       - srtm_elevation
-  paleocar:
+  paleocar_2:
     time_range:
       gte: 1
       lte: 2000
     variables:
-      - paleocar_temperature
-      - paleocar_precipitation
-      - paleocar_crop_niche
+      - growing_degree_days
+      - maize_farming_niche
+      - water_year_precipitation
 monthlies: {}

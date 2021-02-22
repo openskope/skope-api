@@ -4,11 +4,11 @@
   "variable_id": "float32_variable",
   "time_range": {
     "gte": {
-      "year": 2002,
+      "year": 1,
       "month": 2
     },
     "lte": {
-      "year": 2007,
+      "year": 3,
       "month": 1
     }
   },
