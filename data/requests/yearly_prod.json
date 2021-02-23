@@ -1,0 +1,24 @@
+{
+  "resolution": "year",
+  "dataset_id": "lbda-v2",
+  "variable_id": "palmer_modified_drought_index",
+  "time_range": {
+    "gte": 1700,
+    "lte": 1824
+  },
+  "selected_area": {
+    "type": "Point",
+    "coordinates": [
+      -120,
+      30
+    ]
+  },
+  "zonal_statistic": "mean",
+  "transforms": [
+    {
+      "type": "MovingAverageSmoother",
+      "method": "centered",
+      "width": 1
+    }
+  ]
+}
