@@ -35,6 +35,9 @@ class BandRange(namedtuple('BandRange', ['gte', 'lte'])):
         return iter(range(self.gte, self.lte + 1))
 
 
+Resolution = Literal['month', 'year']
+
+
 class YearRange(BaseModel):
     gte: int = Field(..., ge=0, le=2100)
     lte: int = Field(..., ge=0, le=2100)
@@ -152,7 +155,7 @@ TimeRange = Union[YearRange, YearMonthRange]
 
 
 class DatasetMeta:
-    def __init__(self, p: Path, time_range: TimeRange, resolution: Literal['year', 'month']):
+    def __init__(self, p: Path, time_range: TimeRange, resolution: Resolution):
         """
         :param p: path to the dataset
         :param time_range: span of time (and resolution) covered by the dataset
@@ -161,34 +164,27 @@ class DatasetMeta:
         self.p = p
         self.resolution = resolution
 
-    def select_raster_band_indices(self, time_range: TimeRange):
-        return self.time_range.select_raster_band_indices(time_range)
+    def find_band_range(self, time_range: TimeRange):
+        return self.time_range.find_band_range(time_range)
 
 
 class DatasetRepo(BaseModel):
-    yearlies: Dict[str, YearlyRepo]
-    monthlies: Dict[str, MonthlyRepo]
+    year: Dict[str, YearlyRepo]
+    month: Dict[str, MonthlyRepo]
 
-    def _get_dataset(self, dataset_id: str):
-        dataset_found = False
-        repo = None
-        if dataset_id in self.yearlies:
-            repo = self.yearlies
-            dataset_found = True
-        elif dataset_id in self.monthlies:
-            repo = self.monthlies
-            dataset_found = True
-
-        if not dataset_found:
+    def _get_dataset(self, dataset_id: str, resolution: Resolution):
+        repo = getattr(self, resolution)
+        if dataset_id in repo:
+            return repo[dataset_id]
+        else:
             raise DatasetNotFoundError(f'Dataset {dataset_id} not found')
-        return repo[dataset_id]
 
-    def get_dataset_variables(self, dataset_id: str):
-        dataset = self._get_dataset(dataset_id)
+    def get_dataset_variables(self, dataset_id: str, resolution: Resolution):
+        dataset = self._get_dataset(dataset_id, resolution=resolution)
         return dataset.variables
 
-    def get_dataset_meta(self, dataset_id: str, variable_id: str):
-        dataset = self._get_dataset(dataset_id)
+    def get_dataset_meta(self, dataset_id: str, variable_id: str, resolution: Resolution):
+        dataset = self._get_dataset(dataset_id, resolution=resolution)
 
         if variable_id in dataset.variables:
             resolution = dataset.resolution

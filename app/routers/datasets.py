@@ -22,8 +22,9 @@ from typing import List, Optional, Tuple, Union, Literal, Sequence, Any
 
 from shapely.validation import explain_validity
 
-from ..exceptions import SelectedAreaOutOfBoundsError, SelectedAreaPolygonIsNotValid, TimeseriesTimeoutError
-from ..stores import YearRange, YearMonthRange, dataset_repo, TimeRange, BandRange, YearMonth
+from ..exceptions import SelectedAreaOutOfBoundsError, SelectedAreaPolygonIsNotValid, TimeseriesTimeoutError, \
+    VariableNotFoundError
+from ..stores import YearRange, YearMonthRange, dataset_repo, TimeRange, BandRange, YearMonth, Resolution
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=['datasets'])
@@ -217,7 +218,10 @@ class BaseAnalysisQuery(BaseModel):
         return xs
 
     def extract_sync(self):
-        dataset_meta = dataset_repo.get_dataset_meta(dataset_id=self.dataset_id, variable_id=self.variable_id)
+        dataset_meta = dataset_repo.get_dataset_meta(
+            dataset_id=self.dataset_id,
+            variable_id=self.variable_id,
+            resolution=self.resolution)
         band_range = self.get_band_range_to_extract(dataset_meta.time_range)
         with rasterio.Env():
             with rasterio.open(dataset_meta.p) as ds:
@@ -278,12 +282,14 @@ class OptionalYearMonthRange(BaseModel):
 
 
 class MonthAnalysisQuery(BaseAnalysisQuery):
+    resolution: Literal['month'] = 'month'
     time_range: OptionalYearMonthRange
     transforms: List[Union[MovingAverageSmoother, ZScoreRoller]]
 
     class Config:
         schema_extra = {
             "example": {
+                "resolution": "month",
                 "dataset_id": "monthly_5x5x60_dataset",
                 "variable_id": "float32_variable",
                 "time_range": OptionalYearMonthRange.Config.schema_extra['example'],
@@ -297,6 +303,7 @@ class MonthAnalysisQuery(BaseAnalysisQuery):
 
 
 class YearAnalysisQuery(BaseAnalysisQuery):
+    resolution: Literal['year'] = 'year'
     time_range: OptionalYearRange
     transforms: List[Union[MovingAverageSmoother, ZScoreRoller, ZScoreScaler]]
 
@@ -337,18 +344,29 @@ class TimeseriesV1Request(BaseModel):
         return f'{y}'
 
     async def extract(self):
-        dataset_meta = dataset_repo.get_dataset_meta(dataset_id=self.datasetId, variable_id=self.variableName)
-        if dataset_meta.resolution == 'year':
+        try:
+            dataset_meta = dataset_repo.get_dataset_meta(
+                dataset_id=self.datasetId,
+                variable_id=self.variableName,
+                resolution='year'
+            )
             time_range = self.try_to_year_range(dataset_meta.time_range)
             query_cls = YearAnalysisQuery
             start = self.to_year_str(time_range.gte)
             end = self.to_year_str(time_range.lte)
-        else:
+        except VariableNotFoundError:
+            dataset_meta = dataset_repo.get_dataset_meta(
+                dataset_id=self.datasetId,
+                variable_id=self.variableName,
+                resolution='month'
+            )
             time_range = self.try_to_year_month_range(dataset_meta.time_range)
             query_cls = MonthAnalysisQuery
             start = self.to_year_month_str(time_range.gte)
             end = self.to_year_month_str(time_range.lte)
+
         query = query_cls(
+            resolution=dataset_meta.resolution,
             dataset_id=self.datasetId,
             variable_id=self.variableName,
             selected_area=self.boundaryGeometry,

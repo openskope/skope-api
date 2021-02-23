@@ -1,4 +1,4 @@
-yearlies:
+year:
   lbda-v2:
     time_range:
       gte: 1
@@ -19,4 +19,4 @@ yearlies:
       - growing_degree_days
       - maize_farming_niche
       - water_year_precipitation
-monthlies: {}
+month: {}

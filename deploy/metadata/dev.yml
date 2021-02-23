@@ -1,4 +1,4 @@
-yearlies:
+year:
   annual_5x5x5_dataset:
     time_range:
       gte: 0
@@ -6,7 +6,7 @@ yearlies:
     variables:
       - float32_variable
       - uint16_variable
-monthlies:
+month:
   monthly_5x5x60_dataset:
     time_range:
       gte:
