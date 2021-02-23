@@ -27,7 +27,7 @@ from ..exceptions import SelectedAreaOutOfBoundsError, SelectedAreaPolygonIsNotV
 from ..stores import YearRange, YearMonthRange, dataset_repo, TimeRange, BandRange, YearMonth, Resolution
 
 logger = logging.getLogger(__name__)
-router = APIRouter(tags=['datasets'])
+router = APIRouter(tags=['datasets'], prefix='/timeseries-service/api')
 
 
 class YearlySeries:
@@ -386,16 +386,16 @@ class TimeseriesV1Request(BaseModel):
         }
 
 
-@router.post("/datasets/monthly", response_model=MonthAnalysisResponse, operation_id='retrieveMonthlyTimeseries')
+@router.post("/v2/datasets/monthly", response_model=MonthAnalysisResponse, operation_id='retrieveMonthlyTimeseries')
 async def extract_monthly_timeseries(data: MonthAnalysisQuery) -> MonthAnalysisResponse:
     return MonthAnalysisResponse(**await data.extract())
 
 
-@router.post("/datasets/yearly", response_model=YearAnalysisResponse, operation_id='retrieveYearlyTimeseries')
+@router.post("/v2/datasets/yearly", response_model=YearAnalysisResponse, operation_id='retrieveYearlyTimeseries')
 async def extract_yearly_timeseries(data: YearAnalysisQuery) -> YearAnalysisResponse:
     return YearAnalysisResponse(**await data.extract())
 
 
-@router.post('/timeseries-service/api/v1/timeseries')
+@router.post('/v1/timeseries')
 async def timeseries_v1(data: TimeseriesV1Request):
     return await data.extract()

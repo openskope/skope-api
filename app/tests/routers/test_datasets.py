@@ -35,6 +35,7 @@ ymrs = [
     )
 ]
 
+MONTHLY_TIME_SERIES_URL = '/timeseries-service/api/v2/datasets/monthly'
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("variable_id", dataset_repo.get_dataset_variables('monthly_5x5x60_dataset', 'month'))
@@ -60,7 +61,7 @@ async def test_monthly_first_year(variable_id, time_range):
         zonal_statistic=ZonalStatistic.mean.value
     )
     async with AsyncClient(app=app, base_url='http://test') as ac:
-        response = await ac.post('datasets/monthly', data=maq.json())
+        response = await ac.post(MONTHLY_TIME_SERIES_URL, data=maq.json())
     assert response.status_code == 200
     assert response.json()['values'] == [i*100 for i in br]
 
@@ -87,7 +88,7 @@ async def test_missing_property():
         for key in set(maq.dict().keys()).difference({'resolution', 'max_processing_time'}):
             data = copy.deepcopy(maq)
             data.__dict__.pop(key)
-            response = await ac.post('datasets/monthly', data=data.json())
+            response = await ac.post(MONTHLY_TIME_SERIES_URL, data=data.json())
             assert response.status_code == 422
             assert response.json()['detail'][0]['loc'] == ['body', key]
 
@@ -112,5 +113,5 @@ async def test_timeout():
     )
 
     async with AsyncClient(app=app, base_url='http://test') as ac:
-        response = await ac.post('datasets/monthly', data=maq.json())
+        response = await ac.post(MONTHLY_TIME_SERIES_URL, data=maq.json())
         assert response.status_code == 504

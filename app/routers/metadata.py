@@ -2,7 +2,7 @@ import yaml
 
 from fastapi import APIRouter
 
-router = APIRouter(prefix="/metadata", tags=['metadata'])
+router = APIRouter(prefix="/timeseries-service/api/v2", tags=['metadata'])
 
 
 def load_metadata():
@@ -17,6 +17,6 @@ def load_metadata():
 _metadata = load_metadata()
 
 
-@router.get("/")
+@router.get("/metadata")
 def metadata():
     return list(_metadata.values())
