@@ -90,3 +90,27 @@ async def test_missing_property():
             response = await ac.post('datasets/monthly', data=data.json())
             assert response.status_code == 422
             assert response.json()['detail'][0]['loc'] == ['body', key]
+
+
+@pytest.mark.asyncio
+async def test_timeout():
+    time_range = OptionalYearMonthRange(
+        gte=YearMonth(year=1, month=1),
+        lte=YearMonth(year=1, month=12)
+    )
+    maq = MonthAnalysisQuery(
+        dataset_id='monthly_5x5x60_dataset',
+        variable_id='float32_variable',
+        time_range=time_range,
+        selected_area=Point(
+            type='Point',
+            coordinates=(-123, 45)
+        ),
+        transforms=[],
+        zonal_statistic=ZonalStatistic.mean.value,
+        max_processing_time=0
+    )
+
+    async with AsyncClient(app=app, base_url='http://test') as ac:
+        response = await ac.post('datasets/monthly', data=maq.json())
+        assert response.status_code == 504
