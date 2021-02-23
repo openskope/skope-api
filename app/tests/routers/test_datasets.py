@@ -37,12 +37,13 @@ ymrs = [
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("variable_id", dataset_repo.get_dataset_variables('monthly_5x5x60_dataset'))
+@pytest.mark.parametrize("variable_id", dataset_repo.get_dataset_variables('monthly_5x5x60_dataset', 'month'))
 @pytest.mark.parametrize("time_range", ymrs)
 async def test_monthly_first_year(variable_id, time_range):
     ds_meta = dataset_repo.get_dataset_meta(
         dataset_id='monthly_5x5x60_dataset',
-        variable_id=variable_id
+        variable_id=variable_id,
+        resolution='month'
     )
     time_avail = ds_meta.time_range
     tr = time_range.normalize(time_avail)
@@ -83,7 +84,7 @@ async def test_missing_property():
     )
 
     async with AsyncClient(app=app, base_url='http://test') as ac:
-        for key in set(maq.dict().keys()).difference({'max_processing_time'}):
+        for key in set(maq.dict().keys()).difference({'resolution', 'max_processing_time'}):
             data = copy.deepcopy(maq)
             data.__dict__.pop(key)
             response = await ac.post('datasets/monthly', data=data.json())
