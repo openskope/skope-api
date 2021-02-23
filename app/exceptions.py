@@ -16,6 +16,10 @@ class TimeseriesValidationError(Exception):
         return RequestValidationError([ErrorWrapper(self, ("body", self.field))])
 
 
+class TimeRangeInvalid(TimeseriesValidationError):
+    """Time range does not satisfy gte less than or equal to lte"""
+
+
 class SelectedAreaPolygonIsNotValid(TimeseriesValidationError):
     """Selected area polygon is not valid"""
     field = 'selected_area'

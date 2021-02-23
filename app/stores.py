@@ -5,9 +5,9 @@ from pathlib import Path
 
 import yaml
 
-from app.exceptions import DatasetNotFoundError, VariableNotFoundError, TimeRangeContainmentError
+from app.exceptions import DatasetNotFoundError, VariableNotFoundError, TimeRangeContainmentError, TimeRangeInvalid
 from app.settings import settings
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, root_validator
 from typing import Dict, Set, Union, Literal
 
 
@@ -41,6 +41,13 @@ Resolution = Literal['month', 'year']
 class YearRange(BaseModel):
     gte: int = Field(..., ge=0, le=2100)
     lte: int = Field(..., ge=0, le=2100)
+
+    @root_validator
+    def check_gte_less_than_lte(cls, values):
+        gte, lte = values.get('gte'), values.get('lte')
+        if gte > lte:
+            raise TimeRangeInvalid('gte must be less than or equal to lte')
+        return values
 
     def contains(self, ymr: 'YearRange') -> bool:
         return self.gte <= ymr.gte and self.lte >= ymr.lte
@@ -105,6 +112,13 @@ class YearMonth(BaseModel):
 class YearMonthRange(BaseModel):
     gte: YearMonth
     lte: YearMonth
+
+    @root_validator
+    def check_gte_less_than_lte(cls, values):
+        gte, lte = values.get('gte'), values.get('lte')
+        if gte > lte:
+            raise TimeRangeInvalid('gte must be less than or equal to lte')
+        return values
 
     def contains(self, ymr: 'YearMonthRange') -> bool:
         return self.gte <= ymr.gte and self.lte >= ymr.lte

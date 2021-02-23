@@ -23,7 +23,7 @@ from typing import List, Optional, Tuple, Union, Literal, Sequence, Any
 from shapely.validation import explain_validity
 
 from ..exceptions import SelectedAreaOutOfBoundsError, SelectedAreaPolygonIsNotValid, TimeseriesTimeoutError, \
-    VariableNotFoundError
+    VariableNotFoundError, DatasetNotFoundError
 from ..stores import YearRange, YearMonthRange, dataset_repo, TimeRange, BandRange, YearMonth, Resolution
 
 logger = logging.getLogger(__name__)
@@ -354,7 +354,7 @@ class TimeseriesV1Request(BaseModel):
             query_cls = YearAnalysisQuery
             start = self.to_year_str(time_range.gte)
             end = self.to_year_str(time_range.lte)
-        except VariableNotFoundError:
+        except DatasetNotFoundError:
             dataset_meta = dataset_repo.get_dataset_meta(
                 dataset_id=self.datasetId,
                 variable_id=self.variableName,
