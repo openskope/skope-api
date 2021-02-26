@@ -22,16 +22,16 @@ from typing import List, Optional, Tuple, Union, Literal, Sequence, Any
 
 from shapely.validation import explain_validity
 
-from ..exceptions import SelectedAreaOutOfBoundsError, SelectedAreaPolygonIsNotValid, TimeseriesTimeoutError, \
-    VariableNotFoundError, DatasetNotFoundError
-from ..stores import YearRange, YearMonthRange, dataset_repo, TimeRange, BandRange, YearMonth, Resolution
+from app.exceptions import SelectedAreaOutOfBoundsError, SelectedAreaPolygonIsNotValid, TimeseriesTimeoutError, \
+    VariableNotFoundError, DatasetNotFoundError, SelectedAreaPolygonIsTooLarge
+from app.stores import YearRange, YearMonthRange, dataset_repo, TimeRange, BandRange, YearMonth, Resolution
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=['datasets'], prefix='/timeseries-service/api')
 
 
 class YearlySeries:
-    def __init__(self, time_range: YearRange, values: np.array):
+    def __init__(self, time_range: YearRange, values: np.ndarray):
         self.time_range = time_range
         self.values = values
 
@@ -82,6 +82,24 @@ class Point(geompyd.Point):
 
 
 class Polygon(geompyd.Polygon):
+    @staticmethod
+    def _make_band_range_groups(*, width: int, height: int, band_range: BandRange, max_size=250000):
+        n_cells_per_band = width * height  # 25
+        n_cells_per_full_chunk = max_size - max_size % n_cells_per_band
+        if n_cells_per_full_chunk == 0:
+            raise SelectedAreaPolygonIsTooLarge(n_cells=n_cells_per_band, max_cells=max_size)
+        n_bands = len(band_range)
+        n = n_cells_per_band * n_bands # 650
+        n_full_chunks = (n // n_cells_per_full_chunk) # 650 // 625 = 1
+        n_bands_per_full_chunk = n_cells_per_full_chunk // n_cells_per_band
+        offset = band_range.gte
+        for i in range(n_full_chunks):
+            band_indices = range(i*n_bands_per_full_chunk + offset, (i+1)*n_bands_per_full_chunk + offset)
+            yield band_indices
+        n_last_bands = n_bands % (n_cells_per_full_chunk // n_cells_per_band) # 26 % (625 // 25) = 26 % 25 = 1
+        if n_last_bands > 0:
+            yield range(n_bands - n_last_bands + offset, n_bands + offset)
+
     def extract(self,
                 dataset: rasterio.DatasetReader,
                 zonal_statistic: ZonalStatistic,
@@ -100,11 +118,11 @@ class Polygon(geompyd.Polygon):
         logger.info('extracting polygon: %s', self)
         zonal_func = zonal_statistic.to_numpy_call()
         masked, transform, window = raster_geometry_mask(dataset, [self], crop=True, all_touched=True)
-        result = np.zeros(dataset.count, dtype=np.float64)
-        for band in band_range:
+        result = np.zeros(len(band_range), dtype=np.float64)
+        for i, band in enumerate(band_range):
             data = dataset.read(band, window=window)
             values = np.ma.array(data=data, mask=np.logical_or(np.equal(data, dataset.nodata), masked))
-            result[band - 1] = zonal_func(values)
+            result[i] = zonal_func(values)
         logger.info('data: %s', result)
         return result
 

@@ -31,8 +31,14 @@ class BandRange(namedtuple('BandRange', ['gte', 'lte'])):
     def from_numpy_pair(cls, xs):
         return cls(gte=int(xs[0]), lte=int(xs[1]))
 
+    def _get_range(self):
+        return range(self.gte, self.lte + 1)
+
     def __iter__(self):
-        return iter(range(self.gte, self.lte + 1))
+        return iter(self._get_range())
+
+    def __len__(self):
+        return len(self._get_range())
 
 
 Resolution = Literal['month', 'year']

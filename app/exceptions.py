@@ -20,6 +20,15 @@ class TimeRangeInvalid(TimeseriesValidationError):
     """Time range does not satisfy gte less than or equal to lte"""
 
 
+class SelectedAreaPolygonIsTooLarge(TimeseriesValidationError):
+    """Selected area polygon contains more cells than analysis service is willing too load"""
+    field = 'selected_area'
+    template = 'Selected area polygon selects {n_cells} cells which is more the {max_cells} max'
+
+    def __init__(self, n_cells, max_cells):
+        super().__init__(self.template.format(n_cells=n_cells, max_cells=max_cells))
+
+
 class SelectedAreaPolygonIsNotValid(TimeseriesValidationError):
     """Selected area polygon is not valid"""
     field = 'selected_area'
