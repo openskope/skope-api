@@ -207,8 +207,8 @@ class ZScoreScaler(BaseModel):
 
 
 class BaseAnalysisQuery(BaseModel):
-    dataset_id: str = Field(..., regex='^[\w-]+$')
-    variable_id: str = Field(..., regex='^[\w-]+$')
+    dataset_id: str = Field(..., regex='^[\w-]+$', description='Dataset ID')
+    variable_id: str = Field(..., regex='^[\w-]+$', description='Variable ID (unique to a particular dataset)')
     selected_area: Union[Point, Polygon]
     zonal_statistic: ZonalStatistic
     max_processing_time: int = Field(settings.max_processing_time, ge=0, le=settings.max_processing_time)
@@ -407,13 +407,21 @@ class TimeseriesV1Request(BaseModel):
         }
 
 
-@router.post("/v2/datasets/monthly", response_model=MonthAnalysisResponse, operation_id='retrieveMonthlyTimeseries')
+@router.post(
+    "/v2/datasets/monthly",
+    response_model=MonthAnalysisResponse,
+    operation_id='retrieveMonthlyTimeseries')
 async def extract_monthly_timeseries(data: MonthAnalysisQuery) -> MonthAnalysisResponse:
+    """Retrieve an analysis of a monthly dataset"""
     return MonthAnalysisResponse(**await data.extract())
 
 
-@router.post("/v2/datasets/yearly", response_model=YearAnalysisResponse, operation_id='retrieveYearlyTimeseries')
+@router.post(
+    "/v2/datasets/yearly",
+    response_model=YearAnalysisResponse,
+    operation_id='retrieveYearlyTimeseries')
 async def extract_yearly_timeseries(data: YearAnalysisQuery) -> YearAnalysisResponse:
+    """Retrieve an analysis of a yearly dataset"""
     return YearAnalysisResponse(**await data.extract())
 
 
