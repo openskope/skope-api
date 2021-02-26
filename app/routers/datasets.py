@@ -103,7 +103,7 @@ class Polygon(geompyd.Polygon):
     def extract(self,
                 dataset: rasterio.DatasetReader,
                 zonal_statistic: ZonalStatistic,
-                band_range: Sequence[int]):
+                band_range: BandRange):
         box = bounding_box(dataset.bounds)
         polygon = geom.Polygon(*self.coordinates)
         if not polygon.is_valid:
@@ -119,11 +119,14 @@ class Polygon(geompyd.Polygon):
         zonal_func = zonal_statistic.to_numpy_call()
         masked, transform, window = raster_geometry_mask(dataset, [self], crop=True, all_touched=True)
         result = np.zeros(len(band_range), dtype=np.float64)
-        for i, band in enumerate(band_range):
-            data = dataset.read(band, window=window)
+        offset = -band_range.gte
+        for band_group in self._make_band_range_groups(width=window.width, height=window.height, band_range=band_range):
+            data = dataset.read(list(band_group), window=window)
             values = np.ma.array(data=data, mask=np.logical_or(np.equal(data, dataset.nodata), masked))
-            result[i] = zonal_func(values)
-        logger.info('data: %s', result)
+            lb = band_group.start + offset
+            ub = band_group.stop + offset
+            r = zonal_func(values, axis=(1,2), dtype=np.float64)
+            result[lb:ub] = r
         return result
 
 
@@ -246,7 +249,7 @@ class BaseAnalysisQuery(BaseModel):
                 xs = self.extract_slice(ds, band_range=band_range)
         xs = self.transform_series(xs)
         yr = self.get_time_range_after_transforms(dataset_meta.time_range, band_range)
-        values = [None if math.isnan(x) else x for x in xs.tolist()]
+        values = [None if x is None or math.isnan(x) else x for x in xs.tolist()]
         return {'time_range': yr, 'values': values}
 
     async def extract(self):
