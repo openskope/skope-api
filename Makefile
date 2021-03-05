@@ -41,4 +41,4 @@ test-unit:
 .PHONY: test-integration
 # Run javascript integration tests
 test-integration:
-	make -C tests test
+	make -C timeseries/tests test
