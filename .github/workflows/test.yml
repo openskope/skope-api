@@ -14,12 +14,14 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r deploy/requirements/base.txt -r deploy/requirements/dev.txt
-          make -C tests node_modules
+          pip install -r timeseries/deploy/requirements/base.txt -r timeseries/deploy/requirements/dev.txt
+          make -C timeseries/tests node_modules
       - name: Run the tests
         run: |
           trap '[ -n "$(jobs -pr)" ] && kill $(jobs -pr)' INT QUIT TERM EXIT
-          ENVIR=dev pytest
-          ENVIR=dev uvicorn --port 8001 app.main:app &
+          cd timeseries \
+          && ENVIR=dev pytest \
+          && ENVIR=dev uvicorn --port 8001 app.main:app & \
+          && cd ..
           ./configure dev
           make test-integration

@@ -18,7 +18,10 @@ services:
       - "app.main:app"
     image: openskope/server/prod:latest
     volumes:
-      - .:/code
+      - ./timeseries:/code
       - /projects/skope/datasets:/data
     ports:
     - "0.0.0.0:8001:8000"
+  geoserver:
+    ports:
+    - "0.0.0.0:8600:8080"

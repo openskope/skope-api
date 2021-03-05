@@ -7,6 +7,9 @@ services:
       dockerfile: deploy/Dockerfile
     image: openskope/server/dev:latest
     volumes:
-      - .:/code
+      - ./timeseries:/code
     ports:
     - "127.0.0.1:8001:8000"
+  geoserver:
+    ports:
+    - "127.0.0.1:8600:8080"

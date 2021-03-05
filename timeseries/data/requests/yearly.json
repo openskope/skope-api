@@ -3,8 +3,8 @@
   "dataset_id": "annual_5x5x5_dataset",
   "variable_id": "float32_variable",
   "time_range": {
-    "gte": 0,
-    "lte": 4
+    "gte": 2,
+    "lte": 6
   },
   "selected_area": {
     "type": "Point",

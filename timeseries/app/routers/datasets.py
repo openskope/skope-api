@@ -154,7 +154,7 @@ class WindowType(str, Enum):
 class MovingAverageSmoother(Smoother):
     type: Literal['MovingAverageSmoother'] = 'MovingAverageSmoother'
     method: WindowType
-    width: int
+    width: int = Field(..., description="number of years (or months) from current time tu use in the moving window")
 
     def get_desired_band_range_adjustment(self):
         if self.method == self.method.centered:
@@ -187,7 +187,7 @@ def rolling_z_score(xs, width):
 
 class ZScoreRoller(BaseModel):
     type: Literal['ZScoreRoller'] = 'ZScoreRoller'
-    width: int
+    width: int = Field(..., description='number of prior years (or months) to use in the moving window')
 
     def get_desired_band_range_adjustment(self):
         return np.array([-self.width, 0])

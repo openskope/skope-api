@@ -10,10 +10,15 @@ help:
 
 .PHONY: build
 # Build and pull the required docker images
-build: docker-compose.yml
+build: docker-compose.yml geoserver/docker/secrets/geoserver_admin_password
 	docker-compose build --pull
 
-docker-compose.yml: deploy/dc/base.yml deploy/dc/$(ENVIR).yml deploy/Dockerfile config.mk
+geoserver/docker/secrets/geoserver_admin_password:
+	echo "Creating geoserver secret"; \
+	mkdir -p geoserver/docker/secrets; \
+	echo -n $$(head /dev/urandom | tr -dc '[:alnum:]' | head -c22) > geoserver/docker/secrets/geoserver_admin_password
+
+docker-compose.yml: deploy/dc/base.yml deploy/dc/$(ENVIR).yml timeseries/deploy/Dockerfile config.mk
 	case "$(ENVIR)" in \
 	  dev|prod) docker-compose -f deploy/dc/base.yml -f "deploy/dc/$(ENVIR).yml" --project-directory . config > docker-compose.yml;; \
 	  *) echo "invalid environment. must be dev or prod" 1>&2; exit 1;; \
