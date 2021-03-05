@@ -19,9 +19,9 @@ jobs:
       - name: Run the tests
         run: |
           trap '[ -n "$(jobs -pr)" ] && kill $(jobs -pr)' INT QUIT TERM EXIT
-          cd timeseries \
-          && ENVIR=dev pytest \
-          && ENVIR=dev uvicorn --port 8001 app.main:app & \
-          && cd ..
+          cd timeseries
+          ENVIR=dev pytest
+          ENVIR=dev uvicorn --port 8001 app.main:app &
+          cd ..
           ./configure dev
           make test-integration
