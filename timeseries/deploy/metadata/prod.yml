@@ -1,5 +1,5 @@
 year:
-  lbda-v2:
+  lbda:
     time_range:
       gte: 1
       lte: 2017
@@ -11,7 +11,7 @@ year:
       lte: 2009
     variables:
       - srtm_elevation
-  paleocar_2:
+  paleocar:
     time_range:
       gte: 1
       lte: 2000
