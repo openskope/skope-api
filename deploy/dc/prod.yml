@@ -16,6 +16,8 @@ services:
       - "--worker-class"
       - "uvicorn.workers.UvicornWorker"
       - "app.main:app"
+    environment:
+      FORWARDED_ALLOW_IPS: '*'
     image: openskope/server/prod:latest
     volumes:
       - ./timeseries:/code
