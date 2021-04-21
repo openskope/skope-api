@@ -365,15 +365,15 @@ class YearAnalysisQuery(BaseAnalysisQuery):
 class YearAnalysisResponse(BaseModel):
     time_range: YearRange
     values: List[Optional[float]]
-    n_cells: int
-    area: float
+    n_cells: int = Field(..., description='number of cells in selected area')
+    area: float = Field(..., description='area of cells in selected area in square meters')
 
 
 class MonthAnalysisResponse(BaseModel):
     time_range: YearMonthRange
     values: List[Optional[float]]
-    n_cells: int
-    area: float
+    n_cells: int = Field(..., description='number of cells in selected area')
+    area: float = Field(..., description='area of cells in selected area in square meters')
 
 
 class TimeseriesV1Request(BaseModel):
