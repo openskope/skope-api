@@ -128,6 +128,7 @@ class Polygon(geompyd.Polygon):
         wgs84 = pyproj.Geod(ellps='WGS84')
         for val, shp in shape_iter:
             shp = orient(shp)
+            shp = geom.shape(shp)
             logger.info('poly: %s', shp)
             area += wgs84.geometry_area_perimeter(shp)[0]
         return area
