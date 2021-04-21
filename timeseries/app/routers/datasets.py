@@ -126,7 +126,7 @@ class Polygon(geompyd.Polygon):
         shape_iter = shapes(masked.astype('uint8'), mask=np.equal(masked, 0), transform=transform)
         area = 0.0
         wgs84 = pyproj.Geod(ellps='WGS84')
-        for val, shp in shape_iter:
+        for shp, val in shape_iter:
             shp = orient(shp)
             shp = geom.shape(shp)
             logger.info('poly: %s', shp)
