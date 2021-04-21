@@ -10,6 +10,7 @@ import pyproj
 import rasterio
 
 from enum import Enum
+
 from fastapi import APIRouter
 from geojson_pydantic import geometries as geompyd
 from numba import prange
@@ -19,6 +20,7 @@ from rasterio.mask import raster_geometry_mask
 from rasterio.windows import Window
 from scipy import stats
 from shapely import geometry as geom
+from shapely.ops import orient
 from app.settings import settings
 from typing import List, Optional, Tuple, Union, Literal, Sequence, Any
 
@@ -122,9 +124,11 @@ class Polygon(geompyd.Polygon):
     @staticmethod
     def calculate_area(masked, transform):
         shape_iter = shapes(masked.astype('uint8'), mask=np.equal(masked, 0), transform=transform)
-        area = 0
+        area = 0.0
         wgs84 = pyproj.Geod(ellps='WGS84')
         for val, shp in shape_iter:
+            shp = orient(shp)
+            logger.info('poly: %s', shp)
             area += wgs84.geometry_area_perimeter(shp)[0]
         return area
 
