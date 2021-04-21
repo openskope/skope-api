@@ -123,7 +123,7 @@ class Polygon(geompyd.Polygon):
     def calculate_area(masked, transform):
         shape_iter = shapes(masked.astype('uint8'), mask=np.equal(masked, 0), transform=transform)
         area = 0
-        wgs84 = pyproj.Geod('WGS84')
+        wgs84 = pyproj.Geod(ellps='WGS84')
         for val, shp in shape_iter:
             area += wgs84.geometry_area_perimeter(shp)[0]
         return area
