@@ -1,4 +1,5 @@
 httpx
+ipython
 pytest
 pytest-asyncio
 requests

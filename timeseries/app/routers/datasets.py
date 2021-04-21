@@ -6,6 +6,7 @@ from concurrent.futures.thread import ThreadPoolExecutor
 import numba
 import numpy as np
 import math
+import pyproj
 import rasterio
 
 from enum import Enum
@@ -13,6 +14,7 @@ from fastapi import APIRouter
 from geojson_pydantic import geometries as geompyd
 from numba import prange
 from pydantic import BaseModel, Field
+from rasterio.features import shapes
 from rasterio.mask import raster_geometry_mask
 from rasterio.windows import Window
 from scipy import stats
@@ -56,6 +58,17 @@ def bounding_box(bounds) -> geom.Polygon:
 
 
 class Point(geompyd.Point):
+    @staticmethod
+    def calculate_area(px: int, py:int, dataset: rasterio.DatasetReader):
+        wgs84 = pyproj.Geod(ellps='WGS84')
+        top_left = dataset.xy(row=py, col=px)
+        bottom_right = dataset.xy(row=py + 1, col=px + 1)
+        top_right = (bottom_right[0], top_left[1])
+        bottom_left = (top_left[0], bottom_right[1])
+        bbox = geom.Polygon([top_left, bottom_left, bottom_right, top_right, top_left])
+        area, perimeter = wgs84.geometry_area_perimeter(bbox)
+        return area
+
     def extract(self,
                 dataset: rasterio.DatasetReader,
                 zonal_statistic: ZonalStatistic,
@@ -67,7 +80,13 @@ class Point(geompyd.Point):
         logger.info('extracting point: %s', self)
         px, py = dataset.index(self.coordinates[0], self.coordinates[1])
         logging.info('indices: %s', (px, py))
-        return dataset.read(list(band_range), window=Window(px, py, 1, 1)).flatten()
+        data = dataset.read(list(band_range), window=Window(px, py, 1, 1)).flatten()
+        area = self.calculate_area(px=px, py=py, dataset=dataset)
+        return {
+            'n_cells': 1,
+            'area': area,
+            'data': data,
+        }
 
     class Config:
         schema_extra = {
@@ -100,6 +119,15 @@ class Polygon(geompyd.Polygon):
         if n_last_bands > 0:
             yield range(n_bands - n_last_bands + offset, n_bands + offset)
 
+    @staticmethod
+    def calculate_area(masked, transform):
+        shape_iter = shapes(masked.astype('uint8'), mask=np.equal(masked, 0), transform=transform)
+        area = 0
+        wgs84 = pyproj.Geod('WGS84')
+        for val, shp in shape_iter:
+            area += wgs84.geometry_area_perimeter(shp)[0]
+        return area
+
     def extract(self,
                 dataset: rasterio.DatasetReader,
                 zonal_statistic: ZonalStatistic,
@@ -118,6 +146,8 @@ class Polygon(geompyd.Polygon):
         logger.info('extracting polygon: %s', self)
         zonal_func = zonal_statistic.to_numpy_call()
         masked, transform, window = raster_geometry_mask(dataset, [self], crop=True, all_touched=True)
+        n_cells = masked.size - np.count_nonzero(masked)
+        area = self.calculate_area(masked, transform=transform)
         result = np.zeros(len(band_range), dtype=np.float64)
         offset = -band_range.gte
         for band_group in self._make_band_range_groups(width=window.width, height=window.height, band_range=band_range):
@@ -127,7 +157,7 @@ class Polygon(geompyd.Polygon):
             ub = band_group.stop + offset
             r = zonal_func(values, axis=(1,2), dtype=np.float64)
             result[lb:ub] = r
-        return result
+        return {'n_cells': n_cells, 'area': area, 'data': result}
 
 
 class Smoother(BaseModel):
@@ -246,11 +276,14 @@ class BaseAnalysisQuery(BaseModel):
         band_range = self.get_band_range_to_extract(dataset_meta.time_range)
         with rasterio.Env():
             with rasterio.open(dataset_meta.p) as ds:
-                xs = self.extract_slice(ds, band_range=band_range)
+                res = self.extract_slice(ds, band_range=band_range)
+                xs = res['data']
+                n_cells = res['n_cells']
+                area = res['area']
         xs = self.transform_series(xs)
         yr = self.get_time_range_after_transforms(dataset_meta.time_range, band_range)
         values = [None if x is None or math.isnan(x) else x for x in xs.tolist()]
-        return {'time_range': yr, 'values': values}
+        return {'time_range': yr, 'values': values, 'n_cells': n_cells, 'area': area}
 
     async def extract(self):
         start_time = time.time()
@@ -332,11 +365,15 @@ class YearAnalysisQuery(BaseAnalysisQuery):
 class YearAnalysisResponse(BaseModel):
     time_range: YearRange
     values: List[Optional[float]]
+    n_cells: int
+    area: float
 
 
 class MonthAnalysisResponse(BaseModel):
     time_range: YearMonthRange
     values: List[Optional[float]]
+    n_cells: int
+    area: float
 
 
 class TimeseriesV1Request(BaseModel):

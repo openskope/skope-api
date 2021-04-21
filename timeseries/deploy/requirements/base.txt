@@ -1,6 +1,7 @@
 fastapi
 geojson_pydantic
 numba
+pyproj
 pyyaml
 rasterio
 scipy
