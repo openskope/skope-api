@@ -190,7 +190,7 @@ class MovingAverageSmoother(Smoother):
     method: WindowType
     width: int = Field(
         ...,
-        description="number of years (or months) from current time tu use in the moving window",
+        description="number of years (or months) from current time to use in the moving window",
         ge=0,
         le=200
     )
@@ -224,7 +224,7 @@ def rolling_z_score(xs, width):
     return results
 
 
-class ZScoreRoller(BaseModel):
+class ZScoreMovingInterval(BaseModel):
     type: Literal['ZScoreRoller'] = 'ZScoreRoller'
     width: int = Field(..., description='number of prior years (or months) to use in the moving window', ge=0, le=200)
 
@@ -235,7 +235,7 @@ class ZScoreRoller(BaseModel):
         return rolling_z_score(xs, self.width)
 
 
-class ZScoreScaler(BaseModel):
+class ZScoreFixedInterval(BaseModel):
     type: Literal['ZScoreScaler'] = 'ZScoreScaler'
 
     def get_desired_band_range_adjustment(self):
@@ -347,7 +347,7 @@ class OptionalYearMonthRange(BaseModel):
 class MonthAnalysisQuery(BaseAnalysisQuery):
     resolution: Literal['month'] = 'month'
     time_range: OptionalYearMonthRange
-    transforms: List[Union[MovingAverageSmoother, ZScoreRoller]]
+    transforms: List[Union[MovingAverageSmoother, ZScoreMovingInterval]]
 
     class Config:
         schema_extra = {
@@ -368,7 +368,7 @@ class MonthAnalysisQuery(BaseAnalysisQuery):
 class YearAnalysisQuery(BaseAnalysisQuery):
     resolution: Literal['year'] = 'year'
     time_range: OptionalYearRange
-    transforms: List[Union[MovingAverageSmoother, ZScoreRoller, ZScoreScaler]]
+    transforms: List[Union[MovingAverageSmoother, ZScoreMovingInterval, ZScoreFixedInterval]]
 
 
 class YearAnalysisResponse(BaseModel):
