@@ -225,7 +225,7 @@ def rolling_z_score(xs, width):
 
 
 class ZScoreMovingInterval(BaseModel):
-    type: Literal['ZScoreRoller'] = 'ZScoreRoller'
+    type: Literal['ZScoreMovingInterval'] = 'ZScoreMovingInterval'
     width: int = Field(..., description='number of prior years (or months) to use in the moving window', ge=0, le=200)
 
     def get_desired_band_range_adjustment(self):
@@ -236,7 +236,7 @@ class ZScoreMovingInterval(BaseModel):
 
 
 class ZScoreFixedInterval(BaseModel):
-    type: Literal['ZScoreScaler'] = 'ZScoreScaler'
+    type: Literal['ZScoreFixedInterval'] = 'ZScoreFixedInterval'
 
     def get_desired_band_range_adjustment(self):
         return np.array([0, 0])
