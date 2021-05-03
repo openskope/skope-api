@@ -48,7 +48,7 @@ class ZonalStatistic(str, Enum):
         if self == self.mean:
             return np.mean
         elif self == self.median:
-            return np.median
+            return lambda x, **kwargs: np.median(x)
 
 
 def bounding_box(bounds) -> geom.Polygon:
