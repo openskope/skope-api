@@ -44,11 +44,15 @@ class ZonalStatistic(str, Enum):
     mean = 'mean'
     median = 'median'
 
+    @staticmethod
+    def _median(xs, axis, dtype):
+        return np.median(xs, axis=axis)
+
     def to_numpy_call(self):
         if self == self.mean:
             return np.mean
         elif self == self.median:
-            return lambda x, **kwargs: np.median(x)
+            return self._median
 
 
 def bounding_box(bounds) -> geom.Polygon:
