@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 import numpy as np
 from collections import namedtuple
 from functools import total_ordering
@@ -7,8 +9,17 @@ import yaml
 
 from app.exceptions import DatasetNotFoundError, VariableNotFoundError, TimeRangeContainmentError, TimeRangeInvalid
 from app.settings import settings
+from enum import Enum
 from pydantic import BaseModel, Field, root_validator
 from typing import Dict, Set, Union, Literal
+from dateutil import relativedelta
+
+from timeseries.app.exceptions import TimeRangeInvalid
+
+
+class Resolution(str, Enum):
+    month = 'month'
+    year = 'year'
 
 
 class BandRange(namedtuple('BandRange', ['gte', 'lte'])):
@@ -28,8 +39,8 @@ class BandRange(namedtuple('BandRange', ['gte', 'lte'])):
         return np.array([self.gte, self.lte])
 
     @classmethod
-    def from_numpy_pair(cls, xs):
-        return cls(gte=int(xs[0]), lte=int(xs[1]))
+    def from_numpy_pair(cls, xs, resolution: Resolution):
+        return cls(gte=int(xs[0]), lte=int(xs[1]), resolution=resolution)
 
     def _get_range(self):
         return range(self.gte, self.lte + 1)
@@ -41,9 +52,6 @@ class BandRange(namedtuple('BandRange', ['gte', 'lte'])):
         return len(self._get_range())
 
 
-Resolution = Literal['month', 'year']
-
-
 class YearRange(BaseModel):
     gte: int = Field(..., ge=0, le=2100)
     lte: int = Field(..., ge=0, le=2100)
@@ -52,7 +60,7 @@ class YearRange(BaseModel):
     def check_gte_less_than_lte(cls, values):
         gte, lte = values.get('gte'), values.get('lte')
         if gte > lte:
-            raise TimeRangeInvalid('gte must be less than or equal to lte')
+            raise TimeRangeInvalid()
         return values
 
     def contains(self, ymr: 'YearRange') -> bool:
@@ -74,15 +82,6 @@ class YearRange(BaseModel):
                 "lte": 2010
             }
         }
-
-
-class YearlyRepo(BaseModel):
-    time_range: YearRange
-    variables: Set[str]
-
-    @property
-    def resolution(self) -> Literal['year']:
-        return 'year'
 
 
 @total_ordering
@@ -122,8 +121,8 @@ class YearMonthRange(BaseModel):
     @root_validator
     def check_gte_less_than_lte(cls, values):
         gte, lte = values.get('gte'), values.get('lte')
-        if gte > lte:
-            raise TimeRangeInvalid('gte must be less than or equal to lte')
+        if gte >= lte:
+            raise TimeRangeInvalid()
         return values
 
     def contains(self, ymr: 'YearMonthRange') -> bool:
@@ -162,16 +161,22 @@ class YearMonthRange(BaseModel):
         }
 
 
-class MonthlyRepo(BaseModel):
-    time_range: YearMonthRange
+class TimeRange(BaseModel):
+    gte: date
+    lte: date
+
+    @root_validator
+    def check_time_range_valid(cls, values):
+        gte, lte = values.get('gte'), values.get('lte')
+        if gte > lte:
+            raise TimeRangeInvalid()
+        return values
+
+
+class Repo(BaseModel):
+    time_range: TimeRange
     variables: Set[str]
-
-    @property
-    def resolution(self) -> Literal['month']:
-        return 'month'
-
-
-TimeRange = Union[YearRange, YearMonthRange]
+    resolution: Resolution
 
 
 class DatasetMeta:
@@ -184,27 +189,56 @@ class DatasetMeta:
         self.p = p
         self.resolution = resolution
 
-    def find_band_range(self, time_range: TimeRange):
-        return self.time_range.find_band_range(time_range)
+    def find_band_range(self, time_range: TimeRange) -> BandRange:
+        """Translates time ranges from the metadata and request into a band range
+
+        A band range is a linear index into the bands of a raster file
+        """
+        dataset_time_range = self.time_range
+        if self.resolution == Resolution.month:
+            min_offset = dataset_time_range.gte.year * 12 + (dataset_time_range.gte.month - 1) + 1
+            max_offset = dataset_time_range.lte.year * 12 + (dataset_time_range.lte.month - 1) + 1
+            min_index = time_range.gte.year * 12 + (time_range.gte.month - 1) + 1 - min_offset
+            min_index = max(min_index, 1)
+            max_index = time_range.lte.year * 12 + (time_range.lte.month - 1) + 1 - min_offset
+            max_index = min(max_index, max_offset - min_offset)
+        else:
+            min_offset = dataset_time_range.gte.year + 1
+            max_offset = dataset_time_range.lte.year + 1
+            min_index = time_range.gte.year - min_offset
+            min_index = max(min_index, 1)
+            max_index = time_range.lte.year - min_offset
+            max_index = min(max_index, max_offset - min_offset)
+        return BandRange(gte=min_index, lte=max_index, resolution=self.resolution)
+
+    def translate_band_range(self, br: BandRange) -> 'TimeRange':
+        if self.resolution == Resolution.month:
+            return TimeRange(
+                gte=self.time_range.gte + relativedelta(months=br.gte - 1),
+                lte=self.time_range.lte + relativedelta(months=br.lte - 1))
+        elif self.resolution == Resolution.year:
+            return TimeRange(
+                gte=self.time_range.gte + relativedelta(years=br.gte - 1),
+                lte=self.time_range.lte + relativedelta(years=br.lte - 1))
+        else:
+            raise ValueError(f'{self.resolution} is not valid. must be either year or month')
 
 
 class DatasetRepo(BaseModel):
-    year: Dict[str, YearlyRepo]
-    month: Dict[str, MonthlyRepo]
+    repos: Dict[str, Repo]
 
-    def _get_dataset(self, dataset_id: str, resolution: Resolution):
-        repo = getattr(self, resolution)
-        if dataset_id in repo:
-            return repo[dataset_id]
-        else:
+    def _get_dataset(self, dataset_id: str):
+        dataset = self.repos.get(dataset_id)
+        if dataset is None:
             raise DatasetNotFoundError(f'Dataset {dataset_id} not found')
+        return dataset
 
-    def get_dataset_variables(self, dataset_id: str, resolution: Resolution):
-        dataset = self._get_dataset(dataset_id, resolution=resolution)
+    def get_dataset_variables(self, dataset_id: str):
+        dataset = self._get_dataset(dataset_id)
         return dataset.variables
 
-    def get_dataset_meta(self, dataset_id: str, variable_id: str, resolution: Resolution):
-        dataset = self._get_dataset(dataset_id, resolution=resolution)
+    def get_dataset_meta(self, dataset_id: str, variable_id: str):
+        dataset = self._get_dataset(dataset_id)
 
         if variable_id in dataset.variables:
             resolution = dataset.resolution
