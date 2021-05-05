@@ -20,11 +20,15 @@
     ]
   },
   "zonal_statistic": "mean",
-  "transforms": [
+  "transform": { "type":  "NoTransform" },
+  "requested_series": [
     {
-      "type": "MovingAverageSmoother",
-      "method": "centered",
-      "width": 1
+      "name": "original",
+      "smoother": { "type":  "NoSmoother"}
+    },
+    {
+      "name": "transformed",
+      "smoother": { "type":  "MovingAverageSmoother", "method":  "trailing", "width":  7 }
     }
   ]
 }

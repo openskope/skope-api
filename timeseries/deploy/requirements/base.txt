@@ -1,3 +1,4 @@
+python-dateutil
 fastapi
 geojson_pydantic
 numba

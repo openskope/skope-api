@@ -1,4 +1,5 @@
 import asyncio
+import itertools
 import logging
 import time
 from concurrent.futures.thread import ThreadPoolExecutor
@@ -22,13 +23,16 @@ from scipy import stats
 from shapely import geometry as geom
 from shapely.ops import orient
 from app.settings import settings
-from typing import List, Optional, Tuple, Union, Literal, Sequence, Any
+from typing import List, Optional, Tuple, Union, Literal, Sequence
+from datetime import date
 
 from shapely.validation import explain_validity
 
 from app.exceptions import SelectedAreaOutOfBoundsError, SelectedAreaPolygonIsNotValid, TimeseriesTimeoutError, \
-    VariableNotFoundError, DatasetNotFoundError, SelectedAreaPolygonIsTooLarge
-from app.stores import YearRange, YearMonthRange, dataset_repo, TimeRange, BandRange, YearMonth, Resolution
+    DatasetNotFoundError, SelectedAreaPolygonIsTooLarge
+from app.stores import dataset_repo, BandRange
+
+from timeseries.app.stores import DatasetMeta, TimeRange, YearRange
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=['datasets'], prefix='/timeseries-service/api')
@@ -205,7 +209,7 @@ class MovingAverageSmoother(Smoother):
         else:
             return np.array([-self.width, 0])
 
-    def apply(self, xs):
+    def apply(self, xs: np.array) -> np.array:
         window_size = self.method.get_window_size(self.width)
         return np.convolve(xs, np.ones(window_size) / window_size, 'valid')
 
@@ -219,6 +223,48 @@ class MovingAverageSmoother(Smoother):
         }
 
 
+class NoSmoother(Smoother):
+    type: Literal['NoSmoother'] = 'NoSmoother'
+
+    def apply(self, xs: np.array) -> np.array:
+        return xs
+
+    def get_desired_band_range_adjustment(self):
+        return np.array([0, 0])
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "type": "NoSmoother",
+            }
+        }
+
+
+class SeriesOptions(BaseModel):
+    name: str
+    smoother: Union[MovingAverageSmoother, NoSmoother]
+
+    def get_desired_band_range_adjustment(self):
+        return self.smoother.get_desired_band_range_adjustment()
+
+    def apply(self, xs: np.array) -> 'Series':
+        values = [None if x is None or math.isnan(x) else x for x in self.smoother.apply(xs).tolist()]
+        return Series(options=self, values=values)
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "name": "transformed",
+                "smoother": MovingAverageSmoother.Config.schema_extra['example']
+            }
+        }
+
+
+class Series(BaseModel):
+    values: List[Optional[float]]
+    options: SeriesOptions
+
+
 @numba.jit(nopython=True, nogil=True)
 def rolling_z_score(xs, width):
     n = len(xs) - width
@@ -228,7 +274,19 @@ def rolling_z_score(xs, width):
     return results
 
 
+class NoTransform(BaseModel):
+    """A no-op transform to the timeseries"""
+    type: Literal['NoTransform'] = 'NoTransform'
+
+    def get_desired_band_range_adjustment(self):
+        return np.array([0, 0])
+
+    def apply(self, xs):
+        return xs
+
+
 class ZScoreMovingInterval(BaseModel):
+    """A moving Z-Score transform to the timeseries"""
     type: Literal['ZScoreMovingInterval'] = 'ZScoreMovingInterval'
     width: int = Field(..., description='number of prior years (or months) to use in the moving window', ge=0, le=200)
 
@@ -237,6 +295,14 @@ class ZScoreMovingInterval(BaseModel):
 
     def apply(self, xs):
         return rolling_z_score(xs, self.width)
+
+    class Config:
+        schema_extra = {
+            'example': {
+                'type': 'ZScoreMovingInterval',
+                'width': 5
+            }
+        }
 
 
 class ZScoreFixedInterval(BaseModel):
@@ -248,6 +314,13 @@ class ZScoreFixedInterval(BaseModel):
     def apply(self, xs):
         return stats.zscore(xs)
 
+    class Config:
+        schema_extra = {
+            'example': {
+                'type': 'ZScoreFixedInterval'
+            }
+        }
+
 
 class BaseAnalysisQuery(BaseModel):
     dataset_id: str = Field(..., regex='^[\w-]+$', description='Dataset ID')
@@ -255,48 +328,65 @@ class BaseAnalysisQuery(BaseModel):
     selected_area: Union[Point, Polygon]
     zonal_statistic: ZonalStatistic
     max_processing_time: int = Field(settings.max_processing_time, ge=0, le=settings.max_processing_time)
+    transform: Union[ZScoreMovingInterval, ZScoreFixedInterval, NoTransform]
+    requested_series: List[SeriesOptions]
+    time_range: Tuple[date, date]
+
+    @property
+    def transforms(self):
+        return itertools.chain([self.transform], self.requested_series)
 
     def extract_slice(self, dataset: rasterio.DatasetReader, band_range: Sequence[int]):
         return self.selected_area.extract(dataset, self.zonal_statistic, band_range=band_range)
 
-    def get_band_range_to_extract(self, time_range_available: 'YearRange'):
-        time_range = self.time_range.normalize(time_range_available)
-        br_avail = time_range_available.find_band_range(time_range_available)
-        desired_br = time_range_available.find_band_range(time_range).to_numpy_pair()
+    def get_band_range_to_extract(self, dataset_meta: DatasetMeta):
+        time_range_available = dataset_meta.time_range
+        br_avail = dataset_meta.find_band_range(self.time_range)
+        desired_br = time_range_available.find_band_range(dataset_meta).to_numpy_pair()
         for transform in self.transforms:
             desired_br += transform.get_desired_band_range_adjustment()
-        compromise_br = br_avail.intersect(BandRange.from_numpy_pair(desired_br))
+        compromise_br = br_avail.intersect(
+            BandRange.from_numpy_pair(desired_br))
         return compromise_br
 
-    def get_time_range_after_transforms(self, time_range_available: 'YearRange', extract_br: BandRange) -> 'YearRange':
+    def get_time_range_after_transforms(self, dataset_meta: DatasetMeta, extract_br: BandRange) -> TimeRange:
         """Get the year range after values after applying transformations"""
         inds = extract_br.to_numpy_pair()
         for transform in self.transforms:
             inds += transform.get_desired_band_range_adjustment() * -1
-        yr = time_range_available.translate_band_range(BandRange.from_numpy_pair(inds))
+        yr = dataset_meta.translate_band_range(
+            BandRange.from_numpy_pair(inds))
         return yr
 
-    def transform_series(self, xs):
-        for transform in self.transforms:
-            xs = transform.apply(xs)
-        return xs
+    def apply_series(self, xs):
+        series = []
+        for series_options in self.requested_series:
+            series.append(series_options.apply(xs))
+        return series
 
     def extract_sync(self):
         dataset_meta = dataset_repo.get_dataset_meta(
             dataset_id=self.dataset_id,
             variable_id=self.variable_id,
             resolution=self.resolution)
-        band_range = self.get_band_range_to_extract(dataset_meta.time_range)
+        band_range = self.get_band_range_to_extract(dataset_meta)
         with rasterio.Env():
             with rasterio.open(dataset_meta.p) as ds:
                 res = self.extract_slice(ds, band_range=band_range)
                 xs = res['data']
                 n_cells = res['n_cells']
                 area = res['area']
-        xs = self.transform_series(xs)
+        txs = self.transform.apply(xs)
+        series = self.apply_series(txs)
         yr = self.get_time_range_after_transforms(dataset_meta.time_range, band_range)
-        values = [None if x is None or math.isnan(x) else x for x in xs.tolist()]
-        return {'time_range': yr, 'values': values, 'n_cells': n_cells, 'area': area}
+        return {
+            'area': area,
+            'n_cells': n_cells,
+            'series': series,
+            'time_range': yr,
+            'transform': self.transform,
+            'zonal_statistic': self.zonal_statistic
+        }
 
     async def extract(self):
         start_time = time.time()
@@ -351,42 +441,78 @@ class OptionalYearMonthRange(BaseModel):
 class MonthAnalysisQuery(BaseAnalysisQuery):
     resolution: Literal['month'] = 'month'
     time_range: OptionalYearMonthRange
-    transforms: List[Union[MovingAverageSmoother, ZScoreMovingInterval]]
 
     class Config:
         schema_extra = {
-            "example": {
+            "moving_interval_example": {
                 "resolution": "month",
                 "dataset_id": "monthly_5x5x60_dataset",
                 "variable_id": "float32_variable",
                 "time_range": OptionalYearMonthRange.Config.schema_extra['example'],
                 "selected_area": Point.Config.schema_extra['example'],
                 "zonal_statistic": ZonalStatistic.mean.value,
-                "transforms": [
-                    MovingAverageSmoother.Config.schema_extra['example']
-                ]
+                "transform": ZScoreMovingInterval.Config.schema_extra['example'],
+                "requested_series": [SeriesOptions.Config.schema_extra['example']]
+            },
+            "fixed_interval_example": {
+                "resolution": "month",
+                "dataset_id": "monthly_5x5x60_dataset",
+                "variable_id": "float32_variable",
+                "time_range": OptionalYearMonthRange.Config.schema_extra['example'],
+                "selected_area": Point.Config.schema_extra['example'],
+                "zonal_statistic": ZonalStatistic.mean.value,
+                "transform": ZScoreFixedInterval.Config.schema_extra['example'],
+                "requested_series": [SeriesOptions.Config.schema_extra['example']]
             }
         }
+
+
+Transform = Union[ZScoreMovingInterval, ZScoreFixedInterval, NoTransform]
 
 
 class YearAnalysisQuery(BaseAnalysisQuery):
     resolution: Literal['year'] = 'year'
     time_range: OptionalYearRange
-    transforms: List[Union[MovingAverageSmoother, ZScoreMovingInterval, ZScoreFixedInterval]]
+
+    class Config:
+        schema_extra = {
+            "moving_interval_example": {
+                "resolution": "year",
+                "dataset_id": "annual_5x5x5_dataset",
+                "variable_id": "float32_variable",
+                "time_range": OptionalYearRange.Config.schema_extra['example'],
+                "selected_area": Point.Config.schema_extra['example'],
+                "zonal_statistic": ZonalStatistic.mean.value,
+                "transform": ZScoreMovingInterval.Config.schema_extra['example'],
+                "requested_series": [SeriesOptions.Config.schema_extra['example']]
+            },
+            "fixed_interval_example": {
+                "resolution": "year",
+                "dataset_id": "annual_5x5x5_dataset",
+                "variable_id": "float32_variable",
+                "time_range": OptionalYearRange.Config.schema_extra['example'],
+                "selected_area": Point.Config.schema_extra['example'],
+                "zonal_statistic": ZonalStatistic.mean.value,
+                "transform": ZScoreFixedInterval.Config.schema_extra['example'],
+                "requested_series": [SeriesOptions.Config.schema_extra['example']]
+            }
+        }
 
 
-class YearAnalysisResponse(BaseModel):
+class BaseAnalysisResponse(BaseModel):
+    area: float = Field(..., description='area of cells in selected area in square meters')
+    n_cells: int = Field(..., description='number of cells in selected area')
+    series: List[Series]
+    transform: Transform
+    zonal_statistic: ZonalStatistic
+
+
+class YearAnalysisResponse(BaseAnalysisResponse):
     time_range: YearRange
-    values: List[Optional[float]]
-    n_cells: int = Field(..., description='number of cells in selected area')
-    area: float = Field(..., description='area of cells in selected area in square meters')
 
 
-class MonthAnalysisResponse(BaseModel):
+class MonthAnalysisResponse(BaseAnalysisResponse):
     time_range: YearMonthRange
-    values: List[Optional[float]]
-    n_cells: int = Field(..., description='number of cells in selected area')
-    area: float = Field(..., description='area of cells in selected area in square meters')
 
 
 class TimeseriesV1Request(BaseModel):

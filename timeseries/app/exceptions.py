@@ -18,6 +18,11 @@ class TimeseriesValidationError(Exception):
 
 class TimeRangeInvalid(TimeseriesValidationError):
     """Time range does not satisfy gte less than or equal to lte"""
+    field = '__root__'
+    template = 'Start time step is greater than end time step'
+
+    def __init__(self):
+        super().__init__(self.template)
 
 
 class SelectedAreaPolygonIsTooLarge(TimeseriesValidationError):
