@@ -240,9 +240,9 @@ class SeriesOptions(BaseModel):
     def get_desired_band_range_adjustment(self):
         return self.smoother.get_desired_band_range_adjustment()
 
-    def apply(self, xs: np.array) -> 'Series':
+    def apply(self, xs: np.array, time_range: TimeRange) -> 'Series':
         values = [None if x is None or math.isnan(x) else x for x in self.smoother.apply(xs).tolist()]
-        return Series(options=self, values=values)
+        return Series(options=self, time_range=time_range, values=values)
 
     class Config:
         schema_extra = {
@@ -254,8 +254,9 @@ class SeriesOptions(BaseModel):
 
 
 class Series(BaseModel):
-    values: List[Optional[float]]
     options: SeriesOptions
+    time_range: TimeRange
+    values: List[Optional[float]]
 
 
 @numba.jit(nopython=True, nogil=True)
@@ -325,35 +326,43 @@ class TimeseriesQuery(BaseModel):
     requested_series: List[SeriesOptions]
     time_range: OptionalTimeRange
 
-    @property
-    def transforms(self):
-        return itertools.chain([self.transform], self.requested_series)
+    def transforms(self, series_options: SeriesOptions):
+        return [self.transform, series_options]
 
     def extract_slice(self, dataset: rasterio.DatasetReader, band_range: Sequence[int]):
         return self.selected_area.extract(dataset, self.zonal_statistic, band_range=band_range)
 
-    def get_band_range_to_extract(self, dataset_meta: DatasetVariableMeta):
-        br_avail = dataset_meta.find_band_range(self.time_range)
-        desired_br = br_avail.to_numpy_pair()
-        for transform in self.transforms:
-            desired_br += transform.get_desired_band_range_adjustment()
+    def get_band_range_to_extract(self, dataset_meta: DatasetVariableMeta) -> BandRange:
+        """Get the band range range to extract from the raster file"""
+        br_avail = dataset_meta.find_band_range(dataset_meta.time_range)
+        br_query = dataset_meta.find_band_range(self.time_range)
+        transform_br = br_query + self.transform.get_desired_band_range_adjustment()
+        desired_br = transform_br
+        for series in self.requested_series:
+            candidate_br = transform_br + \
+                           series.get_desired_band_range_adjustment()
+            print(f'candidate_br = {candidate_br}')
+            desired_br = desired_br.union(candidate_br)
+
         compromise_br = br_avail.intersect(
             BandRange.from_numpy_pair(desired_br))
         return compromise_br
 
-    def get_time_range_after_transforms(self, dataset_meta: DatasetVariableMeta, extract_br: BandRange) -> TimeRange:
+    def get_time_range_after_transforms(self, series_options: SeriesOptions, dataset_meta: DatasetVariableMeta, extract_br: BandRange) -> TimeRange:
         """Get the year range after values after applying transformations"""
-        inds = extract_br.to_numpy_pair()
-        for transform in self.transforms:
-            inds += transform.get_desired_band_range_adjustment() * -1
+        inds = extract_br + \
+            self.transform.get_desired_band_range_adjustment() * -1 + \
+            series_options.get_desired_band_range_adjustment() * -1
+        print(f'inds = {inds}')
         yr = dataset_meta.translate_band_range(
             BandRange.from_numpy_pair(inds))
         return yr
 
-    def apply_series(self, xs):
+    def apply_series(self, xs, dataset_meta, band_range):
         series = []
         for series_options in self.requested_series:
-            series.append(series_options.apply(xs))
+            time_range = self.get_time_range_after_transforms(series_options, dataset_meta, band_range)
+            series.append(series_options.apply(xs, time_range))
         return series
 
     def extract_sync(self):
@@ -369,13 +378,15 @@ class TimeseriesQuery(BaseModel):
                 n_cells = res['n_cells']
                 area = res['area']
         txs = self.transform.apply(xs)
-        series = self.apply_series(txs)
-        time_range = self.get_time_range_after_transforms(dataset_meta, band_range)
+        series = self.apply_series(
+            txs,
+            dataset_meta=dataset_meta,
+            band_range=band_range
+        )
         return TimeseriesResponse(
             area=area,
             n_cells=n_cells,
             series=series,
-            time_range=time_range,
             transform=self.transform,
             zonal_statistic=self.zonal_statistic
         )

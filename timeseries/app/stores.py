@@ -33,6 +33,18 @@ class BandRange(namedtuple('BandRange', ['gte', 'lte'])):
             gte=max(self.gte, desired_br.gte),
             lte=min(self.lte, desired_br.lte))
 
+    def union(self, desired_br: 'BandRange') -> 'BandRange':
+        return self.__class__(
+            gte=min(self.gte, desired_br.gte),
+            lte=max(self.lte, desired_br.lte)
+        )
+
+    def __add__(self, other) -> 'BandRange':
+        return self.__class__(
+            gte=self.gte + other[0],
+            lte=self.lte + other[1]
+        )
+
     def to_numpy_pair(self):
         return np.array([self.gte, self.lte])
 
