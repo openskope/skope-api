@@ -3,14 +3,16 @@ import copy
 import numpy as np
 import pytest
 import rasterio
+from datetime import timedelta
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
 from ...exceptions import SelectedAreaPolygonIsTooLarge
 from ...main import app
 from ...routers import datasets as ds
-from ...routers.datasets import Point, ZonalStatistic, Polygon, TimeseriesQuery, NoTransform
-from ...stores import dataset_repo, BandRange, OptionalTimeRange
+from ...routers.datasets import Point, ZonalStatistic, Polygon, TimeseriesQuery, NoTransform, MovingAverageSmoother, \
+    NoSmoother
+from ...stores import dataset_repo, BandRange, OptionalTimeRange, TimeRange
 
 client = TestClient(app)
 
@@ -78,6 +80,53 @@ async def test_monthly_first_year(variable_id, time_range):
         response = await ac.post(TIME_SERIES_URL, data=maq.json())
     assert response.status_code == 200
     assert response.json()['series'][0]['values'] == [i * 100 for i in br]
+
+
+@pytest.mark.asyncio
+async def test_monthly_different_smoothers():
+    ds_meta = dataset_repo.get_dataset_variable_meta(
+        dataset_id='monthly_5x5x60_dataset',
+        variable_id='float32_variable'
+    )
+    tsq = build_timeseries_query(
+        dataset_id='monthly_5x5x60_dataset',
+        variable_id='float32_variable',
+        requested_series=[
+            {
+                'name': 'original',
+                'smoother': NoSmoother().dict()
+            },
+            {
+                'name': 'trailing',
+                'smoother': MovingAverageSmoother(
+                    method='trailing',
+                    width=7
+                ).dict()
+            },
+            {
+                'name': 'centered',
+                'smoother': MovingAverageSmoother(
+                    method='centered',
+                    width=3
+                )
+            }
+        ],
+        time_range=OptionalTimeRange(
+            gte='0003-01-01',
+            lte='0003-12-01'
+        ).dict()
+    )
+    response = tsq.extract_sync()
+    original = response.series[0]
+    trailing = response.series[1]
+    centered = response.series[2]
+
+    assert original.time_range == TimeRange(gte='0002-06-01', lte='0004-03-01')
+    assert len(original.values) == 12 + 7 + 3
+    assert trailing.time_range == TimeRange(gte='0003-01-01', lte='0004-03-01')
+    assert len(trailing.values) == 12 + 7 - 7 + 3
+    assert centered.time_range == TimeRange(gte='0002-09-01', lte='0003-12-01')
+    assert len(centered.values) == 12 + 7 - 3 + 3 - 3
 
 
 @pytest.mark.asyncio
