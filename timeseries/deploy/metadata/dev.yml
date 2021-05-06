@@ -1,16 +1,17 @@
-annual_5x5x5_dataset:
-  time_range:
-    gte: '0000-01-01'
-    lte: '0004-01-01'
-  resolution: 'year'
-  variables:
-    - float32_variable
-    - uint16_variable
-monthly_5x5x60_dataset:
-  time_range:
-    gte: '0001-01-01'
-    lte: '0005-12-01'
-  resolution: 'month'
-  variables:
-    - float32_variable
-    - int16_variable
+repos:
+  annual_5x5x5_dataset:
+    time_range:
+      gte: '0001-01-01'
+      lte: '0005-01-01'
+    resolution: 'year'
+    variables:
+      - float32_variable
+      - uint16_variable
+  monthly_5x5x60_dataset:
+    time_range:
+      gte: '0001-01-01'
+      lte: '0005-12-01'
+    resolution: 'month'
+    variables:
+      - float32_variable
+      - int16_variable

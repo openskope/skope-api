@@ -1,32 +1,38 @@
 import pytest
 
-from ..stores import TimeRange, BandRange, Resolution
+from ..stores import TimeRange, BandRange, dataset_repo
 from ..exceptions import TimeRangeContainmentError
 
 yearly_cat_ds_avail = TimeRange(gte='0007-01-01', lte='0020-01-01')
 monthly_cat_ds_avail = TimeRange(gte='0013-05-01', lte='0023-04-01')
 
+yearly_dataset = dataset_repo.get_dataset_variable_meta(dataset_id='annual_5x5x5_dataset', variable_id='float32_variable')
+yearly_dataset.time_range = yearly_cat_ds_avail
+monthly_dataset = dataset_repo.get_dataset_variable_meta(dataset_id='monthly_5x5x60_dataset', variable_id='float32_variable')
+monthly_dataset.time_range = monthly_cat_ds_avail
+
 
 def test_band_range_conversions():
-    yr = TimeRange(gte='0007-01-01', lte='0010-01-01')
-    assert yearly_cat_ds_avail.find_band_range(yr) == BandRange(gte=1, lte=4, resolution=Resolution.year)
+    tr = TimeRange(gte='0007-01-01', lte='0010-01-01')
+
+    assert yearly_dataset.find_band_range(tr) == BandRange(gte=1, lte=4)
 
     with pytest.raises(TimeRangeContainmentError):
-        yr = TimeRange(gte='0015-01-01', lte='0025-01-01')
-        yearly_cat_ds_avail.find_band_range(yr)
+        tr = TimeRange(gte='0015-01-01', lte='0025-01-01')
+        yearly_dataset.find_band_range(tr)
 
-    ymr = TimeRange(gte='0015-05-01', lte='0023-04-01')
+    tr = TimeRange(gte='0015-05-01', lte='0023-04-01')
 
-    assert monthly_cat_ds_avail.find_band_range(ymr) == BandRange(gte=25, lte=120, resolution=Resolution.month)
+    assert monthly_dataset.find_band_range(tr) == BandRange(gte=25, lte=120)
 
     with pytest.raises(TimeRangeContainmentError):
-        ymr = TimeRange(gte='0010-05-01', lte='0023-04-01')
-        monthly_cat_ds_avail.find_band_range(ymr)
+        tr = TimeRange(gte='0010-05-01', lte='0023-04-01')
+        monthly_dataset.find_band_range(tr)
 
 
 def test_translate_band_range():
-    assert yearly_cat_ds_avail.translate_band_range(BandRange(gte=1, lte=1, resolution=Resolution.year)) == TimeRange(gte='0007-01-01', lte='0007-01-01')
-    assert monthly_cat_ds_avail.translate_band_range(BandRange(gte=1, lte=120, resolution=Resolution.month)) == monthly_cat_ds_avail
+    assert yearly_dataset.translate_band_range(BandRange(gte=1, lte=1)) == TimeRange(gte='0007-01-01', lte='0007-01-01')
+    assert monthly_dataset.translate_band_range(BandRange(gte=1, lte=120)) == monthly_cat_ds_avail
 
 """
 def test_year_month_round_trip():

@@ -20,8 +20,8 @@ describe("When a values POST request selects first pixel of each band in 5x5x5 d
 		    		type: 'Point',
 		    		coordinates: [-123, 45]
 		    	},
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -47,8 +47,8 @@ describe("When a values POST request selects first pixel of each band in 5x5x5 d
     });
 
     it ('Series range start and end should match the request', async function() {
-        expect(response.entity.start).toEqual( "0" );
-        expect(response.entity.end).toEqual( "4" );
+        expect(response.entity.start).toEqual( "0001-01-01" );
+        expect(response.entity.end).toEqual( "0005-01-01" );
     });
 
     it ('Values should be an array with one element for the first pixel of each band', async function() {
@@ -71,8 +71,8 @@ describe("When a values POST request selects first pixel of middle three bands i
 		    		type: 'Point',
 		    		coordinates: [-123, 45]
 		    	},
-	    		start: '1', 
-	    		end: '3' 
+	    		start: '2',
+	    		end: '4'
 		    }
 		});
     });
@@ -98,8 +98,8 @@ describe("When a values POST request selects first pixel of middle three bands i
     });
 
     it ('Series range start and end should match the request', async function() {
-        expect(response.entity.start).toEqual( "1" );
-        expect(response.entity.end).toEqual( "3" );
+        expect(response.entity.start).toEqual( "0002-01-01" );
+        expect(response.entity.end).toEqual( "0004-01-01" );
     });
 
     it ('Values should be an array with one element for the first pixel of each band', async function() {
@@ -108,9 +108,9 @@ describe("When a values POST request selects first pixel of middle three bands i
 });
 
 describe("When a values POST request selects first pixel of first band in 5x5x5 data cube", async () => {
-    
+
 	var response;
-	
+
 	beforeAll(async () => {
 		response = await callRESTService({
 		    method: 'POST',
@@ -122,8 +122,8 @@ describe("When a values POST request selects first pixel of first band in 5x5x5 
 		    		type: 'Point',
 		    		coordinates: [-123, 45]
 		    	},
-	    		start: 0,
-	    		end: 0
+	    		start: 1,
+	    		end: 1
 		    }
 		});
     });
@@ -133,10 +133,10 @@ describe("When a values POST request selects first pixel of first band in 5x5x5 
     });
 
     it ('Series range start and end should match the request', async function() {
-        expect(response.entity.start).toEqual( "0" );
-        expect(response.entity.end).toEqual( "0" );
+        expect(response.entity.start).toEqual( "0001-01-01" );
+        expect(response.entity.end).toEqual( "0001-01-01" );
     });
-    
+
     it ('Values should be an array with one element for the first pixel of each band', async function() {
         expect(response.entity.values).toEqual( [100] );
     });
@@ -157,8 +157,8 @@ describe("When a values POST request selects last pixel of each band in 5x5x5 da
 		    		type: 'Point',
 		    		coordinates: [-119, 41]
 		    	},
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -168,8 +168,8 @@ describe("When a values POST request selects last pixel of each band in 5x5x5 da
     });
 
     it ('Series range start and end should match the request', async function() {
-        expect(response.entity.start).toEqual( "0" );
-        expect(response.entity.end).toEqual( "4" );
+        expect(response.entity.start).toEqual( "0001-01-01" );
+        expect(response.entity.end).toEqual( "0005-01-01" );
     });
 
     it ('Values should be an array with one element for the first pixel of each band', async function() {
@@ -180,9 +180,9 @@ describe("When a values POST request selects last pixel of each band in 5x5x5 da
 
 
 describe("When a values POST request selects last pixel of last band in 5x5x5 data cube", async () => {
-    
+
 	var response;
-	
+
 	beforeAll(async () => {
 		response = await callRESTService({
 		    method: 'POST',
@@ -194,8 +194,8 @@ describe("When a values POST request selects last pixel of last band in 5x5x5 da
 		    		type: 'Point',
 		    		coordinates: [-119, 41]
 		    	},
-	    		start: 4,
-	    		end: 4
+	    		start: 5,
+	    		end: 5
 		    }
 		});
 	});
@@ -205,8 +205,8 @@ describe("When a values POST request selects last pixel of last band in 5x5x5 da
     });
 
     it ('Series range start and end should match the request', async function() {
-        expect(response.entity.start).toEqual( "4" );
-        expect(response.entity.end).toEqual( "4" );
+        expect(response.entity.start).toEqual( "0005-01-01" );
+        expect(response.entity.end).toEqual( "0005-01-01" );
     });
 
     it ('Values should be an array with one element for the first pixel of each band', async function() {
@@ -239,8 +239,8 @@ describe("When a values POST request selects last pixel of 5x5x5 data cube witho
     });
 
     it ('Series range start and end should represent all of the bands in the file', async function() {
-        expect(response.entity.start).toEqual( "0" );
-        expect(response.entity.end).toEqual( "4" );
+        expect(response.entity.start).toEqual( "0001-01-01" );
+        expect(response.entity.end).toEqual( "0005-01-01" );
     });
 
     it ('Values should be an array with one element for the first pixel of each band', async function() {
@@ -266,7 +266,7 @@ describe("When a values POST request selects last pixel of 5x5x5 data cube and s
 		    		type: 'Point',
 		    		coordinates: [-119, 41]
 		    	},
-	    		start: 2
+	    		start: 3
 		    }
 		});
 	});
@@ -276,8 +276,8 @@ describe("When a values POST request selects last pixel of 5x5x5 data cube and s
     });
 
     it ('Series range start and end should represent bands from the requested start through the last band', async function() {
-        expect(response.entity.start).toEqual( "2" );
-        expect(response.entity.end).toEqual( "4" );
+        expect(response.entity.start).toEqual( "0003-01-01" );
+        expect(response.entity.end).toEqual( "0005-01-01" );
     });
 
     it ('Values should be an array with one element for the first requested band through the last band', async function() {
@@ -302,7 +302,7 @@ describe("When a values POST request selects last pixel of 5x5x5 data cube and s
 		    		type: 'Point',
 		    		coordinates: [-119, 41]
 		    	},
-	    		end: 3
+	    		end: 4
 		    }
 		});
 	});
@@ -312,8 +312,8 @@ describe("When a values POST request selects last pixel of 5x5x5 data cube and s
     });
 
     it ('Series range start and end should represent bands from the first band through the requested end band', async function() {
-        expect(response.entity.start).toEqual( "0" );
-        expect(response.entity.end).toEqual( "3" );
+        expect(response.entity.start).toEqual( "0001-01-01" );
+        expect(response.entity.end).toEqual( "0004-01-01" );
     });
 
     it ('Values should be an array with one element for the first band through the requested end band', async function() {

@@ -19,8 +19,8 @@ describe("When a values POST request is missing the datasetId property", async (
 		    		type: 'Point',
 		    		coordinates: [-123, 45]
 		    	},
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -48,8 +48,8 @@ describe("When a values POST request is missing the variableName property", asyn
 		    		type: 'Point',
 		    		coordinates: [-123, 45]
 		    	},
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -74,8 +74,8 @@ describe("When a values POST request is missing the boundaryGeometry property", 
 		    entity: {
 		    	datasetId: 'annual_5x5x5_dataset',
 		    	variableName: 'uint16_variable',
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -104,8 +104,8 @@ describe("When a values POST request specifies an unsupported boundary geometry 
 		    		type: 'NoSuchGeometry',
 		    		coordinates: [-123, 45]
 		    	},		    	
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -135,8 +135,8 @@ describe("When a values POST request specifies coordinates outside of raster fil
 		    		type: 'Point',
 		    		coordinates: [-124, 45]
 		    	},
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -165,8 +165,8 @@ describe("When a values POST request specifies a dataset that does not exist", a
 		    		type: 'Point',
 		    		coordinates: [-123, 45]
 		    	},
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -196,8 +196,8 @@ describe("When a values POST request specifies a nonexistent variable for datase
 		    		type: 'Point',
 		    		coordinates: [-123, 45]
 		    	},
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -226,8 +226,8 @@ describe("When a values POST request specifies a range start outside of dataset 
 		    		type: 'Point',
 		    		coordinates: [-123, 45]
 		    	},
-	    		start: 5,
-	    		end: 5
+	    		start: 6,
+	    		end: 6
 		    }
 		});
     });
@@ -256,8 +256,8 @@ describe("When a values POST request specifies a range end outside of dataset co
 		    		type: 'Point',
 		    		coordinates: [-123, 46]
 		    	},
-	    		start: 3,
-	    		end: 5
+	    		start: 4,
+	    		end: 6
 		    }
 		});
     });

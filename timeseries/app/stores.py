@@ -11,10 +11,8 @@ from app.exceptions import DatasetNotFoundError, VariableNotFoundError, TimeRang
 from app.settings import settings
 from enum import Enum
 from pydantic import BaseModel, Field, root_validator
-from typing import Dict, Set, Union, Literal
-from dateutil import relativedelta
-
-from timeseries.app.exceptions import TimeRangeInvalid
+from typing import Dict, Set, Union, Literal, Optional
+from dateutil.relativedelta import relativedelta
 
 
 class Resolution(str, Enum):
@@ -39,8 +37,8 @@ class BandRange(namedtuple('BandRange', ['gte', 'lte'])):
         return np.array([self.gte, self.lte])
 
     @classmethod
-    def from_numpy_pair(cls, xs, resolution: Resolution):
-        return cls(gte=int(xs[0]), lte=int(xs[1]), resolution=resolution)
+    def from_numpy_pair(cls, xs):
+        return cls(gte=int(xs[0]), lte=int(xs[1]))
 
     def _get_range(self):
         return range(self.gte, self.lte + 1)
@@ -50,115 +48,6 @@ class BandRange(namedtuple('BandRange', ['gte', 'lte'])):
 
     def __len__(self):
         return len(self._get_range())
-
-
-class YearRange(BaseModel):
-    gte: int = Field(..., ge=0, le=2100)
-    lte: int = Field(..., ge=0, le=2100)
-
-    @root_validator
-    def check_gte_less_than_lte(cls, values):
-        gte, lte = values.get('gte'), values.get('lte')
-        if gte > lte:
-            raise TimeRangeInvalid()
-        return values
-
-    def contains(self, ymr: 'YearRange') -> bool:
-        return self.gte <= ymr.gte and self.lte >= ymr.lte
-
-    def find_band_range(self, yr: 'YearRange') -> BandRange:
-        if not self.contains(yr):
-            raise TimeRangeContainmentError(f'{self} does not contain {yr}')
-        # raster bands are one indexed hence the plus 1
-        return BandRange(yr.gte - self.gte + 1, yr.lte - self.gte + 1)
-
-    def translate_band_range(self, br: BandRange) -> 'YearRange':
-        return self.__class__(gte=self.gte + br.gte - 1, lte=self.gte + br.lte - 1)
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "gte": 1985,
-                "lte": 2010
-            }
-        }
-
-
-@total_ordering
-class YearMonth(BaseModel):
-    year: int = Field(..., ge=0, le=2100)
-    month: int = Field(..., ge=1, le=12)
-
-    @classmethod
-    def from_index(cls, index: int) -> 'YearMonth':
-        year = index // 12
-        month = index % 12 + 1
-        return cls.construct(year=year, month=month)
-
-    def to_months_since_0ce(self):
-        # assumes there are not any BCE dates (0 is 0000-01 CE)
-        return self.year*12 + self.month - 1
-
-    def __eq__(self, other: 'YearMonth'):
-        return self.year == other.year and self.month == other.month
-
-    def __lt__(self, other: 'YearMonth'):
-        return (self.year, self.month) < (other.year, other.month)
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "year": 1985,
-                "month": 5
-            }
-        }
-
-
-class YearMonthRange(BaseModel):
-    gte: YearMonth
-    lte: YearMonth
-
-    @root_validator
-    def check_gte_less_than_lte(cls, values):
-        gte, lte = values.get('gte'), values.get('lte')
-        if gte >= lte:
-            raise TimeRangeInvalid()
-        return values
-
-    def contains(self, ymr: 'YearMonthRange') -> bool:
-        return self.gte <= ymr.gte and self.lte >= ymr.lte
-
-    def find_band_range(self, ymr: 'YearMonthRange'):
-        if not self.contains(ymr):
-            raise TimeRangeContainmentError(f'{self} does not contain {ymr}')
-        months_offset = self.gte.to_months_since_0ce()
-        # raster bands are one indexed hence the plus one
-        return BandRange(
-            gte=ymr.gte.to_months_since_0ce() - months_offset + 1,
-            lte=ymr.lte.to_months_since_0ce() - months_offset + 1
-        )
-
-    def translate_band_range(self, br: BandRange) -> 'YearMonthRange':
-        months_offset = self.gte.to_months_since_0ce()
-        # convert from a one indexed raster band index to
-        # months since 0000-01 ce zero based index
-        gte = br.gte - 1
-        lte = br.lte - 1
-        return self.__class__(
-            gte=YearMonth.from_index(months_offset + gte),
-            lte=YearMonth.from_index(months_offset + lte)
-        )
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "gte": YearMonth.Config.schema_extra["example"],
-                "lte": {
-                    "year": 2010,
-                    "month": 8
-                }
-            }
-        }
 
 
 class TimeRange(BaseModel):
@@ -172,6 +61,24 @@ class TimeRange(BaseModel):
             raise TimeRangeInvalid()
         return values
 
+    class Config:
+        schema_extra = {
+            'example': {
+                'gte': '0001-02-05',
+                'lte': '0005-09-02'
+            }
+        }
+
+
+class OptionalTimeRange(BaseModel):
+    gte: Optional[date]
+    lte: Optional[date]
+
+    class Config:
+        schema_extra = {
+            'example': TimeRange.Config.schema_extra['example']
+        }
+
 
 class Repo(BaseModel):
     time_range: TimeRange
@@ -179,7 +86,7 @@ class Repo(BaseModel):
     resolution: Resolution
 
 
-class DatasetMeta:
+class DatasetVariableMeta:
     def __init__(self, p: Path, time_range: TimeRange, resolution: Resolution):
         """
         :param p: path to the dataset
@@ -189,37 +96,42 @@ class DatasetMeta:
         self.p = p
         self.resolution = resolution
 
-    def find_band_range(self, time_range: TimeRange) -> BandRange:
+    def normalize_time_range(self, otr: OptionalTimeRange):
+        return TimeRange(
+            gte=otr.gte if otr.gte is not None else self.time_range.gte,
+            lte=otr.lte if otr.lte is not None else self.time_range.lte
+        )
+
+    def find_band_range(self, time_range: OptionalTimeRange) -> BandRange:
         """Translates time ranges from the metadata and request into a band range
 
         A band range is a linear index into the bands of a raster file
         """
+        time_range = self.normalize_time_range(time_range)
         dataset_time_range = self.time_range
+        if not (dataset_time_range.gte <= time_range.gte <= dataset_time_range.lte):
+            raise TimeRangeContainmentError(f'{time_range.gte} is not within [{dataset_time_range.gte}, {dataset_time_range.lte}].')
+        if not (dataset_time_range.gte <= time_range.lte <= dataset_time_range.lte):
+            raise TimeRangeContainmentError(f'{time_range.lte} is not within [{dataset_time_range.gte}, {dataset_time_range.lte}].')
+        gte_relative_delta = relativedelta(time_range.gte, dataset_time_range.gte)
+        lte_relative_delta = relativedelta(time_range.lte, dataset_time_range.gte)
         if self.resolution == Resolution.month:
-            min_offset = dataset_time_range.gte.year * 12 + (dataset_time_range.gte.month - 1) + 1
-            max_offset = dataset_time_range.lte.year * 12 + (dataset_time_range.lte.month - 1) + 1
-            min_index = time_range.gte.year * 12 + (time_range.gte.month - 1) + 1 - min_offset
-            min_index = max(min_index, 1)
-            max_index = time_range.lte.year * 12 + (time_range.lte.month - 1) + 1 - min_offset
-            max_index = min(max_index, max_offset - min_offset)
+            min_index = gte_relative_delta.months + (gte_relative_delta.years * 12) + 1
+            max_index = lte_relative_delta.months + (lte_relative_delta.years * 12) + 1
         else:
-            min_offset = dataset_time_range.gte.year + 1
-            max_offset = dataset_time_range.lte.year + 1
-            min_index = time_range.gte.year - min_offset
-            min_index = max(min_index, 1)
-            max_index = time_range.lte.year - min_offset
-            max_index = min(max_index, max_offset - min_offset)
-        return BandRange(gte=min_index, lte=max_index, resolution=self.resolution)
+            min_index = gte_relative_delta.years + 1
+            max_index = lte_relative_delta.years + 1
+        return BandRange(gte=min_index, lte=max_index)
 
     def translate_band_range(self, br: BandRange) -> 'TimeRange':
         if self.resolution == Resolution.month:
             return TimeRange(
                 gte=self.time_range.gte + relativedelta(months=br.gte - 1),
-                lte=self.time_range.lte + relativedelta(months=br.lte - 1))
+                lte=self.time_range.gte + relativedelta(months=br.lte - 1))
         elif self.resolution == Resolution.year:
             return TimeRange(
                 gte=self.time_range.gte + relativedelta(years=br.gte - 1),
-                lte=self.time_range.lte + relativedelta(years=br.lte - 1))
+                lte=self.time_range.gte + relativedelta(years=br.lte - 1))
         else:
             raise ValueError(f'{self.resolution} is not valid. must be either year or month')
 
@@ -237,7 +149,7 @@ class DatasetRepo(BaseModel):
         dataset = self._get_dataset(dataset_id)
         return dataset.variables
 
-    def get_dataset_meta(self, dataset_id: str, variable_id: str):
+    def get_dataset_variable_meta(self, dataset_id: str, variable_id: str):
         dataset = self._get_dataset(dataset_id)
 
         if variable_id in dataset.variables:
@@ -247,7 +159,7 @@ class DatasetRepo(BaseModel):
             raise VariableNotFoundError(f'Variable {variable_id} not found in dataset {dataset_id}')
 
         p = settings.get_dataset_path(dataset_id=dataset_id, variable_id=variable_id)
-        return DatasetMeta(p=p, time_range=time_range, resolution=resolution)
+        return DatasetVariableMeta(p=p, time_range=time_range, resolution=resolution)
 
 
 with settings.metadata_path.open() as f:

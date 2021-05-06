@@ -9,8 +9,8 @@ from httpx import AsyncClient
 from ...exceptions import SelectedAreaPolygonIsTooLarge
 from ...main import app
 from ...routers import datasets as ds
-from ...routers.datasets import MonthAnalysisQuery, Point, OptionalYearMonthRange, ZonalStatistic, Polygon
-from ...stores import YearMonth, dataset_repo, BandRange
+from ...routers.datasets import Point, ZonalStatistic, Polygon, TimeseriesQuery, NoTransform
+from ...stores import dataset_repo, BandRange, OptionalTimeRange
 
 client = TestClient(app)
 
@@ -23,100 +23,98 @@ def test_moving_average_smoother():
 
 
 ymrs = [
-    OptionalYearMonthRange(
-        gte=YearMonth(year=1, month=1),
-        lte=YearMonth(year=1, month=12)
+    OptionalTimeRange(
+        gte='0001-01-01',
+        lte='0001-01-12'
     ),
-    OptionalYearMonthRange(
-        gte=YearMonth(year=3, month=1),
-        lte=YearMonth(year=3, month=12)
+    OptionalTimeRange(
+        gte='0003-01-01',
+        lte='0003-12-01'
     ),
-    OptionalYearMonthRange(
-        gte=YearMonth(year=4, month=7),
-        lte=YearMonth(year=5, month=6)
+    OptionalTimeRange(
+        gte='0004-07-01',
+        lte='0005-06-01'
     )
 ]
 
-MONTHLY_TIME_SERIES_URL = '/timeseries-service/api/v2/datasets/monthly'
+TIME_SERIES_URL = '/timeseries-service/api/v2/timeseries'
+
+
+def build_timeseries_query(**overrides):
+    query_parameters = {
+        'selected_area': Point(
+            type='Point',
+            coordinates=(-123, 45)
+        ).dict(),
+        'transform': NoTransform().dict(),
+        'requested_series': [{
+            'name': 'original',
+            'smoother': {'type': 'NoSmoother'}
+        }],
+        'zonal_statistic': ZonalStatistic.mean.value
+    }
+    query_parameters.update(overrides)
+    return TimeseriesQuery(
+        **query_parameters
+    )
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("variable_id", dataset_repo.get_dataset_variables('monthly_5x5x60_dataset', 'month'))
+@pytest.mark.parametrize("variable_id", dataset_repo.get_dataset_variables('monthly_5x5x60_dataset'))
 @pytest.mark.parametrize("time_range", ymrs)
 async def test_monthly_first_year(variable_id, time_range):
-    ds_meta = dataset_repo.get_dataset_meta(
+    ds_meta = dataset_repo.get_dataset_variable_meta(
         dataset_id='monthly_5x5x60_dataset',
-        variable_id=variable_id,
-        resolution='month'
+        variable_id=variable_id
     )
-    time_avail = ds_meta.time_range
-    tr = time_range.normalize(time_avail)
-    br = time_avail.find_band_range(tr)
-    maq = MonthAnalysisQuery(
+    br = ds_meta.find_band_range(time_range)
+    maq = build_timeseries_query(
         dataset_id='monthly_5x5x60_dataset',
         variable_id=variable_id,
         time_range=time_range,
-        selected_area=Point(
-            type='Point',
-            coordinates=(-123, 45)
-        ),
-        transforms=[],
         zonal_statistic=ZonalStatistic.mean.value
     )
     async with AsyncClient(app=app, base_url='http://test') as ac:
-        response = await ac.post(MONTHLY_TIME_SERIES_URL, data=maq.json())
+        response = await ac.post(TIME_SERIES_URL, data=maq.json())
     assert response.status_code == 200
-    assert response.json()['values'] == [i * 100 for i in br]
+    assert response.json()['series'][0]['values'] == [i * 100 for i in br]
 
 
 @pytest.mark.asyncio
 async def test_missing_property():
-    time_range = OptionalYearMonthRange(
-        gte=YearMonth(year=1, month=1),
-        lte=YearMonth(year=1, month=12)
+    time_range = OptionalTimeRange(
+        gte='0001-01-01',
+        lte='0001-12-01'
     )
-    maq = MonthAnalysisQuery(
+    maq = build_timeseries_query(
         dataset_id='monthly_5x5x60_dataset',
         variable_id='float32_variable',
         time_range=time_range,
-        selected_area=Point(
-            type='Point',
-            coordinates=(-123, 45)
-        ),
-        transforms=[],
-        zonal_statistic=ZonalStatistic.mean.value
     )
-
     async with AsyncClient(app=app, base_url='http://test') as ac:
-        for key in set(maq.dict().keys()).difference({'resolution', 'max_processing_time'}):
+        for key in set(maq.dict().keys()).difference({'max_processing_time'}):
             data = copy.deepcopy(maq)
             data.__dict__.pop(key)
-            response = await ac.post(MONTHLY_TIME_SERIES_URL, data=data.json())
+            response = await ac.post(TIME_SERIES_URL, data=data.json())
             assert response.status_code == 422
             assert response.json()['detail'][0]['loc'] == ['body', key]
 
 
 @pytest.mark.asyncio
 async def test_timeout():
-    time_range = OptionalYearMonthRange(
-        gte=YearMonth(year=1, month=1),
-        lte=YearMonth(year=1, month=12)
+    time_range = OptionalTimeRange(
+        gte='0001-01-01',
+        lte='0001-12-01'
     )
-    maq = MonthAnalysisQuery(
+    maq = build_timeseries_query(
         dataset_id='monthly_5x5x60_dataset',
         variable_id='float32_variable',
         time_range=time_range,
-        selected_area=Point(
-            type='Point',
-            coordinates=(-123, 45)
-        ),
-        transforms=[],
-        zonal_statistic=ZonalStatistic.mean.value,
         max_processing_time=0
     )
 
     async with AsyncClient(app=app, base_url='http://test') as ac:
-        response = await ac.post(MONTHLY_TIME_SERIES_URL, data=maq.json())
+        response = await ac.post(TIME_SERIES_URL, data=maq.json())
         assert response.status_code == 504
 
 

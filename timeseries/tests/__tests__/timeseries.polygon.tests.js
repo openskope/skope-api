@@ -26,8 +26,8 @@ describe("When a GET request selects from a region exactly covering the northwes
 	    		        [-123,45]
 	    		    	]]
 	    		},
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -66,8 +66,8 @@ describe("When a GET request selects from a region exactly covering the northwes
 	    		        [-123,45]
 	    		    	]]
 	    		},
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -106,8 +106,8 @@ describe("When a GET request selects from a region of zero area from the uint16 
 	    		    	[-122.5,45.5],
 	    		    	]]
 	    		},
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -142,8 +142,8 @@ describe("When a GET request selects from a region of zero area from the float32
 	    		    	[-122.5,45.5],
 	    		    	]]
 	    		},
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -179,8 +179,8 @@ describe("When a GET request selects from a 2x2 pixel region that intersects a 2
     		        [-123,46]
 	    		]]
 	    		},
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -219,8 +219,8 @@ describe("When a GET request selects from a 2x2 pixel region that intersects a 2
     		        [-123,46]
 	    		    	]]
 	    		},
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -260,8 +260,8 @@ describe("When a GET request selects a region just outside coverage of the uint1
 						[-124,45]
 					]]
 	    		},
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -296,8 +296,8 @@ describe("When a GET request selects a region just outside coverage of the float
     		        [-124,45]
     		    	]]
 	    		},
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -332,8 +332,8 @@ describe("When a GET request selects a region well outside coverage of the float
     		        [-104,37]
     		    	]]
 	    		},
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -368,8 +368,8 @@ describe("When a GET request selects exactly the top-left corner pixel of the ui
 	    		        [-123.0,45]
 	    		    	]]
 	    		},
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -408,8 +408,8 @@ describe("When a GET request selects exactly the top-left corner pixel of the fl
 	    		        [-123.0,45]
 	    		    	]]
 	    		},
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -449,8 +449,8 @@ describe("When a GET request selects 1/4 of the top-left corner pixel of the uin
 	    		        [-123.0,45]
 	    		    	]]
 	    		},
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -489,8 +489,8 @@ describe("When a GET request selects 1/4 of the top-left corner pixel of the flo
 	    		        [-123.0,45]
 	    		    	]]
 	    		},
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -531,8 +531,8 @@ describe("When a GET request selects from a region exactly covering the 2x2 pixe
 	    		        [-123,42]
 	    		    	]]
 	    		},
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -571,8 +571,8 @@ describe("When a GET request selects from a region exactly covering the 2x2 pixe
 	    		        [-120,42]
 	    		    	]]
 	    		},
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -611,8 +611,8 @@ describe("When a GET request selects from a region exactly covering the 2x2 pixe
 	    		        [-120,42]
 	    		    	]]
 	    		},
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -648,8 +648,8 @@ describe("When a GET request selects from a region exactly covering the 2x2 pixe
 	    		        [-120,43]
 	    		    	]]
 	    		},
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
@@ -689,8 +689,8 @@ describe("When a GET request selects from a region exactly covering the 2x2 pixe
 	    		        [-120,44]
 	    		    	]]
 	    		},
-	    		start: 0,
-	    		end: 4
+	    		start: 1,
+	    		end: 5
 		    }
 		});
     });
