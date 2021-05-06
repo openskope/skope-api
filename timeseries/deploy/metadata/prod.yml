@@ -1,23 +1,24 @@
-lbda:
-  time_range:
-    gte: '0001-01-01'
-    lte: '2017-01-01'
-  resolution: 'year'
-  variables:
-    - palmer_modified_drought_index
-srtm:
-  time_range:
-    gte: '2009-01-01'
-    lte: '2009-01-01'
-  resolution: 'year'
-  variables:
-    - srtm_elevation
-paleocar:
-  time_range:
-    gte: '0001-01-01'
-    lte: '2000-01-01'
-  resolution: 'year'
-  variables:
-    - growing_degree_days
-    - maize_farming_niche
-    - water_year_precipitation
+repos:
+  lbda:
+    time_range:
+      gte: '0001-01-01'
+      lte: '2017-01-01'
+    resolution: 'year'
+    variables:
+      - palmer_modified_drought_index
+  srtm:
+    time_range:
+      gte: '2009-01-01'
+      lte: '2009-01-01'
+    resolution: 'year'
+    variables:
+      - srtm_elevation
+  paleocar:
+    time_range:
+      gte: '0001-01-01'
+      lte: '2000-01-01'
+    resolution: 'year'
+    variables:
+      - growing_degree_days
+      - maize_farming_niche
+      - water_year_precipitation

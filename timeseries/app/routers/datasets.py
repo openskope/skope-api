@@ -22,27 +22,20 @@ from rasterio.windows import Window
 from scipy import stats
 from shapely import geometry as geom
 from shapely.ops import orient
-from app.settings import settings
 from typing import List, Optional, Tuple, Union, Literal, Sequence
 from datetime import date
 
 from shapely.validation import explain_validity
 
-from app.exceptions import SelectedAreaOutOfBoundsError, SelectedAreaPolygonIsNotValid, TimeseriesTimeoutError, \
-    DatasetNotFoundError, SelectedAreaPolygonIsTooLarge
+from app.exceptions import (SelectedAreaOutOfBoundsError, SelectedAreaPolygonIsNotValid, TimeseriesTimeoutError,
+    DatasetNotFoundError, SelectedAreaPolygonIsTooLarge)
+from app.settings import settings
 from app.stores import dataset_repo, BandRange
 
-from timeseries.app.stores import DatasetMeta, TimeRange, YearRange
+from app.stores import DatasetVariableMeta, TimeRange, OptionalTimeRange
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=['datasets'], prefix='/timeseries-service/api')
-
-
-class YearlySeries:
-    def __init__(self, time_range: YearRange, values: np.ndarray):
-        self.time_range = time_range
-        self.values = values
-
 
 class ZonalStatistic(str, Enum):
     mean = 'mean'
@@ -322,7 +315,7 @@ class ZScoreFixedInterval(BaseModel):
         }
 
 
-class BaseAnalysisQuery(BaseModel):
+class TimeseriesQuery(BaseModel):
     dataset_id: str = Field(..., regex='^[\w-]+$', description='Dataset ID')
     variable_id: str = Field(..., regex='^[\w-]+$', description='Variable ID (unique to a particular dataset)')
     selected_area: Union[Point, Polygon]
@@ -330,7 +323,7 @@ class BaseAnalysisQuery(BaseModel):
     max_processing_time: int = Field(settings.max_processing_time, ge=0, le=settings.max_processing_time)
     transform: Union[ZScoreMovingInterval, ZScoreFixedInterval, NoTransform]
     requested_series: List[SeriesOptions]
-    time_range: Tuple[date, date]
+    time_range: OptionalTimeRange
 
     @property
     def transforms(self):
@@ -339,17 +332,16 @@ class BaseAnalysisQuery(BaseModel):
     def extract_slice(self, dataset: rasterio.DatasetReader, band_range: Sequence[int]):
         return self.selected_area.extract(dataset, self.zonal_statistic, band_range=band_range)
 
-    def get_band_range_to_extract(self, dataset_meta: DatasetMeta):
-        time_range_available = dataset_meta.time_range
+    def get_band_range_to_extract(self, dataset_meta: DatasetVariableMeta):
         br_avail = dataset_meta.find_band_range(self.time_range)
-        desired_br = time_range_available.find_band_range(dataset_meta).to_numpy_pair()
+        desired_br = br_avail.to_numpy_pair()
         for transform in self.transforms:
             desired_br += transform.get_desired_band_range_adjustment()
         compromise_br = br_avail.intersect(
             BandRange.from_numpy_pair(desired_br))
         return compromise_br
 
-    def get_time_range_after_transforms(self, dataset_meta: DatasetMeta, extract_br: BandRange) -> TimeRange:
+    def get_time_range_after_transforms(self, dataset_meta: DatasetVariableMeta, extract_br: BandRange) -> TimeRange:
         """Get the year range after values after applying transformations"""
         inds = extract_br.to_numpy_pair()
         for transform in self.transforms:
@@ -365,10 +357,10 @@ class BaseAnalysisQuery(BaseModel):
         return series
 
     def extract_sync(self):
-        dataset_meta = dataset_repo.get_dataset_meta(
+        dataset_meta = dataset_repo.get_dataset_variable_meta(
             dataset_id=self.dataset_id,
             variable_id=self.variable_id,
-            resolution=self.resolution)
+        )
         band_range = self.get_band_range_to_extract(dataset_meta)
         with rasterio.Env():
             with rasterio.open(dataset_meta.p) as ds:
@@ -378,15 +370,15 @@ class BaseAnalysisQuery(BaseModel):
                 area = res['area']
         txs = self.transform.apply(xs)
         series = self.apply_series(txs)
-        yr = self.get_time_range_after_transforms(dataset_meta.time_range, band_range)
-        return {
-            'area': area,
-            'n_cells': n_cells,
-            'series': series,
-            'time_range': yr,
-            'transform': self.transform,
-            'zonal_statistic': self.zonal_statistic
-        }
+        time_range = self.get_time_range_after_transforms(dataset_meta, band_range)
+        return TimeseriesResponse(
+            area=area,
+            n_cells=n_cells,
+            series=series,
+            time_range=time_range,
+            transform=self.transform,
+            zonal_statistic=self.zonal_statistic
+        )
 
     async def extract(self):
         start_time = time.time()
@@ -405,50 +397,13 @@ class BaseAnalysisQuery(BaseModel):
                 processing_time=process_time
             ) from e
 
-
-class OptionalYearRange(BaseModel):
-    gte: Optional[int]
-    lte: Optional[int]
-
-    def normalize(self, time_range_available: YearRange) -> YearRange:
-        return YearRange(
-            gte=self.gte if self.gte is not None else time_range_available.gte,
-            lte=self.lte if self.lte is not None else time_range_available.lte
-        )
-
-    class Config:
-        schema_extra = {
-            "example": YearRange.Config.schema_extra["example"]
-        }
-
-
-class OptionalYearMonthRange(BaseModel):
-    gte: Optional[YearMonth]
-    lte: Optional[YearMonth]
-
-    def normalize(self, time_range_available: YearMonthRange) -> YearMonthRange:
-        return YearMonthRange(
-            gte=self.gte if self.gte is not None else time_range_available.gte,
-            lte=self.lte if self.lte is not None else time_range_available.lte
-        )
-
-    class Config:
-        schema_extra = {
-            "example": YearMonthRange.Config.schema_extra["example"]
-        }
-
-
-class MonthAnalysisQuery(BaseAnalysisQuery):
-    resolution: Literal['month'] = 'month'
-    time_range: OptionalYearMonthRange
-
     class Config:
         schema_extra = {
             "moving_interval_example": {
                 "resolution": "month",
                 "dataset_id": "monthly_5x5x60_dataset",
                 "variable_id": "float32_variable",
-                "time_range": OptionalYearMonthRange.Config.schema_extra['example'],
+                "time_range": OptionalTimeRange.Config.schema_extra['example'],
                 "selected_area": Point.Config.schema_extra['example'],
                 "zonal_statistic": ZonalStatistic.mean.value,
                 "transform": ZScoreMovingInterval.Config.schema_extra['example'],
@@ -458,7 +413,7 @@ class MonthAnalysisQuery(BaseAnalysisQuery):
                 "resolution": "month",
                 "dataset_id": "monthly_5x5x60_dataset",
                 "variable_id": "float32_variable",
-                "time_range": OptionalYearMonthRange.Config.schema_extra['example'],
+                "time_range": OptionalTimeRange.Config.schema_extra['example'],
                 "selected_area": Point.Config.schema_extra['example'],
                 "zonal_statistic": ZonalStatistic.mean.value,
                 "transform": ZScoreFixedInterval.Config.schema_extra['example'],
@@ -470,49 +425,12 @@ class MonthAnalysisQuery(BaseAnalysisQuery):
 Transform = Union[ZScoreMovingInterval, ZScoreFixedInterval, NoTransform]
 
 
-class YearAnalysisQuery(BaseAnalysisQuery):
-    resolution: Literal['year'] = 'year'
-    time_range: OptionalYearRange
-
-    class Config:
-        schema_extra = {
-            "moving_interval_example": {
-                "resolution": "year",
-                "dataset_id": "annual_5x5x5_dataset",
-                "variable_id": "float32_variable",
-                "time_range": OptionalYearRange.Config.schema_extra['example'],
-                "selected_area": Point.Config.schema_extra['example'],
-                "zonal_statistic": ZonalStatistic.mean.value,
-                "transform": ZScoreMovingInterval.Config.schema_extra['example'],
-                "requested_series": [SeriesOptions.Config.schema_extra['example']]
-            },
-            "fixed_interval_example": {
-                "resolution": "year",
-                "dataset_id": "annual_5x5x5_dataset",
-                "variable_id": "float32_variable",
-                "time_range": OptionalYearRange.Config.schema_extra['example'],
-                "selected_area": Point.Config.schema_extra['example'],
-                "zonal_statistic": ZonalStatistic.mean.value,
-                "transform": ZScoreFixedInterval.Config.schema_extra['example'],
-                "requested_series": [SeriesOptions.Config.schema_extra['example']]
-            }
-        }
-
-
-class BaseAnalysisResponse(BaseModel):
+class TimeseriesResponse(BaseModel):
     area: float = Field(..., description='area of cells in selected area in square meters')
     n_cells: int = Field(..., description='number of cells in selected area')
     series: List[Series]
     transform: Transform
     zonal_statistic: ZonalStatistic
-
-
-class YearAnalysisResponse(BaseAnalysisResponse):
-    time_range: YearRange
-
-
-class MonthAnalysisResponse(BaseAnalysisResponse):
-    time_range: YearMonthRange
 
 
 class TimeseriesV1Request(BaseModel):
@@ -523,53 +441,70 @@ class TimeseriesV1Request(BaseModel):
     end: Optional[str]
     timeout: int = settings.max_processing_time
 
-    def try_to_year_range(self, available_time_range: YearRange) -> YearRange:
-        return OptionalYearRange(gte=self.start, lte=self.end).normalize(available_time_range)
+    def _to_date_from_y(self, year) -> date:
+        return date(year=int(year), month=1, day=1)
+    
+    def _to_date_from_ym(self, year, month) -> date:
+        return date(year=int(year), month=int(month), day=1)
 
-    def try_to_year_month_range(self, available_time_range: YearMonthRange) -> YearMonthRange:
-        gte_year, gte_month = self.start.split('-', 1)
-        lte_year, lte_month = self.end.split('-', 1)
-        return OptionalYearMonthRange(
-            gte=YearMonth(year=gte_year, month=gte_month),
-            lte=YearMonth(year=lte_year, month=lte_month)
-        ).normalize(available_time_range)
+    def to_time_range(self, dataset_meta: DatasetVariableMeta) -> TimeRange:
+        """
+        converts start / end string inputs incoming from the request into OptionalTimeRange dates
+        1 -> 0001-01-01
+        4 -> 0004-01-01
+        '0001' -> 0001-01-01
+        '2000-01' -> '2000-01-01'
+        '2000-04-03' -> '2000-04-03'
+        :param dataset_meta:
+        :return:
+        """
+        if self.start is None:
+            gte = dataset_meta.time_range.gte
+        else:
+            split_start = self.start.split('-', 1)
+            if len(split_start) == 1:
+                gte = self._to_date_from_y(split_start[0])
+            elif len(split_start) == 2:
+                gte = self._to_date_from_ym(split_start[0], split_start[1])
 
-    def to_year_month_str(self, ym: YearMonth) -> str:
-        return f'{ym.year:04}-{ym.month:02}'
+        if self.end is None:
+            lte = dataset_meta.time_range.lte
+        else:
+            split_end = self.end.split('-', 1)
+            if len(split_end) == 1:
+                lte = self._to_date_from_y(split_end[0])
+            elif len(split_end) == 2:
+                lte = self._to_date_from_ym(split_end[0], split_end[1])
 
-    def to_year_str(self, y: int) -> str:
-        return f'{y}'
+        otr = OptionalTimeRange(
+            gte=gte,
+            lte=lte
+        )
+        return dataset_meta.normalize_time_range(otr)
 
     async def extract(self):
-        try:
-            dataset_meta = dataset_repo.get_dataset_meta(
-                dataset_id=self.datasetId,
-                variable_id=self.variableName,
-                resolution='year'
-            )
-            time_range = self.try_to_year_range(dataset_meta.time_range)
-            query_cls = YearAnalysisQuery
-            start = self.to_year_str(time_range.gte)
-            end = self.to_year_str(time_range.lte)
-        except DatasetNotFoundError:
-            dataset_meta = dataset_repo.get_dataset_meta(
-                dataset_id=self.datasetId,
-                variable_id=self.variableName,
-                resolution='month'
-            )
-            time_range = self.try_to_year_month_range(dataset_meta.time_range)
-            query_cls = MonthAnalysisQuery
-            start = self.to_year_month_str(time_range.gte)
-            end = self.to_year_month_str(time_range.lte)
+        dataset_meta = dataset_repo.get_dataset_variable_meta(
+            dataset_id=self.datasetId,
+            variable_id=self.variableName
+        )
+        time_range = self.to_time_range(dataset_meta)
+        start = time_range.gte.isoformat()
+        end = time_range.lte.isoformat()
 
-        query = query_cls(
+        query = TimeseriesQuery(
             resolution=dataset_meta.resolution,
             dataset_id=self.datasetId,
             variable_id=self.variableName,
             selected_area=self.boundaryGeometry,
             zonal_statistic=ZonalStatistic.mean,
             time_range=time_range,
-            transforms=[],
+            transform=NoTransform(),
+            requested_series=[
+                SeriesOptions(
+                    name='original',
+                    smoother=NoSmoother()
+                )
+            ],
             max_processing_time=self.timeout
         )
         data = await query.extract()
@@ -579,26 +514,17 @@ class TimeseriesV1Request(BaseModel):
             'boundaryGeometry': self.boundaryGeometry,
             'start': start,
             'end': end,
-            'values': data['values']
+            'values': data.series[0].values
         }
 
 
 @router.post(
-    "/v2/datasets/monthly",
-    response_model=MonthAnalysisResponse,
-    operation_id='retrieveMonthlyTimeseries')
-async def extract_monthly_timeseries(data: MonthAnalysisQuery) -> MonthAnalysisResponse:
-    """Retrieve an analysis of a monthly dataset"""
-    return MonthAnalysisResponse(**await data.extract())
-
-
-@router.post(
-    "/v2/datasets/yearly",
-    response_model=YearAnalysisResponse,
-    operation_id='retrieveYearlyTimeseries')
-async def extract_yearly_timeseries(data: YearAnalysisQuery) -> YearAnalysisResponse:
-    """Retrieve an analysis of a yearly dataset"""
-    return YearAnalysisResponse(**await data.extract())
+    "/v2/timeseries",
+    response_model=TimeseriesResponse,
+    operation_id='retrieveTimeseries')
+async def extract_monthly_timeseries(data: TimeseriesQuery) -> TimeseriesResponse:
+    """ Retrieve dataset analysis """
+    return await data.extract()
 
 
 @router.post('/v1/timeseries')
