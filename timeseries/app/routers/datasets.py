@@ -533,7 +533,7 @@ class TimeseriesV1Request(BaseModel):
     "/v2/timeseries",
     response_model=TimeseriesResponse,
     operation_id='retrieveTimeseries')
-async def extract_monthly_timeseries(data: TimeseriesQuery) -> TimeseriesResponse:
+async def extract_timeseries(data: TimeseriesQuery) -> TimeseriesResponse:
     """ Retrieve dataset analysis """
     return await data.extract()
 
