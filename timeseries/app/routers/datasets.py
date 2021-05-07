@@ -384,6 +384,8 @@ class TimeseriesQuery(BaseModel):
             band_range=band_range
         )
         return TimeseriesResponse(
+            dataset_id=self.dataset_id,
+            variable_id=self.variable_id,
             area=area,
             n_cells=n_cells,
             series=series,
@@ -437,6 +439,8 @@ Transform = Union[ZScoreMovingInterval, ZScoreFixedInterval, NoTransform]
 
 
 class TimeseriesResponse(BaseModel):
+    dataset_id: str
+    variable_id: str
     area: float = Field(..., description='area of cells in selected area in square meters')
     n_cells: int = Field(..., description='number of cells in selected area')
     series: List[Series]
