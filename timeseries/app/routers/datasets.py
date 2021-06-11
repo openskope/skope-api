@@ -12,6 +12,7 @@ import rasterio
 
 from enum import Enum
 
+import scipy.stats
 from fastapi import APIRouter
 from geojson_pydantic import geometries as geompyd
 from numba import prange
@@ -36,6 +37,7 @@ from app.stores import DatasetVariableMeta, TimeRange, OptionalTimeRange
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=['datasets'], prefix='/timeseries-service/api')
+
 
 class ZonalStatistic(str, Enum):
     mean = 'mean'
@@ -241,7 +243,7 @@ class SeriesOptions(BaseModel):
         return self.smoother.get_desired_band_range_adjustment()
 
     def apply(self, xs: np.array, time_range: TimeRange) -> 'Series':
-        values = [None if x is None or math.isnan(x) else x for x in self.smoother.apply(xs).tolist()]
+        values = [None if x is math.isnan(x) else x for x in self.smoother.apply(xs).tolist()]
         return Series(options=self, time_range=time_range, values=values)
 
     class Config:
@@ -272,10 +274,13 @@ class NoTransform(BaseModel):
     """A no-op transform to the timeseries"""
     type: Literal['NoTransform'] = 'NoTransform'
 
+    def get_desired_band_range(self, dataset_meta: DatasetVariableMeta) -> Optional[BandRange]:
+        return None
+
     def get_desired_band_range_adjustment(self):
         return np.array([0, 0])
 
-    def apply(self, xs):
+    def apply(self, xs, txs):
         return xs
 
 
@@ -284,10 +289,13 @@ class ZScoreMovingInterval(BaseModel):
     type: Literal['ZScoreMovingInterval'] = 'ZScoreMovingInterval'
     width: int = Field(..., description='number of prior years (or months) to use in the moving window', ge=0, le=200)
 
+    def get_desired_band_range(self, dataset_meta: DatasetVariableMeta) -> Optional[BandRange]:
+        return None
+
     def get_desired_band_range_adjustment(self):
         return np.array([-self.width, 0])
 
-    def apply(self, xs):
+    def apply(self, xs, txs):
         return rolling_z_score(xs, self.width)
 
     class Config:
@@ -301,12 +309,21 @@ class ZScoreMovingInterval(BaseModel):
 
 class ZScoreFixedInterval(BaseModel):
     type: Literal['ZScoreFixedInterval'] = 'ZScoreFixedInterval'
+    time_range: Optional[TimeRange]
+
+    def get_desired_band_range(self, dataset_meta: DatasetVariableMeta) -> Optional[BandRange]:
+        return dataset_meta.find_band_range(self.time_range) if self.time_range else None
 
     def get_desired_band_range_adjustment(self):
         return np.array([0, 0])
 
-    def apply(self, xs):
-        return stats.zscore(xs)
+    def apply(self, xs, txs):
+        if self.time_range is None:
+            return scipy.stats.zscore(xs)
+        else:
+            mean_txs = np.mean(txs)
+            std_txs = np.std(txs)
+            return (xs - mean_txs)/std_txs
 
     class Config:
         schema_extra = {
@@ -331,6 +348,13 @@ class TimeseriesQuery(BaseModel):
 
     def extract_slice(self, dataset: rasterio.DatasetReader, band_range: Sequence[int]):
         return self.selected_area.extract(dataset, self.zonal_statistic, band_range=band_range)
+
+    def get_band_ranges_for_transform(self, dataset_meta: DatasetVariableMeta) -> BandRange:
+        """Get the band range range to extract from the raster file"""
+        br_avail = dataset_meta.find_band_range(dataset_meta.time_range)
+        br_query = self.transform.get_desired_band_range(dataset_meta)
+        compromise_br = br_avail.intersect(br_query)
+        return compromise_br
 
     def get_band_range_to_extract(self, dataset_meta: DatasetVariableMeta) -> BandRange:
         """Get the band range range to extract from the raster file"""
@@ -371,13 +395,15 @@ class TimeseriesQuery(BaseModel):
             variable_id=self.variable_id,
         )
         band_range = self.get_band_range_to_extract(dataset_meta)
+        band_range_transform = self.get_band_ranges_for_transform(dataset_meta)
         with rasterio.Env():
             with rasterio.open(dataset_meta.p) as ds:
                 res = self.extract_slice(ds, band_range=band_range)
                 xs = res['data']
                 n_cells = res['n_cells']
                 area = res['area']
-        txs = self.transform.apply(xs)
+                transform_xs = self.extract_slice(ds, band_range=band_range_transform)['data'] if band_range_transform else None
+        txs = self.transform.apply(xs, transform_xs)
         series = self.apply_series(
             txs,
             dataset_meta=dataset_meta,
