@@ -353,7 +353,7 @@ class TimeseriesQuery(BaseModel):
         """Get the band range range to extract from the raster file"""
         br_avail = dataset_meta.find_band_range(dataset_meta.time_range)
         br_query = self.transform.get_desired_band_range(dataset_meta)
-        compromise_br = br_avail.intersect(br_query)
+        compromise_br = br_avail.intersect(br_query) if br_query else None
         return compromise_br
 
     def get_band_range_to_extract(self, dataset_meta: DatasetVariableMeta) -> BandRange:
