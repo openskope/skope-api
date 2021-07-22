@@ -16,7 +16,7 @@ import scipy.stats
 from fastapi import APIRouter
 from geojson_pydantic import geometries as geompyd
 from numba import prange
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from rasterio.features import shapes
 from rasterio.mask import raster_geometry_mask
 from rasterio.windows import Window
@@ -182,10 +182,7 @@ class WindowType(str, Enum):
             return BandRange(gte=br.gte - width, lte=br.lte)
 
     def get_window_size(self, width):
-        if self == self.centered:
-            return width * 2 + 1
-        else:
-            return width + 1
+        return width
 
 
 class MovingAverageSmoother(Smoother):
@@ -194,15 +191,24 @@ class MovingAverageSmoother(Smoother):
     width: int = Field(
         ...,
         description="number of years (or months) from current time to use in the moving window",
-        ge=0,
+        ge=1,
         le=200
     )
 
+    @validator('width')
+    def width_is_valid_for_window_type(cls, value, values):
+        if 'method' not in values:
+            return value
+        method = values['method']
+        if method == WindowType.centered and value % 2 == 0:
+            raise ValueError('window width must be odd for centered windows')
+        return value
+
     def get_desired_band_range_adjustment(self):
         if self.method == self.method.centered:
-            return np.array([-self.width, self.width])
+            return np.array([-self.width + 1, self.width - 1])
         else:
-            return np.array([-self.width, 0])
+            return np.array([-self.width + 1, 0])
 
     def apply(self, xs: np.array) -> np.array:
         window_size = self.method.get_window_size(self.width)
