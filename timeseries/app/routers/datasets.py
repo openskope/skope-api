@@ -182,7 +182,7 @@ class WindowType(str, Enum):
             return BandRange(gte=br.gte - width, lte=br.lte)
 
     def get_window_size(self, width):
-        return width
+        return width + 1
 
 
 class MovingAverageSmoother(Smoother):
@@ -191,7 +191,7 @@ class MovingAverageSmoother(Smoother):
     width: int = Field(
         ...,
         description="number of years (or months) from current time to use in the moving window",
-        ge=1,
+        ge=0,
         le=200
     )
 
@@ -200,15 +200,15 @@ class MovingAverageSmoother(Smoother):
         if 'method' not in values:
             return value
         method = values['method']
-        if method == WindowType.centered and value % 2 == 0:
-            raise ValueError('window width must be odd for centered windows')
+        if method == WindowType.centered and value % 2 == 1:
+            raise ValueError('window width must be even for centered windows')
         return value
 
     def get_desired_band_range_adjustment(self):
         if self.method == self.method.centered:
-            return np.array([-self.width + 1, self.width - 1])
+            return np.array([-(self.width // 2), self.width // 2])
         else:
-            return np.array([-self.width + 1, 0])
+            return np.array([-self.width, 0])
 
     def apply(self, xs: np.array) -> np.array:
         window_size = self.method.get_window_size(self.width)
