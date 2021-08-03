@@ -7,12 +7,14 @@ from concurrent.futures.thread import ThreadPoolExecutor
 import numba
 import numpy as np
 import math
+import pandas as pd
 import pyproj
 import rasterio
 
 from enum import Enum
 
 import scipy.stats
+from datetime import datetime
 from fastapi import APIRouter
 from geojson_pydantic import geometries as geompyd
 from numba import prange
@@ -249,9 +251,9 @@ class SeriesOptions(BaseModel):
     def get_desired_band_range_adjustment(self):
         return self.smoother.get_desired_band_range_adjustment()
 
-    def apply(self, xs: np.array, time_range: TimeRange) -> 'Series':
-        values = [None if x is math.isnan(x) else x for x in self.smoother.apply(xs).tolist()]
-        return Series(options=self, time_range=time_range, values=values)
+    def apply(self, xs: np.array, time_range: TimeRange) -> pd.Series:
+        values = self.smoother.apply(xs)
+        return pd.Series(values, index=pd.period_range(start=time_range.gte, end=time_range.lte, freq='A'))
 
     class Config:
         schema_extra = {
@@ -391,11 +393,20 @@ class TimeseriesQuery(BaseModel):
         return yr
 
     def apply_series(self, xs, dataset_meta, band_range):
-        series = []
+        series_list = []
+        gte = datetime.fromordinal(self.time_range.gte.toordinal())
+        lte = datetime.fromordinal(self.time_range.lte.toordinal())
         for series_options in self.requested_series:
-            time_range = self.get_time_range_after_transforms(series_options, dataset_meta, band_range)
-            series.append(series_options.apply(xs, time_range))
-        return series
+            tr = self.get_time_range_after_transforms(series_options, dataset_meta, band_range)
+            series = series_options.apply(xs, tr).loc[gte:lte]
+            compromise_tr = tr.intersect(self.time_range)
+            series = Series(
+                options=series_options,
+                time_range=compromise_tr,
+                values=[None if x is math.isnan(x) else x for x in series.tolist()]
+            )
+            series_list.append(series)
+        return series_list
 
     def extract_sync(self):
         dataset_meta = dataset_repo.get_dataset_variable_meta(

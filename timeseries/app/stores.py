@@ -73,6 +73,9 @@ class TimeRange(BaseModel):
             raise TimeRangeInvalid()
         return values
 
+    def intersect(self, tr: 'TimeRange') -> 'TimeRange':
+        return TimeRange(gte=max(self.gte, tr.gte), lte=min(self.lte, tr.lte))
+
     class Config:
         schema_extra = {
             'example': {

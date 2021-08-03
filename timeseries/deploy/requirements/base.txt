@@ -2,6 +2,7 @@ python-dateutil
 fastapi
 geojson_pydantic
 numba
+pandas
 pyproj
 pyyaml
 rasterio
