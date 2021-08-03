@@ -182,7 +182,7 @@ class WindowType(str, Enum):
             return BandRange(gte=br.gte - width, lte=br.lte)
 
     def get_window_size(self, width):
-        return width + 1
+        return width
 
 
 class MovingAverageSmoother(Smoother):
@@ -191,7 +191,7 @@ class MovingAverageSmoother(Smoother):
     width: int = Field(
         ...,
         description="number of years (or months) from current time to use in the moving window",
-        ge=0,
+        ge=1,
         le=200
     )
 
@@ -200,11 +200,12 @@ class MovingAverageSmoother(Smoother):
         if 'method' not in values:
             return value
         method = values['method']
-        if method == WindowType.centered and value % 2 == 1:
-            raise ValueError('window width must be even for centered windows')
+        if method == WindowType.centered and value % 2 == 0:
+            raise ValueError('window width must be odd for centered windows')
         return value
 
     def get_desired_band_range_adjustment(self):
+        logger.info(f'width = {self.width}')
         if self.method == self.method.centered:
             return np.array([-(self.width // 2), self.width // 2])
         else:
@@ -371,11 +372,12 @@ class TimeseriesQuery(BaseModel):
         for series in self.requested_series:
             candidate_br = transform_br + \
                            series.get_desired_band_range_adjustment()
-            print(f'candidate_br = {candidate_br}')
+            logger.info(f'candidate_br = {candidate_br}')
             desired_br = desired_br.union(candidate_br)
 
         compromise_br = br_avail.intersect(
             BandRange.from_numpy_pair(desired_br))
+        logger.info(f'compromise_br = {compromise_br}')
         return compromise_br
 
     def get_time_range_after_transforms(self, series_options: SeriesOptions, dataset_meta: DatasetVariableMeta, extract_br: BandRange) -> TimeRange:
