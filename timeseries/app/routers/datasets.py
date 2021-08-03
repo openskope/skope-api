@@ -18,7 +18,7 @@ from datetime import datetime
 from fastapi import APIRouter
 from geojson_pydantic import geometries as geompyd
 from numba import prange
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, validator, PrivateAttr
 from rasterio.features import shapes
 from rasterio.mask import raster_geometry_mask
 from rasterio.windows import Window
@@ -244,6 +244,10 @@ class NoSmoother(Smoother):
         }
 
 
+def values_to_period_range(name: str, values: np.array, time_range: TimeRange) -> pd.Series:
+    return pd.Series(values, name=name, index=pd.period_range(start=time_range.gte, end=time_range.lte, freq='A'))
+
+
 class SeriesOptions(BaseModel):
     name: str
     smoother: Union[MovingAverageSmoother, NoSmoother]
@@ -253,7 +257,7 @@ class SeriesOptions(BaseModel):
 
     def apply(self, xs: np.array, time_range: TimeRange) -> pd.Series:
         values = self.smoother.apply(xs)
-        return pd.Series(values, index=pd.period_range(start=time_range.gte, end=time_range.lte, freq='A'))
+        return values_to_period_range(self.name, values, time_range)
 
     class Config:
         schema_extra = {
@@ -268,6 +272,18 @@ class Series(BaseModel):
     options: SeriesOptions
     time_range: TimeRange
     values: List[Optional[float]]
+
+    @classmethod
+    def get_summary_stats(cls, xs, name):
+        return SummaryStat(
+            name=name,
+            mean=np.mean(xs),
+            median=np.median(xs),
+            stdev=np.std(xs)
+        )
+
+    def to_summary_stat(self):
+        return self.get_summary_stats(xs=self._s.to_numpy(), name=self.options.name)
 
 
 @numba.jit(nopython=True, nogil=True)
@@ -394,19 +410,28 @@ class TimeseriesQuery(BaseModel):
 
     def apply_series(self, xs, dataset_meta, band_range):
         series_list = []
+        pd_series_list = []
         gte = datetime.fromordinal(self.time_range.gte.toordinal())
         lte = datetime.fromordinal(self.time_range.lte.toordinal())
         for series_options in self.requested_series:
             tr = self.get_time_range_after_transforms(series_options, dataset_meta, band_range)
-            series = series_options.apply(xs, tr).loc[gte:lte]
+            pd_series = series_options.apply(xs, tr).loc[gte:lte]
+            pd_series_list.append(pd_series)
             compromise_tr = tr.intersect(self.time_range)
             series = Series(
                 options=series_options,
                 time_range=compromise_tr,
-                values=[None if x is math.isnan(x) else x for x in series.tolist()]
+                values=[None if x is math.isnan(x) else x for x in pd_series.tolist()],
             )
             series_list.append(series)
-        return series_list
+        return (series_list, pd_series_list)
+
+    def get_summary_stats(self, series, xs):
+        summary_stats = [Series.get_summary_stats(s, s.name) for s in series]
+        if not isinstance(self.transform, NoTransform):
+            # provide original summary stats for z-scores
+            summary_stats.insert(0, Series.get_summary_stats(xs, 'Original'))
+        return summary_stats
 
     def extract_sync(self):
         dataset_meta = dataset_repo.get_dataset_variable_meta(
@@ -423,7 +448,8 @@ class TimeseriesQuery(BaseModel):
                 area = res['area']
                 transform_xs = self.extract_slice(ds, band_range=band_range_transform)['data'] if band_range_transform else None
         txs = self.transform.apply(xs, transform_xs)
-        series = self.apply_series(
+
+        series, pd_series = self.apply_series(
             txs,
             dataset_meta=dataset_meta,
             band_range=band_range
@@ -435,7 +461,8 @@ class TimeseriesQuery(BaseModel):
             n_cells=n_cells,
             series=series,
             transform=self.transform,
-            zonal_statistic=self.zonal_statistic
+            zonal_statistic=self.zonal_statistic,
+            summary_stats=self.get_summary_stats(pd_series, xs),
         )
 
     async def extract(self):
@@ -483,11 +510,31 @@ class TimeseriesQuery(BaseModel):
 Transform = Union[ZScoreMovingInterval, ZScoreFixedInterval, NoTransform]
 
 
+class SummaryStat(BaseModel):
+    name: str
+    mean: float
+    median: float
+    stdev: float
+
+    @classmethod
+    def from_series(cls, series: List[Series]) -> List['SummaryStat']:
+        summary_statistics = []
+        for s in series:
+            summary_statistics.append(cls(
+                name=s.options.name,
+                mean=s._s.mean(),
+                median=s._s.median(),
+                stdev=s._s.std()
+            ))
+        return summary_statistics
+
+
 class TimeseriesResponse(BaseModel):
     dataset_id: str
     variable_id: str
     area: float = Field(..., description='area of cells in selected area in square meters')
     n_cells: int = Field(..., description='number of cells in selected area')
+    summary_stats: List[SummaryStat]
     series: List[Series]
     transform: Transform
     zonal_statistic: ZonalStatistic
