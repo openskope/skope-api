@@ -245,7 +245,9 @@ class NoSmoother(Smoother):
 
 
 def values_to_period_range(name: str, values: np.array, time_range: TimeRange) -> pd.Series:
-    return pd.Series(values, name=name, index=pd.period_range(start=time_range.gte, end=time_range.lte, freq='A'))
+    # FIXME: use periods instead of end to avoid an off-by-one
+    # between the number of values and the generated index
+    return pd.Series(values, name=name, index=pd.period_range(start=time_range.gte, periods=len(values), freq='A'))    
 
 
 class SeriesOptions(BaseModel):
