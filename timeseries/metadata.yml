@@ -1,5 +1,6 @@
 - id: lbda
   title: Living Blended Drought Atlas (LBDA) Version 2
+  ordering: 10
   description: >-
     A recalibrated reconstruction of United States Summer PMDI over the last
     2000 years. Updated half degree gridded Jun-Aug PMDI reconstructions from
@@ -92,6 +93,7 @@
   sourceUrl: 'https://www.ncdc.noaa.gov/paleo-search/study/22454'
 - id: srtm
   title: SRTM 90m Digital Elevation Model V4.1
+  ordering: 15
   originator: NASA Shuttle Radar Topographic Mission (SRTM)
   references: >-
     Jarvis A., H.I. Reuter, A. Nelson, E. Guevara, 2008, Hole-filled seamless
@@ -169,6 +171,7 @@
       styles: default
 - id: paleocar
   title: 'PaleoCAR: SW USA Paleoclimatic Reconstruction'
+  ordering: 1
   originator: 'Bocinsky, R.K.; Kohler, T.A.'
   references: >-
     Bocinsky, R. Kyle, and Timothy A. Kohler. 2014. A 2,000-year reconstruction
@@ -246,16 +249,6 @@
       lte: '2000'
       suffix: CE
   variables:
-    - id: paleocar_temperature
-      class: Temperature
-      name: 'Growing Degree Days (F, May-Sept)'
-      timeseriesServiceUri: paleocar_2/growing_degree_days
-      wmsLayer: 'SKOPE:paleocar_gdd_${year}-01-01'
-      min: 0
-      max: 10
-      visible: false
-      styles: 'default,raster'
-      description: 'F deg.; Growing Season: May–Sept.'
     - id: paleocar_precipitation
       class: Precipitation
       name: Water-year (Oct-Sept) Precipitation (mm)
@@ -266,6 +259,16 @@
       visible: false
       styles: 'default,raster'
       description: (prev. Oct through listed year Sept)
+    - id: paleocar_temperature
+      class: Temperature
+      name: 'Growing Degree Days (F, May-Sept)'
+      timeseriesServiceUri: paleocar_2/growing_degree_days
+      wmsLayer: 'SKOPE:paleocar_gdd_${year}-01-01'
+      min: 0
+      max: 10
+      visible: false
+      styles: 'default,raster'
+      description: 'F deg.; Growing Season: May–Sept.'
     - id: paleocar_crop_niche
       class: Crop Niche
       name: Maize Farming Niche (Direct Precip.)
