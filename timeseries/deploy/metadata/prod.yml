@@ -22,3 +22,10 @@ repos:
       - growing_degree_days
       - maize_farming_niche
       - water_year_precipitation
+  paleocar_v3:
+    time_range:
+      gte: '0103-01-01'
+      lte: '2000-01-01'
+    resolution: 'year'
+    variables:
+      - precipitation_water_year
