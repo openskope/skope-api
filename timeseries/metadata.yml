@@ -282,6 +282,7 @@
         In niche if Growing Season F GDD (as above) >= 1800 & Water Year Precip.
         (as above) >= 300 mm; otherwise out of niche.
 - id: paleocar_v3
+  ordering: 2
   title: 'PaleoCAR: SW USA Paleoclimatic Reconstruction'
   originator: 'Bocinsky, R.K.; Kohler, T.A.'
   references: >-
