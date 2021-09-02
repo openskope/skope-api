@@ -28,4 +28,7 @@ repos:
       lte: '2000-01-01'
     resolution: 'year'
     variables:
+      - growing_degree_days
       - precipitation_water_year
+      - precipitation_may_sept
+      - precipitation_annual_demosaic
