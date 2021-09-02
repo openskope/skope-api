@@ -76,7 +76,7 @@
 
     > fax: 303-497-6513
   variables:
-    - id: lbda_precitation
+    - id: palmer_modified_drought_index
       class: Precipitation
       name: Palmer Modified Drought Index
       wmsLayer: 'SKOPE:pmdi_${year}-01-01'
