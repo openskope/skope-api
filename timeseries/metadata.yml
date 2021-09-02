@@ -249,7 +249,7 @@
       lte: '2000'
       suffix: CE
   variables:
-    - id: paleocar_precipitation
+    - id: water_year_precipitation
       class: Precipitation
       name: Water-year (Oct-Sept) Precipitation (mm)
       timeseriesServiceUri: paleocar_2/water_year_precipitation
@@ -259,7 +259,7 @@
       visible: false
       styles: 'default,raster'
       description: (prev. Oct through listed year Sept)
-    - id: paleocar_temperature
+    - id: growing_degree_days
       class: Temperature
       name: 'Growing Degree Days (F, May-Sept)'
       timeseriesServiceUri: paleocar_2/growing_degree_days
@@ -269,7 +269,7 @@
       visible: false
       styles: 'default,raster'
       description: 'F deg.; Growing Season: May–Sept.'
-    - id: paleocar_crop_niche
+    - id: maize_farming_niche
       class: Crop Niche
       name: Maize Farming Niche (Direct Precip.)
       timeseriesServiceUri: paleocar_2/maize_farming_niche
@@ -361,7 +361,7 @@
       lte: '2000'
       suffix: CE
   variables:
-    - id: paleocar_temperature
+    - id: growing_degree_days
       class: Temperature
       name: 'Growing Degree Days (F, May-Sept)'
       timeseriesServiceUri: paleocar_v3/growing_degree_days
@@ -371,7 +371,7 @@
       visible: false
       styles: 'default,raster'
       description: 'F deg.; Growing Season: May–Sept.'
-    - id: paleocar_precipitation
+    - id: precipitation_water_year
       class: Precipitation
       name: Water-year (Oct-Sept) Precipitation (mm)
       timeseriesServiceUri: paleocar_v3/precipitation_water_year
@@ -381,7 +381,7 @@
       visible: false
       styles: 'default,raster'
       description: (prev. Oct through listed year Sept)
-    - id: paleocar_precipitation_may_sept
+    - id: precipitation_may_sept
       class: Precipitation (May-Sept)
       name: Water-year (May-Sept) Precipitation (mm)
       timeseriesServiceUri: paleocar_v3/precipitation_may_sept
@@ -391,7 +391,7 @@
       visible: false
       styles: 'default,raster'
       description: (May to September)
-    - id: paleocar_precipitation_annual
+    - id: precipitation_annual_demosaic
       class: Precipitation (May-Sept)
       name: Water-year (May-Sept) Precipitation (mm)
       timeseriesServiceUri: paleocar_v3/precipitation_annual_demosaic
