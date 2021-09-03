@@ -355,7 +355,7 @@
     resolutionLabel: yearly
     period:
       timeZero: 1
-      gte: '0001'
+      gte: '0103'
       lte: '2000'
       suffix: CE
   variables:
