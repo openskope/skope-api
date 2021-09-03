@@ -363,7 +363,7 @@
       class: Temperature
       name: 'Growing Degree Days (F, May-Sept)'
       timeseriesServiceUri: paleocar_v3/growing_degree_days
-      wmsLayer: 'SKOPE:paleocar_gdd_${year}-01-01'
+      wmsLayer: 'SKOPE:paleocar_v3_gdd_${year}'
       min: 0
       max: 10
       visible: false
