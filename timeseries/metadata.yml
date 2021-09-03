@@ -170,14 +170,13 @@
       max: 4500
       styles: default
 - id: paleocar
-  title: 'PaleoCAR: SW USA Paleoclimatic Reconstruction'
+  title: 'PaleoCAR: SW USA Paleoclimatic Reconstruction (V2)'
   ordering: 1
   originator: 'Bocinsky, R.K.; Kohler, T.A.'
   references: >-
     Bocinsky, R. Kyle, and Timothy A. Kohler. 2014. A 2,000-year reconstruction
     of the rain-fed maize agricultural niche in the US Southwest. Nature
-    Communications 5:5618. [doi:
-    10.1038/ncomms6618](https://doi.org/10.1038/ncomms6618).
+    Communications 5:5618. [doi:10.1038/ncomms6618](https://doi.org/10.1038/ncomms6618).
   contactInformation: >-
     > DOC/NOAA/NESDIS/NCEI
 
@@ -283,13 +282,12 @@
         (as above) >= 300 mm; otherwise out of niche.
 - id: paleocar_v3
   ordering: 2
-  title: 'PaleoCAR: SW USA Paleoclimatic Reconstruction'
+  title: 'PaleoCAR: SW USA Paleoclimatic Reconstruction (V3)'
   originator: 'Bocinsky, R.K.; Kohler, T.A.'
   references: >-
     Bocinsky, R. Kyle, and Timothy A. Kohler. 2014. A 2,000-year reconstruction
     of the rain-fed maize agricultural niche in the US Southwest. Nature
-    Communications 5:5618. [doi:
-    10.1038/ncomms6618](https://doi.org/10.1038/ncomms6618).
+    Communications 5:5618. [doi:10.1038/ncomms6618](https://doi.org/10.1038/ncomms6618).
   contactInformation: >-
     > DOC/NOAA/NESDIS/NCEI
 
@@ -382,7 +380,7 @@
       styles: 'default,raster'
       description: (prev. Oct through listed year Sept)
     - id: precipitation_may_sept
-      class: Precipitation (May-Sept)
+      class: Precipitation
       name: Water-year (May-Sept) Precipitation (mm)
       timeseriesServiceUri: paleocar_v3/precipitation_may_sept
       wmsLayer: 'SKOPE:paleocar_v3_ppt_may_sept_${year}'
@@ -392,8 +390,8 @@
       styles: 'default,raster'
       description: (May to September)
     - id: precipitation_annual_demosaic
-      class: Precipitation (May-Sept)
-      name: Water-year (May-Sept) Precipitation (mm)
+      class: Precipitation
+      name: Precipitation Annual Demosaic
       timeseriesServiceUri: paleocar_v3/precipitation_annual_demosaic
       wmsLayer: 'SKOPE:paleocar_v3_ppt_annual_${year}'
       min: 0
