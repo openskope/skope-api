@@ -359,16 +359,6 @@
       lte: '2000'
       suffix: CE
   variables:
-    - id: growing_degree_days
-      class: Temperature
-      name: 'Growing Degree Days (F, May-Sept)'
-      timeseriesServiceUri: paleocar_v3/growing_degree_days
-      wmsLayer: 'SKOPE:paleocar_v3_gdd_${year}'
-      min: 0
-      max: 10
-      visible: false
-      styles: 'default,raster'
-      description: 'F deg.; Growing Season: May–Sept.'
     - id: precipitation_water_year
       class: Precipitation
       name: Water-year (Oct-Sept) Precipitation (mm)
@@ -381,7 +371,7 @@
       description: (prev. Oct through listed year Sept)
     - id: precipitation_may_sept
       class: Precipitation
-      name: Water-year (May-Sept) Precipitation (mm)
+      name: Summer (May-Sept) Precipitation (mm)
       timeseriesServiceUri: paleocar_v3/precipitation_may_sept
       wmsLayer: 'SKOPE:paleocar_v3_ppt_may_sept_${year}'
       min: 0
@@ -391,7 +381,7 @@
       description: (May to September)
     - id: precipitation_annual_demosaic
       class: Precipitation
-      name: Precipitation Annual Demosaic
+      name: Annual Demosaic Precipitation
       timeseriesServiceUri: paleocar_v3/precipitation_annual_demosaic
       wmsLayer: 'SKOPE:paleocar_v3_ppt_annual_${year}'
       min: 0
@@ -399,3 +389,13 @@
       visible: false
       styles: 'default,raster'
       description: (prev. Oct through listed year Sept)
+    - id: growing_degree_days
+      class: Temperature
+      name: 'Growing Degree Days (F, May-Sept)'
+      timeseriesServiceUri: paleocar_v3/growing_degree_days
+      wmsLayer: 'SKOPE:paleocar_v3_gdd_${year}'
+      min: 0
+      max: 10
+      visible: false
+      styles: 'default,raster'
+      description: 'F deg.; Growing Season: May–Sept.'
