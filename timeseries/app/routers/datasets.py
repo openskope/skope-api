@@ -1,5 +1,4 @@
 import asyncio
-import itertools
 import logging
 import time
 from concurrent.futures.thread import ThreadPoolExecutor
@@ -13,25 +12,23 @@ import rasterio
 
 from enum import Enum
 
-import scipy.stats
 from datetime import datetime
 from fastapi import APIRouter
 from geojson_pydantic import geometries as geompyd
 from numba import prange
-from pydantic import BaseModel, Field, validator, PrivateAttr
+from pydantic import BaseModel, Field, validator
 from rasterio.features import shapes
 from rasterio.mask import raster_geometry_mask
 from rasterio.windows import Window
 from scipy import stats
 from shapely import geometry as geom
 from shapely.ops import orient
-from typing import List, Optional, Tuple, Union, Literal, Sequence
+from typing import List, Optional, Union, Literal, Sequence
 from datetime import date
 
 from shapely.validation import explain_validity
 
-from app.exceptions import (SelectedAreaOutOfBoundsError, SelectedAreaPolygonIsNotValid, TimeseriesTimeoutError,
-    DatasetNotFoundError, SelectedAreaPolygonIsTooLarge)
+from app.exceptions import (SelectedAreaOutOfBoundsError, SelectedAreaPolygonIsNotValid, TimeseriesTimeoutError, SelectedAreaPolygonIsTooLarge)
 from app.settings import settings
 from app.stores import dataset_repo, BandRange
 
@@ -65,8 +62,9 @@ def bounding_box(bounds) -> geom.Polygon:
 
 
 class Point(geompyd.Point):
+
     @staticmethod
-    def calculate_area(px: int, py:int, dataset: rasterio.DatasetReader):
+    def calculate_area(px: int, py: int, dataset: rasterio.DatasetReader):
         wgs84 = pyproj.Geod(ellps='WGS84')
         top_left = dataset.xy(row=py, col=px)
         bottom_right = dataset.xy(row=py + 1, col=px + 1)
@@ -115,14 +113,14 @@ class Polygon(geompyd.Polygon):
         if n_cells_per_full_chunk == 0:
             raise SelectedAreaPolygonIsTooLarge(n_cells=n_cells_per_band, max_cells=max_size)
         n_bands = len(band_range)
-        n = n_cells_per_band * n_bands # 650
-        n_full_chunks = (n // n_cells_per_full_chunk) # 650 // 625 = 1
+        n = n_cells_per_band * n_bands  # 650
+        n_full_chunks = (n // n_cells_per_full_chunk)  # 650 // 625 = 1
         n_bands_per_full_chunk = n_cells_per_full_chunk // n_cells_per_band
         offset = band_range.gte
         for i in range(n_full_chunks):
             band_indices = range(i*n_bands_per_full_chunk + offset, (i+1)*n_bands_per_full_chunk + offset)
             yield band_indices
-        n_last_bands = n_bands % (n_cells_per_full_chunk // n_cells_per_band) # 26 % (625 // 25) = 26 % 25 = 1
+        n_last_bands = n_bands % (n_cells_per_full_chunk // n_cells_per_band)  # 26 % (625 // 25) = 26 % 25 = 1
         if n_last_bands > 0:
             yield range(n_bands - n_last_bands + offset, n_bands + offset)
 
@@ -164,7 +162,7 @@ class Polygon(geompyd.Polygon):
             values = np.ma.array(data=data, mask=np.logical_or(np.equal(data, dataset.nodata), masked))
             lb = band_group.start + offset
             ub = band_group.stop + offset
-            r = zonal_func(values, axis=(1,2), dtype=np.float64)
+            r = zonal_func(values, axis=(1, 2), dtype=np.float64)
             result[lb:ub] = r
         return {'n_cells': n_cells, 'area': area, 'data': result}
 
@@ -247,7 +245,7 @@ class NoSmoother(Smoother):
 def values_to_period_range(name: str, values: np.array, time_range: TimeRange) -> pd.Series:
     # FIXME: use periods instead of end to avoid an off-by-one
     # between the number of values and the generated index
-    return pd.Series(values, name=name, index=pd.period_range(start=time_range.gte, periods=len(values), freq='A'))    
+    return pd.Series(values, name=name, index=pd.period_range(start=time_range.gte, periods=len(values), freq='A'))
 
 
 class SeriesOptions(BaseModel):
@@ -346,7 +344,7 @@ class ZScoreFixedInterval(BaseModel):
 
     def apply(self, xs, txs):
         if self.time_range is None:
-            return scipy.stats.zscore(xs)
+            return stats.zscore(xs)
         else:
             mean_txs = np.mean(txs)
             std_txs = np.std(txs)
@@ -361,8 +359,8 @@ class ZScoreFixedInterval(BaseModel):
 
 
 class TimeseriesQuery(BaseModel):
-    dataset_id: str = Field(..., regex='^[\w-]+$', description='Dataset ID')
-    variable_id: str = Field(..., regex='^[\w-]+$', description='Variable ID (unique to a particular dataset)')
+    dataset_id: str = Field(..., regex=r'^[\w-]+$', description='Dataset ID')
+    variable_id: str = Field(..., regex=r'^[\w-]+$', description='Variable ID (unique to a particular dataset)')
     selected_area: Union[Point, Polygon]
     zonal_statistic: ZonalStatistic
     max_processing_time: int = Field(settings.max_processing_time, ge=0, le=settings.max_processing_time)
@@ -390,8 +388,7 @@ class TimeseriesQuery(BaseModel):
         transform_br = br_query + self.transform.get_desired_band_range_adjustment()
         desired_br = transform_br
         for series in self.requested_series:
-            candidate_br = transform_br + \
-                           series.get_desired_band_range_adjustment()
+            candidate_br = transform_br + series.get_desired_band_range_adjustment()
             logger.info(f'candidate_br = {candidate_br}')
             desired_br = desired_br.union(candidate_br)
 
@@ -552,7 +549,7 @@ class TimeseriesV1Request(BaseModel):
 
     def _to_date_from_y(self, year) -> date:
         return date(year=int(year), month=1, day=1)
-    
+
     def _to_date_from_ym(self, year, month) -> date:
         return date(year=int(year), month=int(month), day=1)
 
