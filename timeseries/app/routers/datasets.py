@@ -275,16 +275,31 @@ class Series(BaseModel):
     values: List[Optional[float]]
 
     @classmethod
+    def summary_stat(cls, f, xs):
+        """
+        Summarize a series
+
+        :param f: a numpy nan removing function like np.nanmean etc
+        :param xs: a numpy array
+        :return: the summary statistic in json serializable form (nans are replaced with None
+        in the case where `xs` is all nan elements)
+        """
+        stat = f(xs)
+        stat = None if math.isnan(stat) else stat
+        return stat
+
+    @classmethod
     def get_summary_stats(cls, xs, name):
-        xs_mean = np.mean(xs)
-        xs_median = np.median(xs)
-        xs_stdev = np.std(xs)
-        return SummaryStat(
+        xs_mean = cls.summary_stat(np.nanmean, xs)
+        xs_median = cls.summary_stat(np.nanmedian, xs)
+        xs_stdev = cls.summary_stat(np.nanstd, xs)
+        ss = SummaryStat(
             name=name,
-            mean=None if math.isnan(xs_mean) else xs_mean,
-            median=None if math.isnan(xs_median) else xs_median,
-            stdev=None if math.isnan(xs_stdev) else xs_stdev
+            mean=xs_mean,
+            median=xs_median,
+            stdev=xs_stdev
         )
+        return ss
 
     def to_summary_stat(self):
         return self.get_summary_stats(xs=self._s.to_numpy(), name=self.options.name)
