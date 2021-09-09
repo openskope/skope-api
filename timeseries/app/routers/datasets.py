@@ -85,7 +85,8 @@ class Point(geompyd.Point):
         logger.info('extracting point: %s', self)
         px, py = dataset.index(self.coordinates[0], self.coordinates[1])
         logging.info('indices: %s', (px, py))
-        data = dataset.read(list(band_range), window=Window(px, py, 1, 1)).flatten()
+        data = dataset.read(list(band_range), window=Window(px, py, 1, 1), out_dtype=np.float64).flatten()
+        data[np.equal(data, dataset.nodata)] = np.nan
         area = self.calculate_area(px=px, py=py, dataset=dataset)
         return {
             'n_cells': 1,
@@ -275,11 +276,14 @@ class Series(BaseModel):
 
     @classmethod
     def get_summary_stats(cls, xs, name):
+        xs_mean = np.mean(xs)
+        xs_median = np.median(xs)
+        xs_stdev = np.std(xs)
         return SummaryStat(
             name=name,
-            mean=np.mean(xs),
-            median=np.median(xs),
-            stdev=np.std(xs)
+            mean=None if math.isnan(xs_mean) else xs_mean,
+            median=None if math.isnan(xs_median) else xs_median,
+            stdev=None if math.isnan(xs_stdev) else xs_stdev
         )
 
     def to_summary_stat(self):
@@ -417,10 +421,11 @@ class TimeseriesQuery(BaseModel):
             pd_series = series_options.apply(xs, tr).loc[gte:lte]
             pd_series_list.append(pd_series)
             compromise_tr = tr.intersect(self.time_range)
+            values = [None if math.isnan(x) else x for x in pd_series.tolist()]
             series = Series(
                 options=series_options,
                 time_range=compromise_tr,
-                values=[None if x is math.isnan(x) else x for x in pd_series.tolist()],
+                values=values,
             )
             series_list.append(series)
         return (series_list, pd_series_list)
@@ -511,9 +516,9 @@ Transform = Union[ZScoreMovingInterval, ZScoreFixedInterval, NoTransform]
 
 class SummaryStat(BaseModel):
     name: str
-    mean: float
-    median: float
-    stdev: float
+    mean: Optional[float]
+    median: Optional[float]
+    stdev: Optional[float]
 
     @classmethod
     def from_series(cls, series: List[Series]) -> List['SummaryStat']:
