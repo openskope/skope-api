@@ -363,7 +363,7 @@
       class: Precipitation
       name: Water-year (Oct-Sept) Precipitation (mm)
       timeseriesServiceUri: paleocar_v3/precipitation_water_year
-      wmsLayer: 'SKOPE:paleocar_v3_ppt_${year}'
+      wmsLayer: 'SKOPE:paleocar_v3_ppt_water_year_${year}'
       min: 0
       max: 10
       visible: false
