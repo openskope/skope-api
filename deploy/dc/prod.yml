@@ -18,12 +18,20 @@ services:
       - "app.main:app"
     environment:
       FORWARDED_ALLOW_IPS: '*'
-    image: openskope/server/prod:latest
+    image: openskope/skope-api:latest
     volumes:
       - ./timeseries:/code
       - /projects/skope/datasets:/data
     ports:
     - "0.0.0.0:8001:8000"
   geoserver:
+    restart: always
     ports:
-    - "0.0.0.0:8600:8080"
+      - 0.0.0.0:8600:8080/tcp
+    environment:
+      EXISTING_DATA_DIR: "true"
+      GEOSERVER_DATA_DIR: "/data/geoserver/state"
+    volumes:
+      - /projects/skope/datasets:/projects/skope/datasets:rw
+      - /data/geoserver/state:/data/geoserver/state:rw
+      - ./docker/secrets/geoserver_admin_password:/run/secrets/geoserver_admin_password:r

@@ -5,12 +5,8 @@ services:
       context: timeseries
     restart: always
   geoserver:
-    image: kartoza/geoserver
     environment:
+      GEOSERVER_ADMIN_PASSWORD_FILE: /run/secrets/geoserver_admin_password
       GEOSERVER_ADMIN_USER: skope
-      GEOSERVER_ADMIN_PASSWORD: /run/secrets/geoserver_admin_password
-      GEOSERVER_DATA_DIR: /mnt/datastore
       STABLE_EXTENSIONS: importer-plugin
-    volumes:
-    - ./geoserver/datastore:/mnt/datastore
-    - ./geoserver/docker/secrets/geoserver_admin_password:/run/secrets/geoserver_admin_password
+    image: kartoza/geoserver:2.19.2
