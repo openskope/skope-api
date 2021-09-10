@@ -37,8 +37,3 @@ deploy: build
 # Run python unit tests
 test-unit:
 	docker-compose run --user "$(UID):$(GID)" --rm -v $(PWD):/code server pytest
-
-.PHONY: test-integration
-# Run javascript integration tests
-test-integration:
-	make -C timeseries/tests test

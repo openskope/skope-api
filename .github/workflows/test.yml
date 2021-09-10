@@ -25,7 +25,7 @@ jobs:
           trap '[ -n "$(jobs -pr)" ] && kill $(jobs -pr)' INT QUIT TERM EXIT
           cd timeseries
           ENVIR=dev pytest
-          ENVIR=dev uvicorn --port 8001 app.main:app &
-          cd ..
-          ./configure dev
-          make test-integration
+          # ENVIR=dev uvicorn --port 8001 app.main:app &
+          # cd ..
+          # ./configure dev
+          # make test-integration
