@@ -7,11 +7,11 @@ from datetime import timedelta
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
-from ...exceptions import SelectedAreaPolygonIsTooLarge
+from ...exceptions import SelectedAreaPolygonIsTooLarge, TimeseriesTimeoutError
 from ...main import app
 from ...routers import datasets as ds
-from ...routers.datasets import Point, ZonalStatistic, Polygon, TimeseriesQuery, NoTransform, MovingAverageSmoother, \
-    NoSmoother
+from ...routers.datasets import (Point, ZonalStatistic, Polygon, TimeseriesQuery, NoTransform, MovingAverageSmoother, 
+    NoSmoother)
 from ...stores import dataset_repo, BandRange, OptionalTimeRange, TimeRange
 
 client = TestClient(app)
@@ -19,9 +19,10 @@ client = TestClient(app)
 
 def test_moving_average_smoother():
     xs = np.array([1, 1, 1, 1, 1, 2, 2, 2, 2, 2])
-    mas = ds.MovingAverageSmoother(method='centered', width=2)
+    mas = ds.MovingAverageSmoother(method='centered', width=3)
     smoothed_xs = mas.apply(xs)
-    assert np.allclose(smoothed_xs, np.array([1, (4 + 2) / 5, (3 + 4) / 5, (2 + 6) / 5, (1 + 8) / 5, 2]))
+    assert np.allclose(smoothed_xs, np.array([1, 1, 1, 4/3, 5/3, 2, 2, 2]))
+    assert len(smoothed_xs) == len(xs) - 2
 
 
 ymrs = [
@@ -61,6 +62,9 @@ def build_timeseries_query(**overrides):
     )
 
 
+'''
+FIXME: disabling monthly tests until #18 is resolved
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("variable_id", dataset_repo.get_dataset_variables('monthly_5x5x60_dataset'))
 @pytest.mark.parametrize("time_range", ymrs)
@@ -80,16 +84,17 @@ async def test_monthly_first_year(variable_id, time_range):
         response = await ac.post(TIME_SERIES_URL, data=maq.json())
     assert response.status_code == 200
     assert response.json()['series'][0]['values'] == [i * 100 for i in br]
+'''
 
 
 @pytest.mark.asyncio
 async def test_monthly_different_smoothers():
     ds_meta = dataset_repo.get_dataset_variable_meta(
-        dataset_id='monthly_5x5x60_dataset',
+        dataset_id='annual_5x5x5_dataset',
         variable_id='float32_variable'
     )
     tsq = build_timeseries_query(
-        dataset_id='monthly_5x5x60_dataset',
+        dataset_id='annual_5x5x5_dataset',
         variable_id='float32_variable',
         requested_series=[
             {
@@ -100,7 +105,7 @@ async def test_monthly_different_smoothers():
                 'name': 'trailing',
                 'smoother': MovingAverageSmoother(
                     method='trailing',
-                    width=7
+                    width=2
                 ).dict()
             },
             {
@@ -112,8 +117,8 @@ async def test_monthly_different_smoothers():
             }
         ],
         time_range=OptionalTimeRange(
-            gte='0003-01-01',
-            lte='0003-12-01'
+            gte='0001-01-01',
+            lte='0004-01-01'
         ).dict()
     )
     response = tsq.extract_sync()
@@ -121,12 +126,14 @@ async def test_monthly_different_smoothers():
     trailing = response.series[1]
     centered = response.series[2]
 
-    assert original.time_range == TimeRange(gte='0002-06-01', lte='0004-03-01')
-    assert len(original.values) == 12 + 7 + 3
-    assert trailing.time_range == TimeRange(gte='0003-01-01', lte='0004-03-01')
-    assert len(trailing.values) == 12 + 7 - 7 + 3
-    assert centered.time_range == TimeRange(gte='0002-09-01', lte='0003-12-01')
-    assert len(centered.values) == 12 + 7 - 3 + 3 - 3
+    assert original.time_range == TimeRange(gte='0001-01-01', lte='0004-01-01')
+    assert len(original.values) == 4
+    # trailing average should only return data for years 3 and 4 because year 2 would go outside the range of data 
+    # (did not request year 0 data)
+    assert trailing.time_range == TimeRange(gte='0003-01-01', lte='0004-01-01')
+    assert len(trailing.values) == 2
+    assert centered.time_range == TimeRange(gte='0002-01-01', lte='0004-01-01')
+    assert len(centered.values) == 3
 
 
 @pytest.mark.asyncio
@@ -153,18 +160,17 @@ async def test_missing_property():
 async def test_timeout():
     time_range = OptionalTimeRange(
         gte='0001-01-01',
-        lte='0001-12-01'
+        lte='0005-01-01'
     )
     maq = build_timeseries_query(
-        dataset_id='monthly_5x5x60_dataset',
+        dataset_id='annual_5x5x5',
         variable_id='float32_variable',
         time_range=time_range,
         max_processing_time=0
     )
 
-    async with AsyncClient(app=app, base_url='http://test') as ac:
-        response = await ac.post(TIME_SERIES_URL, data=maq.json())
-        assert response.status_code == 504
+    with pytest.raises(TimeseriesTimeoutError):
+        await maq.extract()
 
 
 def test_split_indices():
@@ -203,5 +209,3 @@ def test_split_indices():
                [range(20, 32), range(32, 44), range(44, 46)]
         assert list(Polygon._make_band_range_groups(width=width, height=height, band_range=br, max_size=627)) == \
                [range(20, 45), range(45, 46)]
-
-
