@@ -25,21 +25,6 @@ def test_moving_average_smoother():
     assert len(smoothed_xs) == len(xs) - 2
 
 
-ymrs = [
-    OptionalTimeRange(
-        gte='0001-01-01',
-        lte='0001-01-12'
-    ),
-    OptionalTimeRange(
-        gte='0003-01-01',
-        lte='0003-12-01'
-    ),
-    OptionalTimeRange(
-        gte='0004-07-01',
-        lte='0005-06-01'
-    )
-]
-
 TIME_SERIES_URL = '/timeseries-service/api/v2/timeseries'
 
 
@@ -62,20 +47,46 @@ def build_timeseries_query(**overrides):
     )
 
 
-'''
-FIXME: disabling monthly tests until #18 is resolved
+# FIXME: should assert / verify out of band errors when the timerange exceeds the dataset bounds
+TIME_RANGES = [
+    OptionalTimeRange(
+        gte='0001-01-01',
+        lte='0003-01-01'
+    ),
+    OptionalTimeRange(
+        gte='0001-01-01',
+        lte='0005-01-01'
+    ),
+    OptionalTimeRange(
+        gte='0002-01-01',
+        lte='0004-01-01'
+    ),
+    OptionalTimeRange(
+        gte='0003-01-01',
+        lte='0004-01-01'
+    ),
+    OptionalTimeRange(
+        gte='0003-01-01',
+        lte='0005-01-01'
+    ),
+    OptionalTimeRange(
+        gte='0003-01-01',
+        lte='0003-01-01'
+    ),
+]
+
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("variable_id", dataset_repo.get_dataset_variables('monthly_5x5x60_dataset'))
-@pytest.mark.parametrize("time_range", ymrs)
-async def test_monthly_first_year(variable_id, time_range):
+@pytest.mark.parametrize("variable_id", dataset_repo.get_dataset_variables('annual_5x5x5_dataset'))
+@pytest.mark.parametrize("time_range", TIME_RANGES)
+async def test_annual_time_ranges(variable_id, time_range):
     ds_meta = dataset_repo.get_dataset_variable_meta(
-        dataset_id='monthly_5x5x60_dataset',
+        dataset_id='annual_5x5x5_dataset',
         variable_id=variable_id
     )
     br = ds_meta.find_band_range(time_range)
     maq = build_timeseries_query(
-        dataset_id='monthly_5x5x60_dataset',
+        dataset_id='annual_5x5x5_dataset',
         variable_id=variable_id,
         time_range=time_range,
         zonal_statistic=ZonalStatistic.mean.value
@@ -84,7 +95,6 @@ async def test_monthly_first_year(variable_id, time_range):
         response = await ac.post(TIME_SERIES_URL, data=maq.json())
     assert response.status_code == 200
     assert response.json()['series'][0]['values'] == [i * 100 for i in br]
-'''
 
 
 @pytest.mark.asyncio
