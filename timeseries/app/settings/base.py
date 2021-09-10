@@ -57,7 +57,7 @@ class Settings(BaseModel):
             path.relative_to(base)
         except ValueError as e:
             logger.warning('path traversal detected: base path %s, data path %s', base, path)
-            raise
+            raise e
         return path
 
     def get_dataset_path(self, dataset_id: str, variable_id: str) -> Path:

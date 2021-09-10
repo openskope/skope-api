@@ -33,7 +33,7 @@ deploy: build
 ## Testing
 ##
 
-.PHONY: test-unit
+.PHONY: test
 # Run python unit tests
-test-unit:
-	docker-compose run --user "$(UID):$(GID)" --rm -v $(PWD):/code server pytest
+test:
+	docker-compose run --rm -v $(PWD):/code server pytest
