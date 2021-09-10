@@ -1,11 +1,11 @@
 all: install test
 
 node_modules:
-	npm install
+	npm ci
 
 .PHONY:
 install:
-	npm install
+	npm ci
 
 .PHONY:
 test: | node_modules
