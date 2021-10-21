@@ -72,7 +72,7 @@ class Point(geompyd.Point):
         bottom_left = (top_left[0], bottom_right[1])
         bbox = geom.Polygon([top_left, bottom_left, bottom_right, top_right, top_left])
         area, perimeter = wgs84.geometry_area_perimeter(bbox)
-        return area
+        return abs(area)
 
     def extract(self,
                 dataset: rasterio.DatasetReader,
@@ -130,11 +130,14 @@ class Polygon(geompyd.Polygon):
         shape_iter = shapes(masked.astype('uint8'), mask=np.equal(masked, 0), transform=transform)
         area = 0.0
         wgs84 = pyproj.Geod(ellps='WGS84')
+        # area is signed positive or negative based on clockwise or
+        # counterclockwise traversal:
+        # https://pyproj4.github.io/pyproj/stable/api/geod.html?highlight=counter%20clockwise#pyproj.Geod.geometry_area_perimeter
         for shp, val in shape_iter:
             shp = orient(shp)
             shp = geom.shape(shp)
             area += wgs84.geometry_area_perimeter(shp)[0]
-        return area
+        return abs(area)
 
     def extract(self,
                 dataset: rasterio.DatasetReader,
