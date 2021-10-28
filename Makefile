@@ -3,6 +3,8 @@ include config.mk
 UID=$(shell id -u)
 GID=$(shell id -g)
 
+GEOSERVER_ADMIN_PASSWORD_PATH=geoserver/docker/secrets/geoserver_admin_password
+
 .PHONY: help
 # Instructions for using this Makefile
 help:
@@ -10,10 +12,10 @@ help:
 
 .PHONY: build
 # Build and pull the required docker images
-build: docker-compose.yml geoserver/docker/secrets/geoserver_admin_password
+build: docker-compose.yml | $(GEOSERVER_ADMIN_PASSWORD_PATH)
 	docker-compose build --pull
 
-geoserver/docker/secrets/geoserver_admin_password:
+$(GEOSERVER_ADMIN_PASSWORD_PATH):
 	echo "Creating geoserver secret"; \
 	mkdir -p geoserver/docker/secrets; \
 	echo -n $$(head /dev/urandom | tr -dc '[:alnum:]' | head -c22) > geoserver/docker/secrets/geoserver_admin_password

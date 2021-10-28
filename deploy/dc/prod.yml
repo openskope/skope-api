@@ -34,4 +34,4 @@ services:
     volumes:
       - /projects/skope/datasets:/projects/skope/datasets:rw
       - /data/geoserver/state:/data/geoserver/state:rw
-      - ./docker/secrets/geoserver_admin_password:/run/secrets/geoserver_admin_password:r
+      - ./geoserver/docker/secrets/geoserver_admin_password:/run/secrets/geoserver_admin_password:ro
