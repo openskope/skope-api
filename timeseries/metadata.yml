@@ -381,7 +381,7 @@
       description: (May to September)
     - id: precipitation_annual_demosaic
       class: Precipitation
-      name: Annual Demosaic Precipitation
+      name: Annual (Jan–Dec) Precipitation (mm)
       timeseriesServiceUri: paleocar_v3/precipitation_annual_demosaic
       wmsLayer: 'SKOPE:paleocar_v3_ppt_annual_${year}'
       min: 0
@@ -391,7 +391,7 @@
       description: (prev. Oct through listed year Sept)
     - id: growing_degree_days
       class: Temperature
-      name: 'Growing Degree Days (F, May-Sept)'
+      name: Summer (May-Sept) Growing Degree Days (F)
       timeseriesServiceUri: paleocar_v3/growing_degree_days
       wmsLayer: 'SKOPE:paleocar_v3_gdd_${year}'
       min: 0
