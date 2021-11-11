@@ -177,6 +177,11 @@
     Bocinsky, R. Kyle, and Timothy A. Kohler. 2014. A 2,000-year reconstruction
     of the rain-fed maize agricultural niche in the US Southwest. Nature
     Communications 5:5618. [doi:10.1038/ncomms6618](https://doi.org/10.1038/ncomms6618).
+    
+    
+    Bocinsky, R. Kyle, Johnathan Rush, Keith W. Kintigh, and Timothy A. Kohler. 2016. 
+    Exploration and exploitation in the macrohistory of the pre-Hispanic Pueblo Southwest. 
+    Science Advances 2(4):e1501532. [https://doi.org/10.1126/sciadv.1501532](https://doi.org/10.1126/sciadv.1501532)
   contactInformation: >-
     > DOC/NOAA/NESDIS/NCEI
 
@@ -197,10 +202,19 @@
 
     > fax: 303-497-6513
   uncertainty: >-
-    The uncertainty for GDD and Precipitation that is available on the graph and
-    in the graph data download csv represents the predicted residual error sum
-    of squares (PRESS) statistic for each cell's reconstruction. [add
-    uncertainty for maize farming niche]
+    There are two primary sources of uncertainty in PaleoCAR reconstructions.
+    The first is that the PaleoCAR algorithm attempts to select the most relevant
+    three ring chronologies for reconstructing a particular variable of interest
+    at a particular time. This selection process — here minimizing the predicted 
+    residual error sum of squares (PRESS) statistic in a stepwise fashion — can 
+    lead to different sets chronologies being selected for adjacent pixels in a 
+    gridded reconstruction. Discrepancies between selected chronologies can 
+    manifest as spatiotemporal "artifacts", or discontinuities (Bocinsky and 
+    Kohler 2014:8). These are amplified by the chained mean-variance matching 
+    technique (Bocinsky et al. 2016:10). Additional uncertainty is associated with
+    the lack of fit in the regression models; fit decreases as fewer tree
+    ring chronologies are available.
+    
   methodSummary: >-
     For each pixel, for each year, the model selects the tree ring chronologies
     (within a 10-degree buffer of the Four Corners states; from the National
@@ -210,9 +224,9 @@
 
 
     Because the Maize Farming Niche is based on direct precipitation, maize
-    farming may be possible if other water sources are utilized (e.g. spring or
+    farming may be possible if other water sources are utilized (e.g., springs or
     rivers) or if precipitation is concentrated on fields through water
-    diversion structures (e.g. ak chin fields) or geologically (e.g. sand dune
+    diversion structures (e.g., *ak chin* fields) or geologically (e.g., sand dune
     fields).
   description: >-
     High spatial resolution (30 arc-second, ~800 m) Southwestern United States
@@ -288,6 +302,12 @@
     Bocinsky, R. Kyle, and Timothy A. Kohler. 2014. A 2,000-year reconstruction
     of the rain-fed maize agricultural niche in the US Southwest. Nature
     Communications 5:5618. [doi:10.1038/ncomms6618](https://doi.org/10.1038/ncomms6618).
+    
+    
+    Bocinsky, R. Kyle, Johnathan Rush, Keith W. Kintigh, and Timothy A. Kohler. 2016. 
+    Exploration and exploitation in the macrohistory of the pre-Hispanic Pueblo Southwest. 
+    Science Advances 2(4):e1501532.
+    [https://doi.org/10.1126/sciadv.1501532](https://doi.org/10.1126/sciadv.1501532)
   contactInformation: >-
     > DOC/NOAA/NESDIS/NCEI
 
@@ -308,33 +328,44 @@
 
     > fax: 303-497-6513
   uncertainty: >-
-    The uncertainty for GDD and Precipitation that is available on the graph and
-    in the graph data download csv represents the predicted residual error sum
-    of squares (PRESS) statistic for each cell's reconstruction. [add
-    uncertainty for maize farming niche]
+    There are two primary sources of uncertainty in PaleoCAR reconstructions.
+    The first is that the PaleoCAR algorithm attempts to select the most relevant
+    three ring chronologies for reconstructing a particular variable of interest
+    at a particular time. This selection process — here minimizing the corrected
+    Akaike information criterion in a stepwise fashion — can 
+    lead to different sets chronologies being selected for adjacent pixels in a 
+    gridded reconstruction. Discrepancies between selected chronologies can 
+    manifest as spatiotemporal "artifacts", or discontinuities (Bocinsky and 
+    Kohler 2014:8). These are amplified by the chained mean-variance matching 
+    technique (Bocinsky et al. 2016:10). Additional uncertainty is associated with
+    the lack of fit in the regression models; fit decreases as fewer tree
+    ring chronologies are available.
   methodSummary: >-
+    In addition to reconstructions of calendar-year and growing-season precipitation,
+    there are two substantial differences betwrrn PaleoCAR v2 and v3:
+    
+    - We used the detrended and indexed (standardized) series ('ARSTND') available
+    from the ITRDB instead of the 'Standard' chronologies used in previous reconstructions.
+    This led to four or fewer chronologies available for the reconstruction for the periods
+    of 1–102 CE and 418–589 CE.
+    - We selected models by minimizing the corrected Akaike information criterion in a
+    stepwise fashion, instead of the predicted residual error sum of squares (PRESS) statistic.
+    
+    
     For each pixel, for each year, the model selects the tree ring chronologies
     (within a 10-degree buffer of the Four Corners states; from the National
     Tree Ring Database) that best predict PRISM data for that location and uses
     linear regression to estimate the paleoenvironmental variable for that date
     and location.
-
-
-    Because the Maize Farming Niche is based on direct precipitation, maize
-    farming may be possible if other water sources are utilized (e.g. spring or
-    rivers) or if precipitation is concentrated on fields through water
-    diversion structures (e.g. ak chin fields) or geologically (e.g. sand dune
-    fields).
   description: >-
     High spatial resolution (30 arc-second, ~800 m) Southwestern United States
-    tree-ring reconstructions of  May-Sept growing degree days (GDD), net
-    water-year precipitation (previous Oct–Sept), and the direct precipitation
-    maize  farming niche (>= 1800 growing Season F GDD & >= 300 mm water-year
-    precipitation).
+    tree-ring reconstructions of net growing season growing degree days (May–Sept), net calendar-year
+    precipitation (Jan–Dec), net water-year precipitation (previous Oct–Sept), and net 
+    growing-season precipitation (May–Sept).
   sourceUrl: 'https://www.ncdc.noaa.gov/paleo/study/19783'
   type: dataset
   status: Published
-  revised: '2016-04-01'
+  revised: '2021-11-01'
   region:
     zoom: 4
     center:
