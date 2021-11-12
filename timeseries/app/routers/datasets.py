@@ -210,10 +210,13 @@ class MovingAverageSmoother(Smoother):
 
     def get_desired_band_range_adjustment(self):
         logger.info(f'width = {self.width}')
-        if self.method == self.method.centered:
-            return np.array([-(self.width // 2), self.width // 2])
+        band_range_adjustment = []
+        if self.method == WindowType.centered:
+            band_range_adjustment = np.array([-(self.width // 2), self.width // 2])
         else:
-            return np.array([-self.width, 0])
+            band_range_adjustment = np.array([-self.width, 0])
+        logger.debug("smoother band range adjustment: %s", band_range_adjustment)
+        return band_range_adjustment
 
     def apply(self, xs: np.array) -> np.array:
         window_size = self.method.get_window_size(self.width)
