@@ -10,7 +10,7 @@ import yaml
 from app.exceptions import DatasetNotFoundError, VariableNotFoundError, TimeRangeContainmentError, TimeRangeInvalid
 from app.settings import settings
 from enum import Enum
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, root_validator
 from typing import Dict, Set, Union, Literal, Optional
 from dateutil.relativedelta import relativedelta
 
@@ -22,9 +22,9 @@ class Resolution(str, Enum):
 
 class BandRange(namedtuple('BandRange', ['gte', 'lte'])):
     """
-    A range describing what bands of a raster to read
+    A range class describing what bands of a raster to read
 
-    Raster bands are one-indexed so gte should be at least one
+    Raster bands are one-indexed so gte must be >= 1
     """
     __slots__ = ()
 
@@ -120,7 +120,7 @@ class DatasetVariableMeta:
     def find_band_range(self, time_range: OptionalTimeRange) -> BandRange:
         """Translates time ranges from the metadata and request into a band range
 
-        A band range is a linear index into the bands of a raster file
+        A band range is a linear 1-based index into the bands of a raster file
         """
         time_range = self.normalize_time_range(time_range)
         dataset_time_range = self.time_range

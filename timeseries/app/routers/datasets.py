@@ -249,7 +249,7 @@ class NoSmoother(Smoother):
         }
 
 
-def values_to_period_range(name: str, values: np.array, time_range: TimeRange) -> pd.Series:
+def values_to_period_range_series(name: str, values: np.array, time_range: TimeRange) -> pd.Series:
     # FIXME: use periods instead of end to avoid an off-by-one
     # between the number of values and the generated index
     return pd.Series(values, name=name, index=pd.period_range(start=time_range.gte, periods=len(values), freq='A'))
@@ -264,7 +264,7 @@ class SeriesOptions(BaseModel):
 
     def apply(self, xs: np.array, time_range: TimeRange) -> pd.Series:
         values = self.smoother.apply(xs)
-        return values_to_period_range(self.name, values, time_range)
+        return values_to_period_range_series(self.name, values, time_range)
 
     class Config:
         schema_extra = {
@@ -404,6 +404,7 @@ class TimeseriesQuery(BaseModel):
         br_avail = dataset_meta.find_band_range(dataset_meta.time_range)
         br_query = self.transform.get_desired_band_range(dataset_meta)
         compromise_br = br_avail.intersect(br_query) if br_query else None
+        logger.debug("dataset band range %s, desired band range %s, final band range %s", br_avail, br_query, compromise_br)
         return compromise_br
 
     def get_band_range_to_extract(self, dataset_meta: DatasetVariableMeta) -> BandRange:
@@ -414,12 +415,12 @@ class TimeseriesQuery(BaseModel):
         desired_br = transform_br
         for series in self.requested_series:
             candidate_br = transform_br + series.get_desired_band_range_adjustment()
-            logger.info(f'candidate_br = {candidate_br}')
             desired_br = desired_br.union(candidate_br)
+            logger.info('transform band range %s adjusted to candidate band range %s, resulting in desired br: %s', transform_br, candidate_br, desired_br)
 
         compromise_br = br_avail.intersect(
             BandRange.from_numpy_pair(desired_br))
-        logger.info(f'compromise_br = {compromise_br}')
+        logger.info('final compromise_br, %s', compromise_br)
         return compromise_br
 
     def get_time_range_after_transforms(self, series_options: SeriesOptions, dataset_meta: DatasetVariableMeta, extract_br: BandRange) -> TimeRange:
@@ -428,8 +429,7 @@ class TimeseriesQuery(BaseModel):
             self.transform.get_desired_band_range_adjustment() * -1 + \
             series_options.get_desired_band_range_adjustment() * -1
         print(f'inds = {inds}')
-        yr = dataset_meta.translate_band_range(
-            BandRange.from_numpy_pair(inds))
+        yr = dataset_meta.translate_band_range(BandRange.from_numpy_pair(inds))
         return yr
 
     def apply_series(self, xs, dataset_meta, band_range):
@@ -465,6 +465,7 @@ class TimeseriesQuery(BaseModel):
         )
         band_range = self.get_band_range_to_extract(dataset_meta)
         band_range_transform = self.get_band_ranges_for_transform(dataset_meta)
+        logger.debug("extract band range %s, transform band range: %s", band_range, band_range_transform)
         with rasterio.Env():
             with rasterio.open(dataset_meta.p) as ds:
                 res = self.extract_slice(ds, band_range=band_range)
@@ -472,6 +473,7 @@ class TimeseriesQuery(BaseModel):
                 n_cells = res['n_cells']
                 area = res['area']
                 transform_xs = self.extract_slice(ds, band_range=band_range_transform)['data'] if band_range_transform else None
+
         txs = self.transform.apply(xs, transform_xs)
 
         series, pd_series = self.apply_series(
