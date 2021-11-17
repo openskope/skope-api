@@ -92,7 +92,7 @@ async def test_annual_time_ranges(variable_id, time_range):
         zonal_statistic=ZonalStatistic.mean.value
     )
     async with AsyncClient(app=app, base_url='http://test') as ac:
-        response = await ac.post(TIME_SERIES_URL, data=maq.json())
+        response = await ac.post(TIME_SERIES_URL, content=maq.json())
     assert response.status_code == 200
     assert response.json()['series'][0]['values'] == [i * 100 for i in br]
 
@@ -161,7 +161,7 @@ async def test_missing_property():
         for key in set(maq.dict().keys()).difference({'max_processing_time'}):
             data = copy.deepcopy(maq)
             data.__dict__.pop(key)
-            response = await ac.post(TIME_SERIES_URL, data=data.json())
+            response = await ac.post(TIME_SERIES_URL, content=data.json())
             assert response.status_code == 422
             assert response.json()['detail'][0]['loc'] == ['body', key]
 
