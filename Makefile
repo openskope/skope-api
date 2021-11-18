@@ -20,9 +20,9 @@ $(GEOSERVER_ADMIN_PASSWORD_PATH):
 	mkdir -p geoserver/docker/secrets; \
 	echo -n $$(head /dev/urandom | tr -dc '[:alnum:]' | head -c22) > geoserver/docker/secrets/geoserver_admin_password
 
-docker-compose.yml: deploy/dc/base.yml deploy/dc/$(ENVIR).yml timeseries/deploy/Dockerfile config.mk
+docker-compose.yml: deploy/base.yml deploy/$(ENVIR).yml timeseries/deploy/Dockerfile config.mk
 	case "$(ENVIR)" in \
-	  dev|prod) docker-compose -f deploy/dc/base.yml -f "deploy/dc/$(ENVIR).yml" --project-directory . config > docker-compose.yml;; \
+	  dev|prod) docker-compose -f deploy/base.yml -f "deploy/$(ENVIR).yml" --project-directory . config > docker-compose.yml;; \
 	  *) echo "invalid environment. must be dev or prod" 1>&2; exit 1;; \
 	esac
 

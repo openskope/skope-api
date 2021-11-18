@@ -1,4 +1,4 @@
-version: '3.7'
+version: '3.8'
 services:
   server:
     build:
@@ -9,4 +9,5 @@ services:
       GEOSERVER_ADMIN_PASSWORD_FILE: /run/secrets/geoserver_admin_password
       GEOSERVER_ADMIN_USER: skope
       STABLE_EXTENSIONS: importer-plugin
-    image: kartoza/geoserver:2.19.2
+      TOMCAT_EXTRAS: "false"
+    image: kartoza/geoserver:2.20.0

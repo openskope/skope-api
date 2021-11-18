@@ -1,4 +1,4 @@
-version: '3.7'
+version: '3.8'
 services:
   server:
     build:
@@ -35,3 +35,4 @@ services:
       - /projects/skope/datasets:/projects/skope/datasets:rw
       - /data/geoserver/state:/data/geoserver/state:rw
       - ./geoserver/docker/secrets/geoserver_admin_password:/run/secrets/geoserver_admin_password:ro
+      - ./geoserver/settings:/settings:rw
