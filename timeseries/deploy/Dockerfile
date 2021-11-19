@@ -10,6 +10,6 @@ WORKDIR /code
 
 RUN pip install -r deploy/requirements/base.txt -r deploy/requirements/${ENVIR}.txt
 
-COPY app /code/
+COPY app metadata.yml /code/
 
 CMD ["uvicorn", "--reload", "--host", "0.0.0.0", "app.main:app"]

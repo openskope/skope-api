@@ -30,6 +30,7 @@ services:
       - 0.0.0.0:8600:8080/tcp
     environment:
       EXISTING_DATA_DIR: "true"
+      CSRF_WHITELIST: "geoserver.openskope.org"
       GEOSERVER_DATA_DIR: "/data/geoserver/state"
     volumes:
       - /projects/skope/datasets:/projects/skope/datasets:rw
