@@ -254,8 +254,8 @@
       - - 31
         - -102
   timespan:
-    resolution: month
-    resolutionLabel: monthly
+    resolution: year
+    resolutionLabel: yearly
     period:
       timeZero: 1
       gte: '0001'
