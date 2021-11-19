@@ -265,8 +265,8 @@
     - id: water_year_precipitation
       class: Precipitation
       name: Water-year (Oct-Sept) Precipitation (mm)
-      timeseriesServiceUri: paleocar_2/water_year_precipitation
-      wmsLayer: 'SKOPE:paleocar_ppt_${year}-01-01'
+      timeseriesServiceUri: paleocar_v2/PPT_water_year
+      wmsLayer: 'SKOPE:paleocar_v2_ppt_water_year_${year}'
       min: 0
       max: 10
       visible: false
@@ -275,8 +275,8 @@
     - id: growing_degree_days
       class: Temperature
       name: 'Growing Degree Days (F, May-Sept)'
-      timeseriesServiceUri: paleocar_2/growing_degree_days
-      wmsLayer: 'SKOPE:paleocar_gdd_${year}-01-01'
+      timeseriesServiceUri: paleocar_v2/GDD_may_sept
+      wmsLayer: 'SKOPE:paleocar_v2_gdd_may_sept_${year}'
       min: 0
       max: 10
       visible: false
