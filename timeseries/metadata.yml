@@ -274,7 +274,7 @@
       description: (prev. Oct through listed year Sept)
     - id: growing_degree_days
       class: Temperature
-      name: 'Growing Degree Days (F, May-Sept)'
+      name: Summer (May-Sept) Growing Degree Days (F)
       timeseriesServiceUri: paleocar_v2/GDD_may_sept
       wmsLayer: 'SKOPE:paleocar_v2_gdd_may_sept_${year}'
       min: 0
