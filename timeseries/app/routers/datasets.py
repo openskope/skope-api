@@ -83,7 +83,7 @@ class Point(geompyd.Point):
         if not box.covers(point):
             raise SelectedAreaOutOfBoundsError('selected area is not covered by the dataset region')
         logger.info('extracting point: %s', self)
-        px, py = dataset.index(self.coordinates[0], self.coordinates[1])
+        py, px = dataset.index(self.coordinates[0], self.coordinates[1])
         logging.info('indices: %s', (px, py))
         data = dataset.read(list(band_range), window=Window(px, py, 1, 1), out_dtype=np.float64).flatten()
         data[np.equal(data, dataset.nodata)] = np.nan
