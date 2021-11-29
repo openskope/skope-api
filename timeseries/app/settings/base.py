@@ -36,7 +36,7 @@ class Settings(BaseModel):
 
     @classmethod
     def from_envir(cls, envir):
-        with open(f'deploy/settings/base.yml') as f:
+        with open('deploy/settings/base.yml') as f:
             base = yaml.safe_load(f) or {}
 
         with open(f'deploy/settings/{envir}.yml') as f:
@@ -48,7 +48,9 @@ class Settings(BaseModel):
 
     @property
     def metadata_path(self):
-        return Path(f'deploy/metadata/{self.envir}.yml')
+        if self.envir == 'dev':
+            return Path('deploy/metadata/dev.yml')
+        return Path('metadata.yml')
 
     def _get_path(self, template, dataset_id, variable_id):
         base = Path(self.store.base_path).resolve()
