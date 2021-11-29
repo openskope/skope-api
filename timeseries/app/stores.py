@@ -27,6 +27,17 @@ def load_metadata():
     return metadata_dict
 
 
+def load_api_metadata():
+    """ FIXME: refactor """
+    with open(settings.metadata_path) as f:
+        datasets = yaml.safe_load(f)
+    metadata_dict = {}
+    for dataset in datasets:
+        dataset_id = dataset['id']
+        metadata_dict[dataset_id] = dataset
+    return metadata_dict
+
+
 class Resolution(str, Enum):
     month = 'month'
     year = 'year'
