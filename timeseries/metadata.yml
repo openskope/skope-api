@@ -169,7 +169,7 @@
       min: 0
       max: 4500
       styles: default
-- id: paleocar
+- id: paleocar_v2
   title: 'PaleoCAR: SW USA Paleoclimate Reconstruction (V2)'
   ordering: 1
   originator: 'Bocinsky, R.K.; Kohler, T.A.'
