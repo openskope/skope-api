@@ -467,7 +467,7 @@ class TimeseriesQuery(BaseModel):
         band_range_transform = self.get_band_ranges_for_transform(dataset_meta)
         logger.debug("extract band range %s, transform band range: %s", band_range, band_range_transform)
         with rasterio.Env():
-            with rasterio.open(dataset_meta.p) as ds:
+            with rasterio.open(dataset_meta.path) as ds:
                 res = self.extract_slice(ds, band_range=band_range)
                 xs = res['data']
                 n_cells = res['n_cells']
