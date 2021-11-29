@@ -29,7 +29,7 @@ def load_metadata():
 
 def load_api_metadata():
     """ FIXME: refactor """
-    with open(settings.metadata_path) as f:
+    with open('metadata.yml') as f:
         datasets = yaml.safe_load(f)
     metadata_dict = {}
     for dataset in datasets:
