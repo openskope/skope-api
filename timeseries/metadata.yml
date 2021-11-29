@@ -170,7 +170,7 @@
       max: 4500
       styles: default
 - id: paleocar
-  title: 'PaleoCAR: SW USA Paleoclimatic Reconstruction (V2)'
+  title: 'PaleoCAR: SW USA Paleoclimate Reconstruction (V2)'
   ordering: 1
   originator: 'Bocinsky, R.K.; Kohler, T.A.'
   references: >-
@@ -230,9 +230,9 @@
     fields).
   description: >-
     High spatial resolution (30 arc-second, ~800 m) Southwestern United States
-    tree-ring reconstructions of  May-Sept growing degree days (GDD), net
+    tree-ring reconstructions of May-Sept growing degree days (GDD), net
     water-year precipitation (previous Oct–Sept), and the direct precipitation
-    maize  farming niche (>= 1800 growing Season F GDD & >= 300 mm water-year
+    maize farming niche (>= 1800 growing Season F GDD & >= 300 mm water-year
     precipitation).
   sourceUrl: 'https://www.ncdc.noaa.gov/paleo/study/19783'
   type: dataset
@@ -265,7 +265,7 @@
     - id: water_year_precipitation
       class: Precipitation
       name: Water-year (Oct-Sept) Precipitation (mm)
-      timeseriesServiceUri: paleocar_v2/PPT_water_year
+      timeseriesServiceUri: paleocar_v2/ppt_water_year
       wmsLayer: 'SKOPE:paleocar_v2_ppt_water_year_${year}'
       min: 0
       max: 10
@@ -275,7 +275,7 @@
     - id: growing_degree_days
       class: Temperature
       name: Summer (May-Sept) Growing Degree Days (F)
-      timeseriesServiceUri: paleocar_v2/GDD_may_sept
+      timeseriesServiceUri: paleocar_v2/gdd_may_sept
       wmsLayer: 'SKOPE:paleocar_v2_gdd_may_sept_${year}'
       min: 0
       max: 10
@@ -285,8 +285,8 @@
     - id: maize_farming_niche
       class: Crop Niche
       name: Maize Farming Niche (Direct Precip.)
-      timeseriesServiceUri: paleocar_2/maize_farming_niche
-      wmsLayer: 'SKOPE:niche_${year}'
+      timeseriesServiceUri: paleocar_v2/maize_farming_niche
+      wmsLayer: 'SKOPE:maize_farming_niche_${year}'
       min: 0
       max: 1
       visible: false
@@ -296,7 +296,7 @@
         (as above) >= 300 mm; otherwise out of niche.
 - id: paleocar_v3
   ordering: 2
-  title: 'PaleoCAR: SW USA Paleoclimatic Reconstruction (V3)'
+  title: 'PaleoCAR: SW USA Paleoclimate Reconstruction (V3)'
   originator: 'Bocinsky, R.K.; Kohler, T.A.'
   references: >-
     Bocinsky, R. Kyle, and Timothy A. Kohler. 2014. A 2,000-year reconstruction
@@ -348,6 +348,7 @@
     from the ITRDB instead of the 'Standard' chronologies used in previous reconstructions.
     This led to four or fewer chronologies available for the reconstruction for the periods
     of 1–102 CE and 418–589 CE.
+    
     - We selected models by minimizing the corrected Akaike information criterion in a
     stepwise fashion, instead of the predicted residual error sum of squares (PRESS) statistic.
     
@@ -393,7 +394,7 @@
     - id: precipitation_water_year
       class: Precipitation
       name: Water-year (Oct-Sept) Precipitation (mm)
-      timeseriesServiceUri: paleocar_v3/precipitation_water_year
+      timeseriesServiceUri: paleocar_v3/ppt_water_year
       wmsLayer: 'SKOPE:paleocar_v3_ppt_water_year_${year}'
       min: 0
       max: 10
@@ -403,7 +404,7 @@
     - id: precipitation_may_sept
       class: Precipitation
       name: Summer (May-Sept) Precipitation (mm)
-      timeseriesServiceUri: paleocar_v3/precipitation_may_sept
+      timeseriesServiceUri: paleocar_v3/ppt_may_sept
       wmsLayer: 'SKOPE:paleocar_v3_ppt_may_sept_${year}'
       min: 0
       max: 10
@@ -413,7 +414,7 @@
     - id: precipitation_annual_demosaic
       class: Precipitation
       name: Annual (Jan–Dec) Precipitation (mm)
-      timeseriesServiceUri: paleocar_v3/precipitation_annual_demosaic
+      timeseriesServiceUri: paleocar_v3/ppt_annual
       wmsLayer: 'SKOPE:paleocar_v3_ppt_annual_${year}'
       min: 0
       max: 10
@@ -423,8 +424,8 @@
     - id: growing_degree_days
       class: Temperature
       name: Summer (May-Sept) Growing Degree Days (F)
-      timeseriesServiceUri: paleocar_v3/growing_degree_days
-      wmsLayer: 'SKOPE:paleocar_v3_gdd_${year}'
+      timeseriesServiceUri: paleocar_v3/gdd_may_sept
+      wmsLayer: 'SKOPE:paleocar_v3_gdd_may_sept_${year}'
       min: 0
       max: 10
       visible: false
