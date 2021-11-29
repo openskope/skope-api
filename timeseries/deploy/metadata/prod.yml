@@ -20,6 +20,7 @@
   variables:
     - gdd_may_sept
     - ppt_water_year
+    - maize_farming_niche
 - id: paleocar_v3
   time_range:
     gte: '0103-01-01'
