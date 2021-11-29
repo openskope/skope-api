@@ -48,9 +48,14 @@ class Settings(BaseModel):
 
     @property
     def metadata_path(self):
-        if self.envir == 'dev':
-            return Path('deploy/metadata/dev.yml')
-        return Path('metadata.yml')
+        '''
+        FIXME: dataset metadata is currently duplicated across
+        deploy/metadata/prod.yml and metadata.yml and should
+        be de-duplicated but this brings some pain into how
+        the pydantic base classes for DatasetManager / Dataset 
+        were constructed
+        '''
+        return Path(f'deploy/metadata/{self.envir}.yml')
 
     def _get_path(self, template, dataset_id, variable_id):
         base = Path(self.store.base_path).resolve()

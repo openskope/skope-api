@@ -1,0 +1,32 @@
+- id: lbda
+  time_range:
+    gte: '0001-01-01'
+    lte: '2017-01-01'
+  resolution: 'year'
+  variables:
+    - palmer_modified_drought_index
+- id: srtm
+  time_range:
+    gte: '2009-01-01'
+    lte: '2009-01-01'
+  resolution: 'year'
+  variables:
+    - srtm_elevation
+- id: paleocar
+  time_range:
+    gte: '0001-01-01'
+    lte: '2000-01-01'
+  resolution: 'year'
+  variables:
+    - gdd_may_sept
+    - ppt_water_year
+- id: paleocar_v3
+  time_range:
+    gte: '0103-01-01'
+    lte: '2000-12-01'
+  resolution: 'year'
+  variables:
+    - gdd_may_sept
+    - ppt_water_year
+    - ppt_annual
+    - ppt_may_sept

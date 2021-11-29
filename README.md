@@ -3,6 +3,11 @@ Backend services for dataset metadata and timeseries data for SKOPE
 
 ## Project Setup
 
+### Dataset Metadata
+
+Dataset metadata currently needs to be specified twice, in `timeseries/metadata.yml` and
+`timeseries/deploy/metadata/prod.yml`. 
+
 ### Development
 
 Put into `dev` configuration

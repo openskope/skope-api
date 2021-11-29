@@ -22,7 +22,8 @@ def load_metadata():
         datasets = yaml.safe_load(f)
     metadata_dict = {}
     for dataset in datasets:
-        metadata_dict[dataset['id']] = dataset
+        dataset_id = dataset['id']
+        metadata_dict[dataset_id] = Dataset(**dataset)
     return metadata_dict
 
 
