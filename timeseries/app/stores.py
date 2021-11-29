@@ -1,18 +1,19 @@
-from datetime import date, timedelta
+from collections import namedtuple
+from datetime import date
+from dateutil.relativedelta import relativedelta
+from enum import Enum
+from pathlib import Path
+from pydantic import BaseModel, root_validator
+from typing import Dict, Set, Optional
 
 import numpy as np
-from collections import namedtuple
-from functools import total_ordering
-from pathlib import Path
-
 import yaml
+import logging
 
 from app.exceptions import DatasetNotFoundError, VariableNotFoundError, TimeRangeContainmentError, TimeRangeInvalid
 from app.settings import settings
-from enum import Enum
-from pydantic import BaseModel, root_validator
-from typing import Dict, Set, Union, Literal, Optional
-from dateutil.relativedelta import relativedelta
+
+logger = logging.getLogger(__name__)
 
 
 class Resolution(str, Enum):
@@ -102,13 +103,13 @@ class Repo(BaseModel):
 
 
 class DatasetVariableMeta:
-    def __init__(self, p: Path, time_range: TimeRange, resolution: Resolution):
+    def __init__(self, path: Path, time_range: TimeRange, resolution: Resolution):
         """
-        :param p: path to the dataset
+        :param path: path to the dataset
         :param time_range: span of time (and resolution) covered by the dataset
         """
         self.time_range = time_range
-        self.p = p
+        self.path = path
         self.resolution = resolution
 
     def normalize_time_range(self, otr: OptionalTimeRange):
@@ -166,15 +167,17 @@ class DatasetRepo(BaseModel):
 
     def get_dataset_variable_meta(self, dataset_id: str, variable_id: str):
         dataset = self._get_dataset(dataset_id)
+        logger.debug("retrieving dataset metadata %s", dataset)
 
         if variable_id in dataset.variables:
             resolution = dataset.resolution
             time_range = dataset.time_range
         else:
+            logger.error("Unable to find variable %s in dataset variables %s", variable_id, dataset.variables)
             raise VariableNotFoundError(f'Variable {variable_id} not found in dataset {dataset_id}')
 
-        p = settings.get_dataset_path(dataset_id=dataset_id, variable_id=variable_id)
-        return DatasetVariableMeta(p=p, time_range=time_range, resolution=resolution)
+        path = settings.get_dataset_path(dataset_id=dataset_id, variable_id=variable_id)
+        return DatasetVariableMeta(path=path, time_range=time_range, resolution=resolution)
 
 
 with settings.metadata_path.open() as f:
