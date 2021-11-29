@@ -30,7 +30,7 @@ from shapely.validation import explain_validity
 
 from app.exceptions import (SelectedAreaOutOfBoundsError, SelectedAreaPolygonIsNotValid, TimeseriesTimeoutError, SelectedAreaPolygonIsTooLarge)
 from app.settings import settings
-from app.stores import dataset_repo, BandRange
+from app.stores import get_dataset_manager, BandRange
 
 from app.stores import DatasetVariableMeta, TimeRange, OptionalTimeRange
 
@@ -459,7 +459,7 @@ class TimeseriesQuery(BaseModel):
         return summary_stats
 
     def extract_sync(self):
-        dataset_meta = dataset_repo.get_dataset_variable_meta(
+        dataset_meta = get_dataset_manager().get_dataset_variable_meta(
             dataset_id=self.dataset_id,
             variable_id=self.variable_id,
         )
@@ -617,7 +617,7 @@ class TimeseriesV1Request(BaseModel):
         return dataset_meta.normalize_time_range(otr)
 
     async def extract(self):
-        dataset_meta = dataset_repo.get_dataset_variable_meta(
+        dataset_meta = get_dataset_manager().get_dataset_variable_meta(
             dataset_id=self.datasetId,
             variable_id=self.variableName
         )

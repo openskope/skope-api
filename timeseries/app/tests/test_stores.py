@@ -1,14 +1,16 @@
 import pytest
 
-from ..stores import TimeRange, BandRange, dataset_repo
+from ..stores import TimeRange, BandRange, get_dataset_manager
 from ..exceptions import TimeRangeContainmentError
 
 yearly_cat_ds_avail = TimeRange(gte='0007-01-01', lte='0020-01-01')
 monthly_cat_ds_avail = TimeRange(gte='0013-05-01', lte='0023-04-01')
 
-yearly_dataset = dataset_repo.get_dataset_variable_meta(dataset_id='annual_5x5x5_dataset', variable_id='float32_variable')
+dataset_manager = get_dataset_manager()
+
+yearly_dataset = dataset_manager.get_dataset_variable_meta(dataset_id='annual_5x5x5_dataset', variable_id='float32_variable')
 yearly_dataset.time_range = yearly_cat_ds_avail
-monthly_dataset = dataset_repo.get_dataset_variable_meta(dataset_id='monthly_5x5x60_dataset', variable_id='float32_variable')
+monthly_dataset = dataset_manager.get_dataset_variable_meta(dataset_id='monthly_5x5x60_dataset', variable_id='float32_variable')
 monthly_dataset.time_range = monthly_cat_ds_avail
 
 

@@ -12,10 +12,11 @@ from ...main import app
 from ...routers import datasets as ds
 from ...routers.datasets import (Point, ZonalStatistic, Polygon, TimeseriesQuery, NoTransform, MovingAverageSmoother, 
     NoSmoother)
-from ...stores import dataset_repo, BandRange, OptionalTimeRange, TimeRange
+from ...stores import get_dataset_manager, BandRange, OptionalTimeRange, TimeRange
 
 client = TestClient(app)
 
+dataset_manager = get_dataset_manager()
 
 def test_moving_average_smoother():
     xs = np.array([1, 1, 1, 1, 1, 2, 2, 2, 2, 2])
@@ -77,10 +78,10 @@ TIME_RANGES = [
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("variable_id", dataset_repo.get_dataset_variables('annual_5x5x5_dataset'))
+@pytest.mark.parametrize("variable_id", dataset_manager.get_dataset_variables('annual_5x5x5_dataset'))
 @pytest.mark.parametrize("time_range", TIME_RANGES)
 async def test_annual_time_ranges(variable_id, time_range):
-    ds_meta = dataset_repo.get_dataset_variable_meta(
+    ds_meta = dataset_manager.get_dataset_variable_meta(
         dataset_id='annual_5x5x5_dataset',
         variable_id=variable_id
     )
@@ -99,7 +100,7 @@ async def test_annual_time_ranges(variable_id, time_range):
 
 @pytest.mark.asyncio
 async def test_monthly_different_smoothers():
-    ds_meta = dataset_repo.get_dataset_variable_meta(
+    ds_meta = dataset_manager.get_dataset_variable_meta(
         dataset_id='annual_5x5x5_dataset',
         variable_id='float32_variable'
     )

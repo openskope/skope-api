@@ -14,6 +14,16 @@ from app.exceptions import DatasetNotFoundError, VariableNotFoundError, TimeRang
 from app.settings import settings
 
 logger = logging.getLogger(__name__)
+dataset_manager = None
+
+def load_metadata():
+    """ Returns a dict of dataset ids mapped to the dataset metadata dict """
+    with open(settings.metadata_path) as f:
+        datasets = yaml.safe_load(f)
+    metadata_dict = {}
+    for dataset in datasets:
+        metadata_dict[dataset['id']] = dataset
+    return metadata_dict
 
 
 class Resolution(str, Enum):
@@ -96,7 +106,7 @@ class OptionalTimeRange(BaseModel):
         }
 
 
-class Repo(BaseModel):
+class Dataset(BaseModel):
     time_range: TimeRange
     variables: Set[str]
     resolution: Resolution
@@ -152,11 +162,11 @@ class DatasetVariableMeta:
             raise ValueError(f'{self.resolution} is not valid. must be either year or month')
 
 
-class DatasetRepo(BaseModel):
-    repos: Dict[str, Repo]
+class DatasetManager(BaseModel):
+    datasets: Dict[str, Dataset]
 
     def _get_dataset(self, dataset_id: str):
-        dataset = self.repos.get(dataset_id)
+        dataset = self.datasets.get(dataset_id)
         if dataset is None:
             raise DatasetNotFoundError(f'Dataset {dataset_id} not found')
         return dataset
@@ -180,5 +190,9 @@ class DatasetRepo(BaseModel):
         return DatasetVariableMeta(path=path, time_range=time_range, resolution=resolution)
 
 
-with settings.metadata_path.open() as f:
-    dataset_repo = DatasetRepo(**yaml.safe_load(f))
+
+def get_dataset_manager():
+    global dataset_manager
+    if not dataset_manager:
+        dataset_manager = DatasetManager(datasets=load_metadata())
+    return dataset_manager
