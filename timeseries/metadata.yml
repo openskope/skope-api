@@ -262,7 +262,7 @@
       lte: '2000'
       suffix: CE
   variables:
-    - id: water_year_precipitation
+    - id: ppt_water_year
       class: Precipitation
       name: Water-year (Oct-Sept) Precipitation (mm)
       timeseriesServiceUri: paleocar_v2/ppt_water_year
@@ -272,7 +272,7 @@
       visible: false
       styles: 'default,raster'
       description: (prev. Oct through listed year Sept)
-    - id: growing_degree_days
+    - id: gdd_may_sept
       class: Temperature
       name: Summer (May-Sept) Growing Degree Days (F)
       timeseriesServiceUri: paleocar_v2/gdd_may_sept
@@ -391,7 +391,7 @@
       lte: '2000'
       suffix: CE
   variables:
-    - id: precipitation_water_year
+    - id: ppt_water_year
       class: Precipitation
       name: Water-year (Oct-Sept) Precipitation (mm)
       timeseriesServiceUri: paleocar_v3/ppt_water_year
@@ -401,7 +401,7 @@
       visible: false
       styles: 'default,raster'
       description: (prev. Oct through listed year Sept)
-    - id: precipitation_may_sept
+    - id: ppt_may_sept
       class: Precipitation
       name: Summer (May-Sept) Precipitation (mm)
       timeseriesServiceUri: paleocar_v3/ppt_may_sept
@@ -411,7 +411,7 @@
       visible: false
       styles: 'default,raster'
       description: (May to September)
-    - id: precipitation_annual_demosaic
+    - id: ppt_annual
       class: Precipitation
       name: Annual (Jan–Dec) Precipitation (mm)
       timeseriesServiceUri: paleocar_v3/ppt_annual
@@ -421,7 +421,7 @@
       visible: false
       styles: 'default,raster'
       description: (prev. Oct through listed year Sept)
-    - id: growing_degree_days
+    - id: gdd_may_sept
       class: Temperature
       name: Summer (May-Sept) Growing Degree Days (F)
       timeseriesServiceUri: paleocar_v3/gdd_may_sept
