@@ -43,7 +43,13 @@ class ZonalStatistic(str, Enum):
     median = 'median'
 
     def to_numpy_call(self):
-        return getattr(np, self.name)
+        def _median(values, axis, dtype):
+            return np.median(values, axis=axis)
+        if self == ZonalStatistic.median:
+            # special case median which doesn't accept dtype arg
+            return _median
+        return np.mean
+
 
 def bounding_box(bounds) -> geom.Polygon:
     return geom.box(
