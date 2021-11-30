@@ -42,16 +42,8 @@ class ZonalStatistic(str, Enum):
     mean = 'mean'
     median = 'median'
 
-    @staticmethod
-    def _median(xs, axis, dtype):
-        return np.median(xs, axis=axis)
-
     def to_numpy_call(self):
-        if self == self.mean:
-            return np.mean
-        elif self == self.median:
-            return self._median
-
+        return getattr(np, self.name)
 
 def bounding_box(bounds) -> geom.Polygon:
     return geom.box(
@@ -130,13 +122,14 @@ class Polygon(geompyd.Polygon):
         shape_iter = shapes(masked.astype('uint8'), mask=np.equal(masked, 0), transform=transform)
         area = 0.0
         wgs84 = pyproj.Geod(ellps='WGS84')
-        # area is signed positive or negative based on clockwise or
-        # counterclockwise traversal:
-        # https://pyproj4.github.io/pyproj/stable/api/geod.html?highlight=counter%20clockwise#pyproj.Geod.geometry_area_perimeter
         for shp, val in shape_iter:
             shp = orient(shp)
             shp = geom.shape(shp)
             area += wgs84.geometry_area_perimeter(shp)[0]
+        # area is signed positive or negative based on clockwise or
+        # counterclockwise traversal:
+        # https://pyproj4.github.io/pyproj/stable/api/geod.html?highlight=counter%20clockwise#pyproj.Geod.geometry_area_perimeter
+        # return the absolute value of the area
         return abs(area)
 
     def extract(self,
@@ -154,20 +147,27 @@ class Polygon(geompyd.Polygon):
         if not box.relate_pattern(polygon, 'T********'):
             raise SelectedAreaOutOfBoundsError(
                 'no interior point of the selected area intersects an interior point of the dataset region')
-        logger.info('extracting polygon: %s', self)
+        logger.info('extracting polygon: %s', polygon)
         zonal_func = zonal_statistic.to_numpy_call()
         masked, transform, window = raster_geometry_mask(dataset, [self], crop=True, all_touched=True)
         n_cells = masked.size - np.count_nonzero(masked)
         area = self.calculate_area(masked, transform=transform)
-        result = np.zeros(len(band_range), dtype=np.float64)
+        result = np.empty(len(band_range), dtype=np.float64)
+        result.fill(np.nan)
         offset = -band_range.gte
         for band_group in self._make_band_range_groups(width=window.width, height=window.height, band_range=band_range):
+            """ 
+            FIXME: for some reason _make_band_range_groups generates 
+            two identical band ranges. Document and clean up later.
+            """
             data = dataset.read(list(band_group), window=window)
             values = np.ma.array(data=data, mask=np.logical_or(np.equal(data, dataset.nodata), masked))
             lb = band_group.start + offset
             ub = band_group.stop + offset
-            r = zonal_func(values, axis=(1, 2), dtype=np.float64)
-            result[lb:ub] = r
+            zonal_func_results = zonal_func(values, axis=(1, 2), dtype=np.float64)
+            # FIXME: for some reason this slice assignment sets incoming nodata (masked?) values to 0
+            # unless we explicitly guard against it
+            result[lb:ub] = [np.nan if np.equal(v, dataset.nodata) else v for v in zonal_func_results]
         return {'n_cells': n_cells, 'area': area, 'data': result}
 
 
@@ -468,10 +468,11 @@ class TimeseriesQuery(BaseModel):
         logger.debug("extract band range %s, transform band range: %s", band_range, band_range_transform)
         with rasterio.Env():
             with rasterio.open(dataset_meta.path) as ds:
-                res = self.extract_slice(ds, band_range=band_range)
-                xs = res['data']
-                n_cells = res['n_cells']
-                area = res['area']
+                data_slice = self.extract_slice(ds, band_range=band_range)
+                logger.debug("extracted slice: %s", data_slice)
+                xs = data_slice['data']
+                n_cells = data_slice['n_cells']
+                area = data_slice['area']
                 transform_xs = self.extract_slice(ds, band_range=band_range_transform)['data'] if band_range_transform else None
 
         txs = self.transform.apply(xs, transform_xs)
