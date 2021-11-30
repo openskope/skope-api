@@ -76,15 +76,15 @@
 
     > fax: 303-497-6513
   variables:
-    - id: palmer_modified_drought_index
-      class: Precipitation
+    - id: pmdi
+      class: Drought
       name: Palmer Modified Drought Index
       wmsLayer: 'SKOPE:lbda_v2_pmdi_${year}'
       min: -6
       max: 6
       visible: false
       styles: default
-      timeseriesServiceUri: lbda_v2/palmer_modified_drought_index
+      timeseriesServiceUri: lbda_v2/pmdi
       description: >-
         Palmer’s Modified Drought Index: Jun–Aug.; <=-4.00 extreme drought;
         -3.00 to-3.99 severe drought; -2.00 to -2.99 moderate dought, -1.99 to
