@@ -28,7 +28,7 @@
     resolution: year
     resolutionLabel: annually
     period:
-      timeZero: 0
+      timeZero: 1
       gte: '0001'
       lte: '2017'
       suffix: CE
