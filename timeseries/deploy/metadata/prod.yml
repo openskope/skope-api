@@ -4,7 +4,7 @@
     lte: '2017-01-01'
   resolution: 'year'
   variables:
-    - palmer_modified_drought_index
+    - pmdi
 - id: srtm
   time_range:
     gte: '2009-01-01'
