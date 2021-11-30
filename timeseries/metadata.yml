@@ -1,4 +1,4 @@
-- id: lbda
+- id: lbda_v2
   title: Living Blended Drought Atlas (LBDA) Version 2
   ordering: 10
   description: >-
@@ -84,7 +84,7 @@
       max: 6
       visible: false
       styles: default
-      timeseriesServiceUri: lbda-v2/palmer_modified_drought_index
+      timeseriesServiceUri: lbda_v2/palmer_modified_drought_index
       description: >-
         Palmer’s Modified Drought Index: Jun–Aug.; <=-4.00 extreme drought;
         -3.00 to-3.99 severe drought; -2.00 to -2.99 moderate dought, -1.99 to
