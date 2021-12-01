@@ -286,7 +286,7 @@
       class: Crop Niche
       name: Maize Farming Niche (Direct Precip.)
       timeseriesServiceUri: paleocar_v2/maize_farming_niche
-      wmsLayer: 'SKOPE:maize_farming_niche_${year}'
+      wmsLayer: 'SKOPE:paleocar_v2_maize_farming_niche_${year}'
       min: 0
       max: 1
       visible: false
