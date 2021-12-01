@@ -43,12 +43,7 @@ class ZonalStatistic(str, Enum):
     median = 'median'
 
     def to_numpy_call(self):
-        def _median(values, axis, dtype):
-            return np.median(values, axis=axis)
-        if self == ZonalStatistic.median:
-            # special case median which doesn't accept dtype arg
-            return _median
-        return np.mean
+        return getattr(np, self.name)
 
 
 def bounding_box(bounds) -> geom.Polygon:
@@ -162,18 +157,18 @@ class Polygon(geompyd.Polygon):
         result.fill(np.nan)
         offset = -band_range.gte
         for band_group in self._make_band_range_groups(width=window.width, height=window.height, band_range=band_range):
-            """ 
-            FIXME: for some reason _make_band_range_groups generates 
-            two identical band ranges. Document and clean up later.
-            """
             data = dataset.read(list(band_group), window=window)
-            values = np.ma.array(data=data, mask=np.logical_or(np.equal(data, dataset.nodata), masked))
+            masked_values = np.ma.array(data=data, mask=np.logical_or(np.equal(data, dataset.nodata), masked))
+            logger.debug("masked values: %s", masked_values)
             lb = band_group.start + offset
             ub = band_group.stop + offset
-            zonal_func_results = zonal_func(values, axis=(1, 2), dtype=np.float64)
-            # FIXME: for some reason this slice assignment sets incoming nodata (masked?) values to 0
-            # unless we explicitly guard against it
-            result[lb:ub] = [np.nan if np.equal(v, dataset.nodata) else v for v in zonal_func_results]
+            zonal_func_results = zonal_func(masked_values, axis=(1, 2))
+            logger.debug("zonal func results: %s (%s)", zonal_func_results, masked_values.mean(axis=(1, 2)))
+            logger.debug("zonal func results data: %s", zonal_func_results.data)
+            # result[lb:ub] = [np.nan if np.equal(v, dataset.nodata) else v for v in zonal_func_results]
+            result[lb:ub] = zonal_func_results.filled(fill_value=np.nan)
+            logger.debug("result from [%s:%s]: %s", lb, ub, result)
+
         return {'n_cells': n_cells, 'area': area, 'data': result}
 
 
@@ -322,7 +317,7 @@ def rolling_z_score(xs, width):
     n = len(xs) - width
     results = np.zeros(n)
     for i in prange(n):
-        results[i] = (xs[i + width] - np.mean(xs[i:(i + width)])) / np.std(xs[i:(i + width)])
+        results[i] = (xs[i + width] - np.nanmean(xs[i:(i + width)])) / np.nanstd(xs[i:(i + width)])
     return results
 
 
@@ -375,11 +370,11 @@ class ZScoreFixedInterval(BaseModel):
 
     def apply(self, xs, txs):
         if self.time_range is None:
-            return stats.zscore(xs)
+            return stats.zscore(xs, nan_policy='omit')
         else:
-            mean_txs = np.mean(txs)
-            std_txs = np.std(txs)
-            return (xs - mean_txs)/std_txs
+            mean_txs = np.nanmean(txs)
+            std_txs = np.nanstd(txs)
+            return (xs - mean_txs) / std_txs
 
     class Config:
         schema_extra = {
@@ -551,14 +546,14 @@ class SummaryStat(BaseModel):
     stdev: Optional[float]
 
     @classmethod
-    def from_series(cls, series: List[Series]) -> List['SummaryStat']:
+    def from_series(cls, series_list: List[Series]) -> List['SummaryStat']:
         summary_statistics = []
-        for s in series:
+        for series in series_list:
             summary_statistics.append(cls(
-                name=s.options.name,
-                mean=s._s.mean(),
-                median=s._s.median(),
-                stdev=s._s.std()
+                name=series.options.name,
+                mean=series._s.mean(),
+                median=series._s.median(),
+                stdev=series._s.std()
             ))
         return summary_statistics
 
