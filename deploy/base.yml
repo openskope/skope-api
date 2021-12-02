@@ -4,6 +4,8 @@ services:
     build:
       context: timeseries
     restart: always
+    volumes:
+      - ./docker/shared:/shared
   geoserver:
     environment:
       GEOSERVER_ADMIN_PASSWORD_FILE: /run/secrets/geoserver_admin_password

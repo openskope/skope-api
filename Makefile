@@ -4,6 +4,7 @@ UID=$(shell id -u)
 GID=$(shell id -g)
 
 GEOSERVER_ADMIN_PASSWORD_PATH=geoserver/docker/secrets/geoserver_admin_password
+DOCKER_SHARE_MOUNT=docker/shared
 
 .PHONY: help
 # Instructions for using this Makefile
@@ -29,6 +30,7 @@ docker-compose.yml: deploy/base.yml deploy/$(ENVIR).yml timeseries/deploy/Docker
 .PHONY: deploy
 # Deploy the web app after `build`
 deploy: build
+	mkdir -p $(DOCKER_SHARE_MOUNT)
 	docker-compose up -d
 
 ##
