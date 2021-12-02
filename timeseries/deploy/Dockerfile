@@ -8,7 +8,7 @@ COPY deploy/logging /code/deploy/logging
 
 WORKDIR /code
 
-RUN pip install -r deploy/requirements/base.txt -r deploy/requirements/${ENVIR}.txt
+RUN mkdir /shared && pip install -r deploy/requirements/base.txt -r deploy/requirements/${ENVIR}.txt
 
 COPY app metadata.yml /code/
 

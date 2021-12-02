@@ -159,15 +159,11 @@ class Polygon(geompyd.Polygon):
         for band_group in self._make_band_range_groups(width=window.width, height=window.height, band_range=band_range):
             data = dataset.read(list(band_group), window=window)
             masked_values = np.ma.array(data=data, mask=np.logical_or(np.equal(data, dataset.nodata), masked))
-            logger.debug("masked values: %s", masked_values)
             lb = band_group.start + offset
             ub = band_group.stop + offset
             zonal_func_results = zonal_func(masked_values, axis=(1, 2))
-            logger.debug("zonal func results: %s (%s)", zonal_func_results, masked_values.mean(axis=(1, 2)))
-            logger.debug("zonal func results data: %s", zonal_func_results.data)
             # result[lb:ub] = [np.nan if np.equal(v, dataset.nodata) else v for v in zonal_func_results]
             result[lb:ub] = zonal_func_results.filled(fill_value=np.nan)
-            logger.debug("result from [%s:%s]: %s", lb, ub, result)
 
         return {'n_cells': n_cells, 'area': area, 'data': result}
 
@@ -185,9 +181,6 @@ class WindowType(str, Enum):
             return BandRange(gte=br.gte - width, lte=br.lte + width)
         else:
             return BandRange(gte=br.gte - width, lte=br.lte)
-
-    def get_window_size(self, width):
-        return width
 
 
 class MovingAverageSmoother(Smoother):
@@ -220,7 +213,7 @@ class MovingAverageSmoother(Smoother):
         return band_range_adjustment
 
     def apply(self, xs: np.array) -> np.array:
-        window_size = self.method.get_window_size(self.width)
+        window_size = self.width
         return np.convolve(xs, np.ones(window_size) / window_size, 'valid')
 
     class Config:
@@ -300,13 +293,12 @@ class Series(BaseModel):
         xs_mean = cls.summary_stat(np.nanmean, xs)
         xs_median = cls.summary_stat(np.nanmedian, xs)
         xs_stdev = cls.summary_stat(np.nanstd, xs)
-        ss = SummaryStat(
+        return SummaryStat(
             name=name,
             mean=xs_mean,
             median=xs_median,
             stdev=xs_stdev
         )
-        return ss
 
     def to_summary_stat(self):
         return self.get_summary_stats(xs=self._s.to_numpy(), name=self.options.name)
@@ -453,9 +445,11 @@ class TimeseriesQuery(BaseModel):
         return (series_list, pd_series_list)
 
     def get_summary_stats(self, series, xs):
+        # Computes summary statistics over requested timeseries band ranges
         summary_stats = [Series.get_summary_stats(s, s.name) for s in series]
         if not isinstance(self.transform, NoTransform):
-            # provide original summary stats for z-scores
+            # provide original summary stats for z-scores over the original
+            # band range, not the adjusted one
             summary_stats.insert(0, Series.get_summary_stats(xs, 'Original'))
         return summary_stats
 
@@ -470,7 +464,6 @@ class TimeseriesQuery(BaseModel):
         with rasterio.Env():
             with rasterio.open(dataset_meta.path) as ds:
                 data_slice = self.extract_slice(ds, band_range=band_range)
-                logger.debug("extracted slice: %s", data_slice)
                 xs = data_slice['data']
                 n_cells = data_slice['n_cells']
                 area = data_slice['area']
