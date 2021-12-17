@@ -79,6 +79,7 @@
     - id: pmdi
       class: Drought
       name: Palmer Modified Drought Index
+      units:
       wmsLayer: 'SKOPE:lbda_v2_pmdi_${year}'
       min: -6
       max: 6
@@ -163,7 +164,8 @@
   variables:
     - id: srtm_elevation
       class: Elevation
-      name: Elevation (m)
+      name: Elevation
+      units: m
       wmsLayer: 'SKOPE:srtm'
       visible: false
       min: 0
@@ -264,7 +266,8 @@
   variables:
     - id: ppt_water_year
       class: Precipitation
-      name: Water-year (Oct-Sept) Precipitation (mm)
+      name: Water-year (Oct-Sept) Precipitation
+      units: mm
       timeseriesServiceUri: paleocar_v2/ppt_water_year
       wmsLayer: 'SKOPE:paleocar_v2_ppt_water_year_${year}'
       min: 0
@@ -274,7 +277,8 @@
       description: (prev. Oct through listed year Sept)
     - id: gdd_may_sept
       class: Temperature
-      name: Summer (May-Sept) Growing Degree Days (F)
+      name: Summer (May-Sept) Growing Degree Days
+      units: F
       timeseriesServiceUri: paleocar_v2/gdd_may_sept
       wmsLayer: 'SKOPE:paleocar_v2_gdd_may_sept_${year}'
       min: 0
@@ -285,6 +289,7 @@
     - id: maize_farming_niche
       class: Crop Niche
       name: Maize Farming Niche (Direct Precip.)
+      units:
       timeseriesServiceUri: paleocar_v2/maize_farming_niche
       wmsLayer: 'SKOPE:paleocar_v2_maize_farming_niche_${year}'
       min: 0
@@ -393,7 +398,8 @@
   variables:
     - id: ppt_water_year
       class: Precipitation
-      name: Water-year (Oct-Sept) Precipitation (mm)
+      name: Water-year (Oct-Sept) Precipitation
+      units: mm
       timeseriesServiceUri: paleocar_v3/ppt_water_year
       wmsLayer: 'SKOPE:paleocar_v3_ppt_water_year_${year}'
       min: 0
@@ -403,7 +409,8 @@
       description: (prev. Oct through listed year Sept)
     - id: ppt_may_sept
       class: Precipitation
-      name: Summer (May-Sept) Precipitation (mm)
+      name: Summer (May-Sept) Precipitation
+      units: mm
       timeseriesServiceUri: paleocar_v3/ppt_may_sept
       wmsLayer: 'SKOPE:paleocar_v3_ppt_may_sept_${year}'
       min: 0
@@ -413,7 +420,8 @@
       description: (May to September)
     - id: ppt_annual
       class: Precipitation
-      name: Annual (Jan–Dec) Precipitation (mm)
+      name: Annual (Jan–Dec) Precipitation
+      units: mm
       timeseriesServiceUri: paleocar_v3/ppt_annual
       wmsLayer: 'SKOPE:paleocar_v3_ppt_annual_${year}'
       min: 0
@@ -423,7 +431,8 @@
       description: (prev. Oct through listed year Sept)
     - id: gdd_may_sept
       class: Temperature
-      name: Summer (May-Sept) Growing Degree Days (F)
+      name: Summer (May-Sept) Growing Degree Days
+      units: F
       timeseriesServiceUri: paleocar_v3/gdd_may_sept
       wmsLayer: 'SKOPE:paleocar_v3_gdd_may_sept_${year}'
       min: 0
