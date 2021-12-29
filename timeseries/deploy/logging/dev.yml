@@ -15,7 +15,7 @@ handlers:
     class: 'logging.handlers.WatchedFileHandler'
     level: DEBUG
     formatter: standard
-    filename: '/shared/skope-api.log'
+    filename: 'skope-api.log'
 
 root:
   level: WARNING
