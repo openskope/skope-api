@@ -40,4 +40,4 @@ deploy: build
 .PHONY: test
 # Run python unit tests
 test:
-	docker-compose run --rm -v $(PWD):/code server pytest
+	docker-compose run --rm server pytest
