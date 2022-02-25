@@ -7,19 +7,19 @@ class MissedDeploymentSetting(KeyError):
     pass
 
 
-_VALID_ENVIRONS = ['dev', 'staging', 'prod']
+_VALID_ENVIRONMENTS = ['dev', 'staging', 'prod']
 
 
 def _get_environ():
     try:
-        environ = os.environ['ENVIR']
-        if environ not in _VALID_ENVIRONS:
+        environment = os.environ['ENVIRONMENT']
+        if environment not in _VALID_ENVIRONMENTS:
             raise MissedDeploymentSetting(
-                f'ENVIR variable "{environ}" not valid. Must be {", ".join(_VALID_ENVIRONS)}')
-        return environ
+                f'Invalid ENVIRONMENT "{environment}", should be one of {_VALID_ENVIRONMENTS}')
+        return environment
     except KeyError:
         raise MissedDeploymentSetting(
-            f'Unset ENVIR environment variable to one of {", ".join(_VALID_ENVIRONS)}')
+            f'Set ENVIRONMENT to one of {_VALID_ENVIRONMENTS}')
 
 
 settings = Settings.from_envir(_get_environ())

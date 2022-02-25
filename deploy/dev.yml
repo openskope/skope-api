@@ -1,9 +1,8 @@
-version: '3.8'
 services:
   server:
     build:
       args:
-        ENVIR: dev
+        ENVIRONMENT: dev
       dockerfile: deploy/Dockerfile
     image: openskope/skope-api:latest
     volumes:
