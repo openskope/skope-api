@@ -1,9 +1,8 @@
-version: '3.8'
 services:
   server:
     build:
       args:
-        ENVIR: prod
+        ENVIRONMENT: prod
       dockerfile: deploy/Dockerfile
     # may need additional config to deal with X-Forwarded-*
     # https://docs.gunicorn.org/en/stable/deploy.html#nginx-configuration

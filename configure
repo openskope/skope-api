@@ -4,10 +4,10 @@ set -o nounset
 set -o pipefail
 set -o errexit
 
-ENVIR=${1:-dev} # dev|staging|prod
+ENVIRONMENT=${1:-dev} # dev|staging|prod
 
-echo "configuring for **${ENVIR}** environment"
+echo "configuring for **${ENVIRONMENT}** environment"
 
 envsubst > config.mk <<EOF
-ENVIR=$ENVIR
+ENVIRONMENT=$ENVIRONMENT
 EOF

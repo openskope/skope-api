@@ -1,20 +1,14 @@
-import logging.config
-import yaml
-
 from pathlib import Path
-from pydantic import BaseSettings
+from pydantic import BaseSettings, BaseModel, validator, ValidationError
+
+import yaml
+import logging
+
 
 logger = logging.getLogger(__name__)
 
-
-def settings_override(base, overrides):
-    if isinstance(base, dict) and isinstance(overrides, dict):
-        for k in overrides.keys():
-            if k in base and isinstance(base[k], dict):
-                settings_override(base[k], overrides[k])
-            else:
-                base[k] = overrides[k]
-    return base
+BASE_CONFIG_PATH='deploy/settings/base.yml'
+_VALID_ENVIRONMENTS = ['dev', 'staging', 'prod']
 
 
 class Store(BaseModel):
@@ -23,23 +17,32 @@ class Store(BaseModel):
     uncertainty_template: str
 
 
-class Settings(BaseModel):
-    envir: str
+def yaml_config_settings_source(settings: BaseSettings) -> Dict[str, Any]:
+    with Path(BASE_CONFIG_PATH).open() as f:
+        return yaml.safe_load(f) or {}
+
+class Settings(BaseSettings):
+    environment: str = 'dev'
     name: str
-    base_url: str
-    max_processing_time: int
+    base_uri: str = 'timeseries'
+    max_processing_time: int = 50000
     store: Store
 
-    @classmethod
-    def from_envir(cls, envir):
-        with open('deploy/settings/base.yml') as f:
-            base = yaml.safe_load(f) or {}
+    @validator('environment')
+    def validate_environment(cls, v):
+        if v not in _VALID_ENVIRONMENTS:
+            raise ValueError(
+                f'ENVIRONMENT {v} should be one of {_VALID_ENVIRONMENTS}'
+            )
+        return v
 
-        with open(f'deploy/settings/{envir}.yml') as f:
+    @classmethod
+    def from_envir(cls, environment):
+        with open(f'deploy/settings/{environment}.yml') as f:
             overrides = yaml.safe_load(f) or {}
 
         settings_dict = settings_override(base, overrides)
-        settings_dict['envir'] = envir
+        settings_dict['environment'] = environment
 
         instance = cls(**settings_dict)
 
@@ -51,7 +54,11 @@ class Settings(BaseModel):
 
     @property
     def logging_config_file(self):
-        return f'deploy/logging/{self.envir}.yml'
+        return f'deploy/logging/{self.environment}.yml'
+    
+    @property
+    def environment_settings_file(self):
+        return f'deploy/settings/{self.environment}.yml'
 
     @property
     def metadata_path(self):
@@ -62,7 +69,7 @@ class Settings(BaseModel):
         the pydantic base classes for Dataset
         were constructed
         '''
-        return Path(f'deploy/metadata/{self.envir}.yml')
+        return Path(f'deploy/metadata/{self.environment}.yml')
 
     def _get_path(self, template, dataset_id, variable_id):
         base = Path(self.store.base_path).resolve()
@@ -78,10 +85,25 @@ class Settings(BaseModel):
         return self._get_path(
             template=self.store.template,
             dataset_id=dataset_id,
-            variable_id=variable_id)
+            variable_id=variable_id
+        )
 
     def get_uncertainty_dataset_path(self, dataset_id: str, variable_id: str) -> Path:
         return self._get_path(
             template=self.store.uncertainty_template,
             dataset_id=dataset_id,
             variable_id=variable_id)
+
+    class Config:
+
+        @classmethod
+        def customise_sources(cls, init_settings, env_settings, file_secret_settings):
+            return (
+                init_settings,
+                yaml_config_settings_source,
+                env_settings,
+                file_secret_settings,
+            )
+
+
+settings = Settings()
