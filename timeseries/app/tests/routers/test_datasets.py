@@ -1,18 +1,18 @@
-import copy
-
-import numpy as np
-import pytest
-import rasterio
 from datetime import timedelta
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
-from ...exceptions import SelectedAreaPolygonIsTooLarge, TimeseriesTimeoutError
-from ...main import app
-from ...routers import datasets as ds
-from ...routers.datasets import (Point, ZonalStatistic, Polygon, TimeseriesQuery, NoTransform, MovingAverageSmoother, 
-    NoSmoother)
-from ...stores import get_dataset_manager, BandRange, OptionalTimeRange, TimeRange
+from app.exceptions import SelectedAreaPolygonIsTooLarge, TimeseriesTimeoutError
+from app.main import app
+from app.schemas.common import TimeRange, OptionalTimeRange, BandRange
+from app.schemas.dataset import get_dataset_manager
+from app.schemas.geometry import (Point, Polygon,)
+from app.schemas.timeseries import (ZonalStatistic, TimeseriesRequest, NoSmoother, MovingAverageSmoother, NoTransform)
+
+import copy
+import numpy as np
+import pytest
+import rasterio
 
 client = TestClient(app)
 
@@ -20,7 +20,7 @@ dataset_manager = get_dataset_manager()
 
 def test_moving_average_smoother():
     xs = np.array([1, 1, 1, 1, 1, 2, 2, 2, 2, 2])
-    mas = ds.MovingAverageSmoother(method='centered', width=3)
+    mas = MovingAverageSmoother(method='centered', width=3)
     smoothed_xs = mas.apply(xs)
     assert np.allclose(smoothed_xs, np.array([1, 1, 1, 4/3, 5/3, 2, 2, 2]))
     assert len(smoothed_xs) == len(xs) - 2
@@ -43,7 +43,7 @@ def build_timeseries_query(**overrides):
         'zonal_statistic': ZonalStatistic.mean.value
     }
     query_parameters.update(overrides)
-    return TimeseriesQuery(
+    return TimeseriesRequest(
         **query_parameters
     )
 
@@ -78,10 +78,10 @@ TIME_RANGES = [
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("variable_id", dataset_manager.get_dataset_variables('annual_5x5x5_dataset'))
+@pytest.mark.parametrize("variable_id", dataset_manager.get_variables('annual_5x5x5_dataset'))
 @pytest.mark.parametrize("time_range", TIME_RANGES)
 async def test_annual_time_ranges(variable_id, time_range):
-    ds_meta = dataset_manager.get_dataset_variable_meta(
+    ds_meta = dataset_manager.get_variable_metadata(
         dataset_id='annual_5x5x5_dataset',
         variable_id=variable_id
     )
@@ -100,7 +100,7 @@ async def test_annual_time_ranges(variable_id, time_range):
 
 @pytest.mark.asyncio
 async def test_monthly_different_smoothers():
-    ds_meta = dataset_manager.get_dataset_variable_meta(
+    ds_meta = dataset_manager.get_variable_metadata(
         dataset_id='annual_5x5x5_dataset',
         variable_id='float32_variable'
     )
