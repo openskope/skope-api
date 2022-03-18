@@ -1,4 +1,3 @@
-import importlib
 import os
 
 from .base import Settings
