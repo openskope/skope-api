@@ -8,7 +8,7 @@ from shapely import geometry as geom
 from typing import Sequence, Optional, Union, Literal, List
 
 from .common import ZonalStatistic, BandRange, TimeRange, OptionalTimeRange
-from .dataset import VariableMetadata
+from .dataset import VariableMetadata, get_dataset_manager
 from .geometry import Point, Polygon
 
 from app.exceptions import TimeseriesTimeoutError
@@ -430,10 +430,7 @@ class TimeseriesRequest(BaseModel):
         return summary_stats
 
     def extract_sync(self):
-        metadata = get_dataset_manager().get_variable_metadata(
-            dataset_id=self.dataset_id,
-            variable_id=self.variable_id,
-        )
+        metadata = get_dataset_manager().get_variable_metadata(dataset_id=self.dataset_id, variable_id=self.variable_id)
         band_range = self.get_band_range_to_extract(metadata)
         band_range_transform = self.get_band_ranges_for_transform(metadata)
         logger.debug("extract band range %s, transform band range: %s", band_range, band_range_transform)
@@ -463,7 +460,7 @@ class TimeseriesRequest(BaseModel):
             summary_stats=self.get_summary_stats(pd_series, xs),
         )
 
-    async def extract(self, ):
+    async def extract(self):
         start_time = time.time()
         try:
             # may want to do something like
