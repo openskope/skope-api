@@ -23,4 +23,4 @@ jobs:
         run: |
           trap '[ -n "$(jobs -pr)" ] && kill $(jobs -pr)' INT QUIT TERM EXIT
           cd timeseries
-          ENVIR=dev pytest
+          ENVIRONMENT=dev pytest
