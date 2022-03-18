@@ -1,14 +1,14 @@
 FROM python:3.8
 
-ARG ENVIR
-ENV ENVIR="${ENVIR}"
+ARG ENVIRONMENT
+ENV ENVIRONMENT="${ENVIRONMENT}"
 
 COPY deploy/requirements /code/deploy/requirements
 COPY deploy/logging /code/deploy/logging
 
 WORKDIR /code
 
-RUN mkdir /shared && pip install -r deploy/requirements/base.txt -r deploy/requirements/${ENVIR}.txt
+RUN mkdir /shared && pip install -r deploy/requirements/base.txt -r deploy/requirements/${ENVIRONMENT}.txt
 
 COPY app metadata.yml /code/
 
