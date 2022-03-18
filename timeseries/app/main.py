@@ -6,7 +6,8 @@ import logging
 
 from app.exceptions import TimeseriesValidationError, TimeseriesTimeoutError
 from app.settings import settings
-from app.routers import datasets, metadata
+from app.routers.v1 import api as v1_api
+from app.routers.v2 import api as v2_api
 
 settings.init()
 logger = logging.getLogger(__name__)
@@ -37,5 +38,5 @@ async def timeseries_error_handler(request: Request, exc: TimeseriesValidationEr
         content={'detail': exc.to_request_validation_error().errors()})
 
 
-app.include_router(datasets.router)
-app.include_router(metadata.router)
+app.include_router(v1_api.router)
+app.include_router(v2_api.router)
