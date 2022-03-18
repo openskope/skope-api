@@ -2,7 +2,7 @@ import logging.config
 import yaml
 
 from pathlib import Path
-from pydantic import BaseSettings
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +24,7 @@ class Store(BaseModel):
 
 
 class Settings(BaseModel):
+    ALLOWED_ORIGINS: str = '*'
     envir: str
     name: str
     base_url: str
