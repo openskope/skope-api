@@ -26,7 +26,7 @@ def test_moving_average_smoother():
     assert len(smoothed_xs) == len(xs) - 2
 
 
-TIME_SERIES_URL = '/timeseries-service/api/v2/timeseries'
+TIME_SERIES_URL = '/timeseries'
 
 
 def build_timeseries_query(**overrides):
