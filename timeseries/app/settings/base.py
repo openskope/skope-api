@@ -27,7 +27,7 @@ class Settings(BaseModel):
     ALLOWED_ORIGINS: str = '*'
     envir: str
     name: str
-    base_url: str
+    base_uri: str
     max_processing_time: int
     store: Store
 
@@ -48,7 +48,6 @@ class Settings(BaseModel):
             logging.config.dictConfig(yaml.safe_load(f))
 
         return instance
-
 
     @property
     def logging_config_file(self):
