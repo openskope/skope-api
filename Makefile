@@ -7,13 +7,13 @@ GEOSERVER_ADMIN_PASSWORD_PATH=geoserver/docker/secrets/geoserver_admin_password
 DOCKER_SHARE_MOUNT=docker/shared
 
 .PHONY: help
-# Instructions for using this Makefile
-help:
-	@cat $(MAKEFILE_LIST) | docker run --rm -i xanders/make-help
+help: 	##- Instructions for using this Makefile. Run ./configure {dev|staging|prod} first
+	@echo "usage: make [target] ..."
+	@echo "targets:"
+	@sed -e '/#\{2\}-/!d; s/\\$$//; s/:[^#\t]*/:/; s/#\{2\}- *//' $(MAKEFILE_LIST)
 
 .PHONY: build
-# Build and pull the required docker images
-build: docker-compose.yml | $(GEOSERVER_ADMIN_PASSWORD_PATH)
+build: docker-compose.yml | $(GEOSERVER_ADMIN_PASSWORD_PATH) 	##- Build and pull the required docker images 
 	docker-compose build --pull
 
 $(GEOSERVER_ADMIN_PASSWORD_PATH):
@@ -28,8 +28,8 @@ docker-compose.yml: deploy/base.yml deploy/$(ENVIRONMENT).yml timeseries/deploy/
 	esac
 
 .PHONY: deploy
-# Deploy the web app after `build`
-deploy: build
+
+deploy: build 	##- build and deploy the web app 
 	mkdir -p $(DOCKER_SHARE_MOUNT)
 	docker-compose up -d
 
@@ -38,6 +38,6 @@ deploy: build
 ##
 
 .PHONY: test
-# Run python unit tests
-test:
+
+test: 	##- Run python unit tests
 	docker-compose run --rm server pytest
