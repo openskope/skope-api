@@ -1,21 +1,14 @@
 from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import datetime, date
 from enum import Enum
-from geojson_pydantic import (Feature, FeatureCollection, geometries as geompyd)
+from geojson_pydantic import (Point, Polygon, Feature, FeatureCollection, geometries as geompyd)
 from pydantic import BaseModel, Field, validator
 from scipy import stats
 from shapely import geometry as geom
 from typing import Sequence, Optional, Union, Literal, List
 
-from .common import ZonalStatistic, BandRange, TimeRange, OptionalTimeRange
-from .dataset import VariableMetadata, get_dataset_manager
-from .geometry import Point, Polygon
-
-from app.exceptions import TimeseriesTimeoutError
-from app.settings import settings
-
-
 import asyncio
+import logging
 import math
 import numba
 import numpy as np
@@ -23,7 +16,13 @@ import pandas as pd
 import rasterio
 import time
 
-import logging
+from .common import ZonalStatistic, BandRange, TimeRange, OptionalTimeRange
+from .dataset import VariableMetadata, DatasetManager, get_dataset_manager
+from .geometry import SkopeFeatureCollectionModel, SkopeFeatureModel, SkopePointModel, SkopePolygonModel
+
+from app.exceptions import TimeseriesTimeoutError
+from app.settings import settings
+
 
 logger = logging.getLogger(__name__)
 
@@ -354,7 +353,7 @@ class TimeseriesV1Request(BaseModel):
 class TimeseriesRequest(BaseModel):
     dataset_id: str = Field(..., regex=r'^[\w-]+$', description='Dataset ID')
     variable_id: str = Field(..., regex=r'^[\w-]+$', description='Variable ID (unique to a particular dataset)')
-    selected_area: Union[Point, Polygon, Feature, FeatureCollection]
+    selected_area: Union[SkopePointModel, SkopePolygonModel, SkopeFeatureModel, SkopeFeatureCollectionModel]
     zonal_statistic: ZonalStatistic
     max_processing_time: int = Field(settings.max_processing_time, ge=0, le=settings.max_processing_time)
     transform: Transform
@@ -365,8 +364,10 @@ class TimeseriesRequest(BaseModel):
         return [self.transform, series_options]
 
     def extract_slice(self, dataset: rasterio.DatasetReader, band_range: Sequence[int]):
-        # FIXME: do things with the selected_area instead of giving it behavior
         return self.selected_area.extract(dataset, self.zonal_statistic, band_range=band_range)
+    
+    def get_variable_metadata(self, dataset_manager: DatasetManager):
+        return dataset_manager.get_variable_metadata(dataset_id=self.dataset_id, variable_id=self.variable_id)
 
     def get_band_ranges_for_transform(self, metadata: VariableMetadata) -> BandRange:
         """Get the band range range to extract from the raster file"""
@@ -484,7 +485,7 @@ class TimeseriesRequest(BaseModel):
                 "dataset_id": "monthly_5x5x60_dataset",
                 "variable_id": "float32_variable",
                 "time_range": OptionalTimeRange.Config.schema_extra['example'],
-                "selected_area": Point.Config.schema_extra['example'],
+                "selected_area": SkopePointModel.Config.schema_extra['example'],
                 "zonal_statistic": ZonalStatistic.mean.value,
                 "transform": ZScoreMovingInterval.Config.schema_extra['example'],
                 "requested_series": [SeriesOptions.Config.schema_extra['example']]
@@ -494,7 +495,7 @@ class TimeseriesRequest(BaseModel):
                 "dataset_id": "monthly_5x5x60_dataset",
                 "variable_id": "float32_variable",
                 "time_range": OptionalTimeRange.Config.schema_extra['example'],
-                "selected_area": Point.Config.schema_extra['example'],
+                "selected_area": SkopePointModel.Config.schema_extra['example'],
                 "zonal_statistic": ZonalStatistic.mean.value,
                 "transform": ZScoreFixedInterval.Config.schema_extra['example'],
                 "requested_series": [SeriesOptions.Config.schema_extra['example']]
