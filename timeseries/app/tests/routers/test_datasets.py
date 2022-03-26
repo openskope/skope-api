@@ -1,18 +1,21 @@
-from datetime import timedelta
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
+
+import copy
+import logging
+import numpy as np
+import pytest
+import rasterio
+
 
 from app.exceptions import SelectedAreaPolygonIsTooLarge, TimeseriesTimeoutError
 from app.main import app
 from app.schemas.common import TimeRange, OptionalTimeRange, BandRange
 from app.schemas.dataset import get_dataset_manager
-from app.schemas.geometry import (Point, Polygon,)
+from app.schemas.geometry import (SkopePointModel, SkopePolygonModel,)
 from app.schemas.timeseries import (ZonalStatistic, TimeseriesRequest, NoSmoother, MovingAverageSmoother, NoTransform)
 
-import copy
-import numpy as np
-import pytest
-import rasterio
+logger = logging.getLogger(__name__)
 
 client = TestClient(app)
 
@@ -31,7 +34,7 @@ TIME_SERIES_URL = '/timeseries'
 
 def build_timeseries_query(**overrides):
     query_parameters = {
-        'selected_area': Point(
+        'selected_area': SkopePointModel(
             type='Point',
             coordinates=(-123, 45)
         ).dict(),
@@ -95,6 +98,7 @@ async def test_annual_time_ranges(variable_id, time_range):
     async with AsyncClient(app=app, base_url='http://test') as ac:
         response = await ac.post(TIME_SERIES_URL, content=maq.json())
     assert response.status_code == 200
+    logger.debug("response: %s", response)
     assert response.json()['series'][0]['values'] == [i * 100 for i in br]
 
 
@@ -189,34 +193,34 @@ def test_split_indices():
         width = ds.shape[0]
         height= ds.shape[1]
         br = BandRange(1, 60)
-        assert list(Polygon._make_band_range_groups(width=width, height=height, band_range=br, max_size=34)) == \
+        assert list(SkopePolygonModel._make_band_range_groups(width=width, height=height, band_range=br, max_size=34)) == \
                [range(i * 1 + 1, (i + 1) * 1 + 1) for i in range(60)]
-        assert list(Polygon._make_band_range_groups(width=width, height=height, band_range=br, max_size=57)) == \
+        assert list(SkopePolygonModel._make_band_range_groups(width=width, height=height, band_range=br, max_size=57)) == \
                [range(i * 2 + 1, (i + 1) * 2 + 1) for i in range(30)]
-        assert list(Polygon._make_band_range_groups(width=width, height=height, band_range=br, max_size=76)) == \
+        assert list(SkopePolygonModel._make_band_range_groups(width=width, height=height, band_range=br, max_size=76)) == \
                [range(i * 3 + 1, (i + 1) * 3 + 1) for i in range(20)]
-        assert list(Polygon._make_band_range_groups(width=width, height=height, band_range=br, max_size=100)) == \
+        assert list(SkopePolygonModel._make_band_range_groups(width=width, height=height, band_range=br, max_size=100)) == \
                [range(i * 4 + 1, (i + 1) * 4 + 1) for i in range(15)]
-        assert list(Polygon._make_band_range_groups(width=width, height=height, band_range=br, max_size=129)) == \
+        assert list(SkopePolygonModel._make_band_range_groups(width=width, height=height, band_range=br, max_size=129)) == \
                [range(i * 5 + 1, (i + 1) * 5 + 1) for i in range(12)]
-        assert list(Polygon._make_band_range_groups(width=width, height=height, band_range=br, max_size=163)) == \
+        assert list(SkopePolygonModel._make_band_range_groups(width=width, height=height, band_range=br, max_size=163)) == \
                [range(i * 6 + 1, (i + 1) * 6 + 1) for i in range(10)]
-        assert list(Polygon._make_band_range_groups(width=width, height=height, band_range=br, max_size=255)) == \
+        assert list(SkopePolygonModel._make_band_range_groups(width=width, height=height, band_range=br, max_size=255)) == \
                [range(i * 10 + 1, (i + 1) * 10 + 1) for i in range(6)]
-        assert list(Polygon._make_band_range_groups(width=width, height=height, band_range=br, max_size=923)) == \
+        assert list(SkopePolygonModel._make_band_range_groups(width=width, height=height, band_range=br, max_size=923)) == \
                [range(1, 37), range(37, 61)]
-        assert list(Polygon._make_band_range_groups(width=width, height=height, band_range=br, max_size=3264)) == [range(1, 61)]
+        assert list(SkopePolygonModel._make_band_range_groups(width=width, height=height, band_range=br, max_size=3264)) == [range(1, 61)]
 
         with pytest.raises(SelectedAreaPolygonIsTooLarge):
-            list(Polygon._make_band_range_groups(width=width, height=height, band_range=br, max_size=13))
+            list(SkopePolygonModel._make_band_range_groups(width=width, height=height, band_range=br, max_size=13))
 
         br = BandRange(20, 45)
-        assert list(Polygon._make_band_range_groups(width=width, height=height, band_range=br, max_size=34)) == \
+        assert list(SkopePolygonModel._make_band_range_groups(width=width, height=height, band_range=br, max_size=34)) == \
                [range(i * 1 + 20, (i + 1) * 1 + 20) for i in range(26)]
-        assert list(Polygon._make_band_range_groups(width=width, height=height, band_range=br, max_size=700)) == [range(20,46)]
-        assert list(Polygon._make_band_range_groups(width=width, height=height, band_range=br, max_size=325)) == \
+        assert list(SkopePolygonModel._make_band_range_groups(width=width, height=height, band_range=br, max_size=700)) == [range(20,46)]
+        assert list(SkopePolygonModel._make_band_range_groups(width=width, height=height, band_range=br, max_size=325)) == \
                [range(20, 33), range(33, 46)]
-        assert list(Polygon._make_band_range_groups(width=width, height=height, band_range=br, max_size=300)) == \
+        assert list(SkopePolygonModel._make_band_range_groups(width=width, height=height, band_range=br, max_size=300)) == \
                [range(20, 32), range(32, 44), range(44, 46)]
-        assert list(Polygon._make_band_range_groups(width=width, height=height, band_range=br, max_size=627)) == \
+        assert list(SkopePolygonModel._make_band_range_groups(width=width, height=height, band_range=br, max_size=627)) == \
                [range(20, 45), range(45, 46)]
