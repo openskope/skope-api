@@ -10,7 +10,7 @@ class TimeseriesTimeoutError(Exception):
 
 
 class TimeseriesValidationError(Exception):
-    field = '__root__'
+    field = "__root__"
 
     def to_request_validation_error(self):
         return RequestValidationError([ErrorWrapper(self, ("body", self.field))])
@@ -18,8 +18,9 @@ class TimeseriesValidationError(Exception):
 
 class TimeRangeInvalid(TimeseriesValidationError):
     """Time range does not satisfy gte less than or equal to lte"""
-    field = '__root__'
-    template = 'Start time step is greater than end time step'
+
+    field = "__root__"
+    template = "Start time step is greater than end time step"
 
     def __init__(self):
         super().__init__(self.template)
@@ -27,8 +28,9 @@ class TimeRangeInvalid(TimeseriesValidationError):
 
 class SelectedAreaPolygonIsTooLarge(TimeseriesValidationError):
     """Selected area polygon contains more cells than analysis service is willing too load"""
-    field = 'selected_area'
-    template = 'Selected area polygon selects {n_cells} cells which is more the {max_cells} max'
+
+    field = "selected_area"
+    template = "Selected area polygon selects {n_cells} cells which is more the {max_cells} max"
 
     def __init__(self, n_cells, max_cells):
         super().__init__(self.template.format(n_cells=n_cells, max_cells=max_cells))
@@ -36,7 +38,8 @@ class SelectedAreaPolygonIsTooLarge(TimeseriesValidationError):
 
 class SelectedAreaPolygonIsNotValid(TimeseriesValidationError):
     """Selected area polygon is not valid"""
-    field = 'selected_area'
+
+    field = "selected_area"
 
 
 class SelectedAreaOutOfBoundsError(TimeseriesValidationError):
@@ -45,7 +48,8 @@ class SelectedAreaOutOfBoundsError(TimeseriesValidationError):
 
 class DatasetNotFoundError(TimeseriesValidationError):
     """Could not find the dataset in the metadata store"""
-    field = 'dataset_id'
+
+    field = "dataset_id"
 
 
 class VariableNotFoundError(TimeseriesValidationError):

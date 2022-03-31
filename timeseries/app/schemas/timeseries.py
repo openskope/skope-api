@@ -1,7 +1,13 @@
 from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import datetime, date
 from enum import Enum
-from geojson_pydantic import (Point, Polygon, Feature, FeatureCollection, geometries as geompyd)
+from geojson_pydantic import (
+    Point,
+    Polygon,
+    Feature,
+    FeatureCollection,
+    geometries as geompyd,
+)
 from pydantic import BaseModel, Field, validator
 from scipy import stats
 from shapely import geometry as geom
@@ -18,7 +24,12 @@ import time
 
 from .common import ZonalStatistic, BandRange, TimeRange, OptionalTimeRange
 from .dataset import VariableMetadata, DatasetManager, get_dataset_manager
-from .geometry import SkopeFeatureCollectionModel, SkopeFeatureModel, SkopePointModel, SkopePolygonModel
+from .geometry import (
+    SkopeFeatureCollectionModel,
+    SkopeFeatureModel,
+    SkopePointModel,
+    SkopePolygonModel,
+)
 
 from app.exceptions import TimeseriesTimeoutError
 from app.settings import settings
@@ -32,22 +43,30 @@ def rolling_z_score(xs, width):
     n = len(xs) - width
     results = np.zeros(n)
     for i in numba.prange(n):
-        results[i] = (xs[i + width] - np.nanmean(xs[i:(i + width)])) / np.nanstd(xs[i:(i + width)])
+        results[i] = (xs[i + width] - np.nanmean(xs[i : (i + width)])) / np.nanstd(
+            xs[i : (i + width)]
+        )
     return results
 
 
-def values_to_period_range_series(name: str, values: np.array, time_range: TimeRange) -> pd.Series:
+def values_to_period_range_series(
+    name: str, values: np.array, time_range: TimeRange
+) -> pd.Series:
     """
     Converts a numpy array and TimeRange into a pandas series
     """
     # use periods instead of end to avoid an off-by-one
     # between the number of values and the generated index
-    return pd.Series(values, name=name, index=pd.period_range(start=time_range.gte, periods=len(values), freq='A'))
+    return pd.Series(
+        values,
+        name=name,
+        index=pd.period_range(start=time_range.gte, periods=len(values), freq="A"),
+    )
 
 
 class WindowType(str, Enum):
-    centered = 'centered'
-    trailing = 'trailing'
+    centered = "centered"
+    trailing = "trailing"
 
     def get_time_range_required(self, br: BandRange, width: int):
         if self == self.centered:
@@ -57,7 +76,7 @@ class WindowType(str, Enum):
 
 
 class NoSmoother(BaseModel):
-    type: Literal['NoSmoother'] = 'NoSmoother'
+    type: Literal["NoSmoother"] = "NoSmoother"
 
     def apply(self, xs: np.array) -> np.array:
         return xs
@@ -74,26 +93,26 @@ class NoSmoother(BaseModel):
 
 
 class MovingAverageSmoother(BaseModel):
-    type: Literal['MovingAverageSmoother'] = 'MovingAverageSmoother'
+    type: Literal["MovingAverageSmoother"] = "MovingAverageSmoother"
     method: WindowType
     width: int = Field(
         ...,
         description="number of years (or months) from current time to use in the moving window",
         ge=1,
-        le=200
+        le=200,
     )
 
-    @validator('width')
+    @validator("width")
     def width_is_valid_for_window_type(cls, value, values):
-        if 'method' not in values:
+        if "method" not in values:
             return value
-        method = values['method']
+        method = values["method"]
         if method == WindowType.centered and value % 2 == 0:
-            raise ValueError('window width must be odd for centered windows')
+            raise ValueError("window width must be odd for centered windows")
         return value
 
     def get_desired_band_range_adjustment(self):
-        logger.info(f'width = {self.width}')
+        logger.info(f"width = {self.width}")
         band_range_adjustment = []
         if self.method == WindowType.centered:
             band_range_adjustment = np.array([-(self.width // 2), self.width // 2])
@@ -104,27 +123,35 @@ class MovingAverageSmoother(BaseModel):
 
     def apply(self, xs: np.array) -> np.array:
         window_size = self.width
-        return np.convolve(xs, np.ones(window_size) / window_size, 'valid')
+        return np.convolve(xs, np.ones(window_size) / window_size, "valid")
 
     class Config:
         schema_extra = {
             "example": {
                 "type": "MovingAverageSmoother",
                 "method": WindowType.centered.value,
-                "width": 1
+                "width": 1,
             }
         }
 
 
 Smoother = Union[NoSmoother, MovingAverageSmoother]
-    
+
 
 class ZScoreMovingInterval(BaseModel):
     """A moving Z-Score transform to the timeseries"""
-    type: Literal['ZScoreMovingInterval'] = 'ZScoreMovingInterval'
-    width: int = Field(..., description='number of prior years (or months) to use in the moving window', ge=0, le=200)
 
-    def get_desired_band_range(self, dataset_variable_metadata: VariableMetadata) -> Optional[BandRange]:
+    type: Literal["ZScoreMovingInterval"] = "ZScoreMovingInterval"
+    width: int = Field(
+        ...,
+        description="number of prior years (or months) to use in the moving window",
+        ge=0,
+        le=200,
+    )
+
+    def get_desired_band_range(
+        self, dataset_variable_metadata: VariableMetadata
+    ) -> Optional[BandRange]:
         return None
 
     def get_desired_band_range_adjustment(self):
@@ -134,16 +161,11 @@ class ZScoreMovingInterval(BaseModel):
         return rolling_z_score(xs, self.width)
 
     class Config:
-        schema_extra = {
-            'example': {
-                'type': 'ZScoreMovingInterval',
-                'width': 5
-            }
-        }
+        schema_extra = {"example": {"type": "ZScoreMovingInterval", "width": 5}}
 
 
 class ZScoreFixedInterval(BaseModel):
-    type: Literal['ZScoreFixedInterval'] = 'ZScoreFixedInterval'
+    type: Literal["ZScoreFixedInterval"] = "ZScoreFixedInterval"
     time_range: Optional[TimeRange]
 
     def get_desired_band_range(self, metadata: VariableMetadata) -> Optional[BandRange]:
@@ -154,23 +176,20 @@ class ZScoreFixedInterval(BaseModel):
 
     def apply(self, xs, txs):
         if self.time_range is None:
-            return stats.zscore(xs, nan_policy='omit')
+            return stats.zscore(xs, nan_policy="omit")
         else:
             mean_txs = np.nanmean(txs)
             std_txs = np.nanstd(txs)
             return (xs - mean_txs) / std_txs
 
     class Config:
-        schema_extra = {
-            'example': {
-                'type': 'ZScoreFixedInterval'
-            }
-        }
+        schema_extra = {"example": {"type": "ZScoreFixedInterval"}}
 
 
 class NoTransform(BaseModel):
     """A no-op transform to the timeseries"""
-    type: Literal['NoTransform'] = 'NoTransform'
+
+    type: Literal["NoTransform"] = "NoTransform"
 
     def get_desired_band_range(self, metadata: VariableMetadata) -> Optional[BandRange]:
         return None
@@ -207,7 +226,7 @@ class SeriesOptions(BaseModel):
         schema_extra = {
             "example": {
                 "name": "transformed",
-                "smoother": MovingAverageSmoother.Config.schema_extra['example']
+                "smoother": MovingAverageSmoother.Config.schema_extra["example"],
             }
         }
 
@@ -236,23 +255,19 @@ class Series(BaseModel):
         xs_mean = cls.summary_stat(np.nanmean, xs)
         xs_median = cls.summary_stat(np.nanmedian, xs)
         xs_stdev = cls.summary_stat(np.nanstd, xs)
-        return SummaryStat(
-            name=name,
-            mean=xs_mean,
-            median=xs_median,
-            stdev=xs_stdev
-        )
+        return SummaryStat(name=name, mean=xs_mean, median=xs_median, stdev=xs_stdev)
 
     def to_summary_stat(self):
         return self.get_summary_stats(xs=self._s.to_numpy(), name=self.options.name)
 
 
-
 class TimeseriesResponse(BaseModel):
     dataset_id: str
     variable_id: str
-    area: float = Field(..., description='area of cells in selected area in square meters')
-    n_cells: int = Field(..., description='number of cells in selected area')
+    area: float = Field(
+        ..., description="area of cells in selected area in square meters"
+    )
+    n_cells: int = Field(..., description="number of cells in selected area")
     summary_stats: List[SummaryStat]
     series: List[Series]
     transform: Transform
@@ -263,6 +278,7 @@ class TimeseriesV1Request(BaseModel):
     """
     FIXME: refactor to decouple extraction logic from the query data class
     """
+
     datasetId: str
     variableName: str
     boundaryGeometry: Union[Point, Polygon]
@@ -290,7 +306,7 @@ class TimeseriesV1Request(BaseModel):
         if self.start is None:
             gte = metadata.time_range.gte
         else:
-            split_start = self.start.split('-', 1)
+            split_start = self.start.split("-", 1)
             if len(split_start) == 1:
                 gte = self._to_date_from_y(split_start[0])
             elif len(split_start) == 2:
@@ -299,16 +315,13 @@ class TimeseriesV1Request(BaseModel):
         if self.end is None:
             lte = metadata.time_range.lte
         else:
-            split_end = self.end.split('-', 1)
+            split_end = self.end.split("-", 1)
             if len(split_end) == 1:
                 lte = self._to_date_from_y(split_end[0])
             elif len(split_end) == 2:
                 lte = self._to_date_from_ym(split_end[0], split_end[1])
 
-        otr = OptionalTimeRange(
-            gte=gte,
-            lte=lte
-        )
+        otr = OptionalTimeRange(gte=gte, lte=lte)
         return metadata.normalize_time_range(otr)
 
     async def extract(self, metadata):
@@ -331,31 +344,37 @@ class TimeseriesV1Request(BaseModel):
             zonal_statistic=ZonalStatistic.mean,
             time_range=time_range,
             transform=NoTransform(),
-            requested_series=[
-                SeriesOptions(
-                    name='original',
-                    smoother=NoSmoother()
-                )
-            ],
-            max_processing_time=self.timeout
+            requested_series=[SeriesOptions(name="original", smoother=NoSmoother())],
+            max_processing_time=self.timeout,
         )
         data = await query.extract()
         return {
-            'datasetId': self.datasetId,
-            'variableName': self.variableName,
-            'boundaryGeometry': self.boundaryGeometry,
-            'start': start,
-            'end': end,
-            'values': data.series[0].values
+            "datasetId": self.datasetId,
+            "variableName": self.variableName,
+            "boundaryGeometry": self.boundaryGeometry,
+            "start": start,
+            "end": end,
+            "values": data.series[0].values,
         }
 
 
 class TimeseriesRequest(BaseModel):
-    dataset_id: str = Field(..., regex=r'^[\w-]+$', description='Dataset ID')
-    variable_id: str = Field(..., regex=r'^[\w-]+$', description='Variable ID (unique to a particular dataset)')
-    selected_area: Union[SkopePointModel, SkopePolygonModel, SkopeFeatureModel, SkopeFeatureCollectionModel]
+    dataset_id: str = Field(..., regex=r"^[\w-]+$", description="Dataset ID")
+    variable_id: str = Field(
+        ...,
+        regex=r"^[\w-]+$",
+        description="Variable ID (unique to a particular dataset)",
+    )
+    selected_area: Union[
+        SkopePointModel,
+        SkopePolygonModel,
+        SkopeFeatureModel,
+        SkopeFeatureCollectionModel,
+    ]
     zonal_statistic: ZonalStatistic
-    max_processing_time: int = Field(settings.max_processing_time, ge=0, le=settings.max_processing_time)
+    max_processing_time: int = Field(
+        settings.max_processing_time, ge=0, le=settings.max_processing_time
+    )
     transform: Transform
     requested_series: List[SeriesOptions]
     time_range: OptionalTimeRange
@@ -364,17 +383,26 @@ class TimeseriesRequest(BaseModel):
         return [self.transform, series_options]
 
     def extract_slice(self, dataset: rasterio.DatasetReader, band_range: Sequence[int]):
-        return self.selected_area.extract(dataset, self.zonal_statistic, band_range=band_range)
-    
+        return self.selected_area.extract(
+            dataset, self.zonal_statistic, band_range=band_range
+        )
+
     def get_variable_metadata(self, dataset_manager: DatasetManager):
-        return dataset_manager.get_variable_metadata(dataset_id=self.dataset_id, variable_id=self.variable_id)
+        return dataset_manager.get_variable_metadata(
+            dataset_id=self.dataset_id, variable_id=self.variable_id
+        )
 
     def get_band_ranges_for_transform(self, metadata: VariableMetadata) -> BandRange:
         """Get the band range range to extract from the raster file"""
         br_avail = metadata.find_band_range(metadata.time_range)
         br_query = self.transform.get_desired_band_range(metadata)
         compromise_br = br_avail.intersect(br_query) if br_query else None
-        logger.debug("dataset band range %s, desired band range %s, final band range %s", br_avail, br_query, compromise_br)
+        logger.debug(
+            "dataset band range %s, desired band range %s, final band range %s",
+            br_avail,
+            br_query,
+            compromise_br,
+        )
         return compromise_br
 
     def get_band_range_to_extract(self, metadata: VariableMetadata) -> BandRange:
@@ -386,19 +414,30 @@ class TimeseriesRequest(BaseModel):
         for series in self.requested_series:
             candidate_br = transform_br + series.get_desired_band_range_adjustment()
             desired_br = desired_br.union(candidate_br)
-            logger.info('transform band range %s adjusted to candidate band range %s, resulting in desired br: %s', transform_br, candidate_br, desired_br)
+            logger.info(
+                "transform band range %s adjusted to candidate band range %s, resulting in desired br: %s",
+                transform_br,
+                candidate_br,
+                desired_br,
+            )
 
-        compromise_br = br_avail.intersect(
-            BandRange.from_numpy_pair(desired_br))
-        logger.info('final compromise_br, %s', compromise_br)
+        compromise_br = br_avail.intersect(BandRange.from_numpy_pair(desired_br))
+        logger.info("final compromise_br, %s", compromise_br)
         return compromise_br
 
-    def get_time_range_after_transforms(self, series_options: SeriesOptions, metadata: VariableMetadata, extract_br: BandRange) -> TimeRange:
+    def get_time_range_after_transforms(
+        self,
+        series_options: SeriesOptions,
+        metadata: VariableMetadata,
+        extract_br: BandRange,
+    ) -> TimeRange:
         """Get the year range after values after applying transformations"""
-        inds = extract_br + \
-            self.transform.get_desired_band_range_adjustment() * -1 + \
-            series_options.get_desired_band_range_adjustment() * -1
-        print(f'inds = {inds}')
+        inds = (
+            extract_br
+            + self.transform.get_desired_band_range_adjustment() * -1
+            + series_options.get_desired_band_range_adjustment() * -1
+        )
+        print(f"inds = {inds}")
         yr = metadata.translate_band_range(BandRange.from_numpy_pair(inds))
         return yr
 
@@ -408,7 +447,9 @@ class TimeseriesRequest(BaseModel):
         gte = datetime.fromordinal(self.time_range.gte.toordinal())
         lte = datetime.fromordinal(self.time_range.lte.toordinal())
         for series_options in self.requested_series:
-            tr = self.get_time_range_after_transforms(series_options, metadata, band_range)
+            tr = self.get_time_range_after_transforms(
+                series_options, metadata, band_range
+            )
             pd_series = series_options.apply(xs, tr).loc[gte:lte]
             pd_series_list.append(pd_series)
             compromise_tr = tr.intersect(self.time_range)
@@ -427,28 +468,36 @@ class TimeseriesRequest(BaseModel):
         if not isinstance(self.transform, NoTransform):
             # provide original summary stats for z-scores over the original
             # band range, not the adjusted one
-            summary_stats.insert(0, Series.get_summary_stats(xs, 'Original'))
+            summary_stats.insert(0, Series.get_summary_stats(xs, "Original"))
         return summary_stats
 
     def extract_sync(self):
-        metadata = get_dataset_manager().get_variable_metadata(dataset_id=self.dataset_id, variable_id=self.variable_id)
+        metadata = get_dataset_manager().get_variable_metadata(
+            dataset_id=self.dataset_id, variable_id=self.variable_id
+        )
         band_range = self.get_band_range_to_extract(metadata)
         band_range_transform = self.get_band_ranges_for_transform(metadata)
-        logger.debug("extract band range %s, transform band range: %s", band_range, band_range_transform)
+        logger.debug(
+            "extract band range %s, transform band range: %s",
+            band_range,
+            band_range_transform,
+        )
         with rasterio.Env():
             with rasterio.open(metadata.path) as ds:
                 data_slice = self.extract_slice(ds, band_range=band_range)
-                xs = data_slice['data']
-                n_cells = data_slice['n_cells']
-                area = data_slice['area']
-                transform_xs = self.extract_slice(ds, band_range=band_range_transform)['data'] if band_range_transform else None
+                xs = data_slice["data"]
+                n_cells = data_slice["n_cells"]
+                area = data_slice["area"]
+                transform_xs = (
+                    self.extract_slice(ds, band_range=band_range_transform)["data"]
+                    if band_range_transform
+                    else None
+                )
 
         txs = self.transform.apply(xs, transform_xs)
 
         series, pd_series = self.apply_series(
-            txs,
-            metadata=metadata,
-            band_range=band_range
+            txs, metadata=metadata, band_range=band_range
         )
         return TimeseriesResponse(
             dataset_id=self.dataset_id,
@@ -474,8 +523,8 @@ class TimeseriesRequest(BaseModel):
         except asyncio.TimeoutError as e:
             process_time = time.time() - start_time
             raise TimeseriesTimeoutError(
-                message='Request processing time exceeded limit',
-                processing_time=process_time
+                message="Request processing time exceeded limit",
+                processing_time=process_time,
             ) from e
 
     class Config:
@@ -484,20 +533,20 @@ class TimeseriesRequest(BaseModel):
                 "resolution": "month",
                 "dataset_id": "monthly_5x5x60_dataset",
                 "variable_id": "float32_variable",
-                "time_range": OptionalTimeRange.Config.schema_extra['example'],
-                "selected_area": SkopePointModel.Config.schema_extra['example'],
+                "time_range": OptionalTimeRange.Config.schema_extra["example"],
+                "selected_area": SkopePointModel.Config.schema_extra["example"],
                 "zonal_statistic": ZonalStatistic.mean.value,
-                "transform": ZScoreMovingInterval.Config.schema_extra['example'],
-                "requested_series": [SeriesOptions.Config.schema_extra['example']]
+                "transform": ZScoreMovingInterval.Config.schema_extra["example"],
+                "requested_series": [SeriesOptions.Config.schema_extra["example"]],
             },
             "fixed_interval_example": {
                 "resolution": "month",
                 "dataset_id": "monthly_5x5x60_dataset",
                 "variable_id": "float32_variable",
-                "time_range": OptionalTimeRange.Config.schema_extra['example'],
-                "selected_area": SkopePointModel.Config.schema_extra['example'],
+                "time_range": OptionalTimeRange.Config.schema_extra["example"],
+                "selected_area": SkopePointModel.Config.schema_extra["example"],
                 "zonal_statistic": ZonalStatistic.mean.value,
-                "transform": ZScoreFixedInterval.Config.schema_extra['example'],
-                "requested_series": [SeriesOptions.Config.schema_extra['example']]
-            }
+                "transform": ZScoreFixedInterval.Config.schema_extra["example"],
+                "requested_series": [SeriesOptions.Config.schema_extra["example"]],
+            },
         }
