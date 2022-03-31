@@ -24,7 +24,7 @@ class Store(BaseModel):
 
 
 class Settings(BaseModel):
-    ALLOWED_ORIGINS: str = '*'
+    ALLOWED_ORIGINS: str = "*"
     envir: str
     name: str
     base_uri: str
@@ -33,14 +33,14 @@ class Settings(BaseModel):
 
     @classmethod
     def from_envir(cls, envir):
-        with open('deploy/settings/base.yml') as f:
+        with open("deploy/settings/base.yml") as f:
             base = yaml.safe_load(f) or {}
 
-        with open(f'deploy/settings/{envir}.yml') as f:
+        with open(f"deploy/settings/{envir}.yml") as f:
             overrides = yaml.safe_load(f) or {}
 
         settings_dict = settings_override(base, overrides)
-        settings_dict['envir'] = envir
+        settings_dict["envir"] = envir
 
         instance = cls(**settings_dict)
 
@@ -51,37 +51,41 @@ class Settings(BaseModel):
 
     @property
     def logging_config_file(self):
-        return f'deploy/logging/{self.envir}.yml'
+        return f"deploy/logging/{self.envir}.yml"
 
     @property
     def metadata_path(self):
-        '''
+        """
         FIXME: dataset metadata is currently duplicated across
         deploy/metadata/prod.yml and metadata.yml and should
         be de-duplicated but this brings some pain into how
         the pydantic base classes for Dataset
         were constructed
-        '''
-        return Path(f'deploy/metadata/{self.envir}.yml')
+        """
+        return Path(f"deploy/metadata/{self.envir}.yml")
 
     def _get_path(self, template, dataset_id, variable_id):
         base = Path(self.store.base_path).resolve()
-        path = Path(template.format(dataset_id=dataset_id, variable_id=variable_id)).resolve()
+        path = Path(
+            template.format(dataset_id=dataset_id, variable_id=variable_id)
+        ).resolve()
         try:
             path.relative_to(base)
         except ValueError as e:
-            logger.warning('path traversal detected: base path %s, data path %s', base, path)
+            logger.warning(
+                "path traversal detected: base path %s, data path %s", base, path
+            )
             raise e
         return path
 
     def get_dataset_path(self, dataset_id: str, variable_id: str) -> Path:
         return self._get_path(
-            template=self.store.template,
-            dataset_id=dataset_id,
-            variable_id=variable_id)
+            template=self.store.template, dataset_id=dataset_id, variable_id=variable_id
+        )
 
     def get_uncertainty_dataset_path(self, dataset_id: str, variable_id: str) -> Path:
         return self._get_path(
             template=self.store.uncertainty_template,
             dataset_id=dataset_id,
-            variable_id=variable_id)
+            variable_id=variable_id,
+        )

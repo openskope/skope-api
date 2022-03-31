@@ -10,42 +10,39 @@ from app.exceptions import TimeRangeInvalid
 
 
 class ZonalStatistic(str, Enum):
-    mean = 'mean'
-    median = 'median'
+    mean = "mean"
+    median = "median"
 
     def to_numpy_call(self):
         return getattr(np, self.value)
 
 
 class Resolution(str, Enum):
-    month = 'month'
-    year = 'year'
+    month = "month"
+    year = "year"
 
 
-class BandRange(namedtuple('BandRange', ['gte', 'lte'])):
+class BandRange(namedtuple("BandRange", ["gte", "lte"])):
     """
     A range class describing what bands of a raster to read
 
     Raster bands are one-indexed so gte must be >= 1
     """
+
     __slots__ = ()
 
-    def intersect(self, desired_br: 'BandRange') -> 'BandRange':
+    def intersect(self, desired_br: "BandRange") -> "BandRange":
         return self.__class__(
-            gte=max(self.gte, desired_br.gte),
-            lte=min(self.lte, desired_br.lte))
-
-    def union(self, desired_br: 'BandRange') -> 'BandRange':
-        return self.__class__(
-            gte=min(self.gte, desired_br.gte),
-            lte=max(self.lte, desired_br.lte)
+            gte=max(self.gte, desired_br.gte), lte=min(self.lte, desired_br.lte)
         )
 
-    def __add__(self, other) -> 'BandRange':
+    def union(self, desired_br: "BandRange") -> "BandRange":
         return self.__class__(
-            gte=self.gte + other[0],
-            lte=self.lte + other[1]
+            gte=min(self.gte, desired_br.gte), lte=max(self.lte, desired_br.lte)
         )
+
+    def __add__(self, other) -> "BandRange":
+        return self.__class__(gte=self.gte + other[0], lte=self.lte + other[1])
 
     def to_numpy_pair(self):
         return np.array([self.gte, self.lte])
@@ -70,21 +67,16 @@ class TimeRange(BaseModel):
 
     @root_validator
     def check_time_range_valid(cls, values):
-        gte, lte = values.get('gte'), values.get('lte')
+        gte, lte = values.get("gte"), values.get("lte")
         if gte > lte:
             raise TimeRangeInvalid()
         return values
 
-    def intersect(self, tr: 'TimeRange') -> 'TimeRange':
+    def intersect(self, tr: "TimeRange") -> "TimeRange":
         return TimeRange(gte=max(self.gte, tr.gte), lte=min(self.lte, tr.lte))
 
     class Config:
-        schema_extra = {
-            'example': {
-                'gte': '0001-02-05',
-                'lte': '0005-09-02'
-            }
-        }
+        schema_extra = {"example": {"gte": "0001-02-05", "lte": "0005-09-02"}}
 
 
 class OptionalTimeRange(BaseModel):
@@ -92,6 +84,4 @@ class OptionalTimeRange(BaseModel):
     lte: Optional[date]
 
     class Config:
-        schema_extra = {
-            'example': TimeRange.Config.schema_extra['example']
-        }
+        schema_extra = {"example": TimeRange.Config.schema_extra["example"]}
