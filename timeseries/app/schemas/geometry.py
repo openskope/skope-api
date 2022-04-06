@@ -28,7 +28,6 @@ def bounding_box(bounds) -> geom.Polygon:
 
 
 class SkopeGeometry(metaclass=ABCMeta):
-
     @property
     def shapes(self):
         return [geom.shape(self)]
@@ -200,10 +199,12 @@ class SkopePolygonModel(Polygon, BaseSkopePolygonModel):
 
 
 class SkopeFeatureModel(Feature, BaseSkopePolygonModel):
+    @property
     def shapes(self):
         return [geom.shape(self.geometry)]
 
 
 class SkopeFeatureCollectionModel(FeatureCollection, BaseSkopePolygonModel):
+    @property
     def shapes(self):
-        return [geom.shape(feature.geometry for feature in self.features)]
+        return [geom.shape(feature.geometry) for feature in self.features]
