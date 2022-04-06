@@ -34,6 +34,7 @@ async def extract_timeseries(
             xs = data_slice["data"]
             n_cells = data_slice["n_cells"]
             area = data_slice["area"]
+            # only needed for fixed interval z score
             transform_xs = (
                 timeseries_request.extract_slice(ds, band_range=band_range_transform)[
                     "data"
@@ -42,7 +43,7 @@ async def extract_timeseries(
                 else None
             )
 
-    txs = timeseries_request.transform.apply(xs, transform_xs)
+    txs = timeseries_request.apply_transform(xs, transform_xs)
 
     series, pd_series = timeseries_request.apply_series(
         txs, metadata=metadata, band_range=band_range

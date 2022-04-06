@@ -28,6 +28,11 @@ def bounding_box(bounds) -> geom.Polygon:
 
 
 class SkopeGeometry(metaclass=ABCMeta):
+
+    @property
+    def shapes(self):
+        return [geom.shape(self)]
+
     def extract(
         self,
         dataset: DatasetReader,
@@ -167,7 +172,7 @@ class BaseSkopePolygonModel(SkopeGeometry):
     ):
         zonal_func = zonal_statistic.to_numpy_call()
         masked, transform, window = mask.raster_geometry_mask(
-            dataset, shapes=[self], crop=True, all_touched=True
+            dataset, shapes=self.shapes, crop=True, all_touched=True
         )
         n_cells = masked.size - np.count_nonzero(masked)
         area = self.calculate_area(masked, transform=transform)
@@ -195,8 +200,10 @@ class SkopePolygonModel(Polygon, BaseSkopePolygonModel):
 
 
 class SkopeFeatureModel(Feature, BaseSkopePolygonModel):
-    pass
+    def shapes(self):
+        return [geom.shape(self.geometry)]
 
 
 class SkopeFeatureCollectionModel(FeatureCollection, BaseSkopePolygonModel):
-    pass
+    def shapes(self):
+        return [geom.shape(feature.geometry for feature in self.features)]
