@@ -4,13 +4,9 @@ from enum import Enum
 from geojson_pydantic import (
     Point,
     Polygon,
-    Feature,
-    FeatureCollection,
-    geometries as geompyd,
 )
 from pydantic import BaseModel, Field, validator
 from scipy import stats
-from shapely import geometry as geom
 from typing import Sequence, Optional, Union, Literal, List
 
 import asyncio
@@ -113,7 +109,6 @@ class MovingAverageSmoother(BaseModel):
 
     def get_desired_band_range_adjustment(self):
         logger.info(f"width = {self.width}")
-        band_range_adjustment = []
         if self.method == WindowType.centered:
             band_range_adjustment = np.array([-(self.width // 2), self.width // 2])
         else:
@@ -381,6 +376,10 @@ class TimeseriesRequest(BaseModel):
 
     def transforms(self, series_options: SeriesOptions):
         return [self.transform, series_options]
+
+    def apply_transform(self, xs, txs):
+        # FIXME: only needs / uses txs in the case of fixed interval z score
+        return self.transform.apply(xs, txs)
 
     def extract_slice(self, dataset: rasterio.DatasetReader, band_range: Sequence[int]):
         return self.selected_area.extract(
