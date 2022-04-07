@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   server:
     build:
@@ -12,4 +11,4 @@ services:
       GEOSERVER_ADMIN_USER: skope
       STABLE_EXTENSIONS: importer-plugin
       TOMCAT_EXTRAS: "false"
-    image: kartoza/geoserver:2.20.0
+    image: kartoza/geoserver:2.20.3
