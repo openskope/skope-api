@@ -8,6 +8,7 @@ import pytest
 import rasterio
 
 
+from app.core.services import extract_timeseries
 from app.exceptions import SelectedAreaPolygonIsTooLarge, TimeseriesTimeoutError
 from app.main import app
 from app.schemas.common import TimeRange, OptionalTimeRange, BandRange
@@ -88,10 +89,7 @@ async def test_annual_time_ranges(variable_id, time_range):
 
 
 @pytest.mark.asyncio
-async def test_monthly_different_smoothers():
-    ds_meta = dataset_manager.get_variable_metadata(
-        dataset_id="annual_5x5x5_dataset", variable_id="float32_variable"
-    )
+async def test_annual_different_smoothers():
     tsq = build_timeseries_query(
         dataset_id="annual_5x5x5_dataset",
         variable_id="float32_variable",
@@ -108,7 +106,9 @@ async def test_monthly_different_smoothers():
         ],
         time_range=OptionalTimeRange(gte="0001-01-01", lte="0004-01-01").dict(),
     )
-    response = tsq.extract_sync()
+    output = {"response": None}
+    await extract_timeseries(tsq, dataset_manager, output)
+    response = output.get("response", {})
     original = response.series[0]
     trailing = response.series[1]
     centered = response.series[2]

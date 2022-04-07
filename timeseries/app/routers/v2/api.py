@@ -22,7 +22,7 @@ def metadata(api_metadata=Depends(load_api_metadata)):
 
 @timeseries_router.post("/timeseries")
 async def retrieve_timeseries(
-    data: TimeseriesRequest, dataset_manager=Depends(get_dataset_manager)
+    request: TimeseriesRequest, dataset_manager=Depends(get_dataset_manager)
 ):
     timeout = settings.max_processing_time
     logger.debug("time out after %s", timeout)
@@ -30,7 +30,7 @@ async def retrieve_timeseries(
         try:
             with fail_after(timeout) as scope:
                 output = {"response": {}}
-                await tg.start(extract_timeseries, data, dataset_manager, output)
+                await tg.start(extract_timeseries, request, dataset_manager, output)
                 return output["response"]
         except TimeoutError as e:
             raise TimeseriesTimeoutError(e.message, timeout)
