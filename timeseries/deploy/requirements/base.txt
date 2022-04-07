@@ -9,3 +9,4 @@ PyYAML==5.4.1
 rasterio==1.2.10
 scipy==1.8.0
 Shapely==1.7.1
+uvicorn==0.17.6
