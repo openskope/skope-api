@@ -152,18 +152,18 @@ class BaseSkopePolygonModel(SkopeGeometry):
 
     def validate_geometry(self, dataset: DatasetReader):
         box = bounding_box(dataset.bounds)
-        polygon = geom.Polygon(*self.coordinates)
-        if not polygon.is_valid:
-            raise SelectedAreaPolygonIsNotValid(
-                f"selected area is not a valid polygon: {explain_validity(polygon).lower()}"
-            )
-        # DE-9IM format
-        # https://giswiki.hsr.ch/images/3/3d/9dem_springer.pdf
-        # 'T********' means that the interior of the bounding box must intersect the interior of the selected area
-        if not box.relate_pattern(polygon, "T********"):
-            raise SelectedAreaOutOfBoundsError(
-                "no interior point of the selected area intersects an interior point of the dataset region"
-            )
+        for shape in self.shapes:
+            if not shape.is_valid:
+                raise SelectedAreaPolygonIsNotValid(
+                    f"selected area is not a valid polygon: {explain_validity(polygon).lower()}"
+                )
+            # DE-9IM format
+            # https://giswiki.hsr.ch/images/3/3d/9dem_springer.pdf
+            # 'T********' means that the interior of the bounding box must intersect the interior of the selected area
+            if not box.relate_pattern(shape, "T********"):
+                raise SelectedAreaOutOfBoundsError(
+                    "no interior point of the selected area intersects an interior point of the dataset region"
+                )
 
     def extract_raster_slice(
         self,
