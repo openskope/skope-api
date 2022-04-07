@@ -57,10 +57,10 @@ class SkopeGeometry(metaclass=ABCMeta):
 
 class SkopePointModel(Point, SkopeGeometry):
     @staticmethod
-    def calculate_area(px: int, py: int, dataset: DatasetReader):
+    def calculate_area(column_index: int, row_index: int, dataset: DatasetReader):
         wgs84 = pyproj.Geod(ellps="WGS84")
-        top_left = dataset.xy(row=py, col=px)
-        bottom_right = dataset.xy(row=py + 1, col=px + 1)
+        top_left = dataset.xy(row=row_index, col=column_index)
+        bottom_right = dataset.xy(row=row_index + 1, col=column_index + 1)
         top_right = (bottom_right[0], top_left[1])
         bottom_left = (top_left[0], bottom_right[1])
         bbox = geom.Polygon([top_left, bottom_left, bottom_right, top_right, top_left])
@@ -92,7 +92,9 @@ class SkopePointModel(Point, SkopeGeometry):
             out_dtype=np.float64,
         ).flatten()
         data[np.equal(data, dataset.nodata)] = np.nan
-        area = self.calculate_area(px=row_index, py=column_index, dataset=dataset)
+        area = self.calculate_area(
+            column_index=column_index, row_index=row_index, dataset=dataset
+        )
         return {
             "n_cells": 1,
             "area": area,

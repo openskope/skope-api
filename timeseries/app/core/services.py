@@ -29,16 +29,16 @@ async def extract_timeseries(
         band_range_transform,
     )
     with rasterio.Env():
-        with rasterio.open(metadata.path) as ds:
-            data_slice = timeseries_request.extract_slice(ds, band_range)
+        with rasterio.open(metadata.path) as dataset:
+            data_slice = timeseries_request.extract_slice(dataset, band_range)
             xs = data_slice["data"]
             n_cells = data_slice["n_cells"]
             area = data_slice["area"]
             # only needed for fixed interval z score
             transform_xs = (
-                timeseries_request.extract_slice(ds, band_range=band_range_transform)[
-                    "data"
-                ]
+                timeseries_request.extract_slice(
+                    dataset, band_range=band_range_transform
+                )["data"]
                 if band_range_transform
                 else None
             )
