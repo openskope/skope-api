@@ -106,9 +106,7 @@ async def test_annual_different_smoothers():
         ],
         time_range=OptionalTimeRange(gte="0001-01-01", lte="0004-01-01").dict(),
     )
-    output = {"response": None}
-    await extract_timeseries(tsq, dataset_manager, output)
-    response = output.get("response", {})
+    response = await extract_timeseries(tsq, dataset_manager)
     original = response.series[0]
     trailing = response.series[1]
     centered = response.series[2]
@@ -144,14 +142,15 @@ async def test_missing_property():
 async def test_timeout():
     time_range = OptionalTimeRange(gte="0001-01-01", lte="0005-01-01")
     maq = build_timeseries_query(
-        dataset_id="annual_5x5x5",
+        dataset_id="annual_5x5x5_dataset",
         variable_id="float32_variable",
         time_range=time_range,
         max_processing_time=0,
     )
 
     with pytest.raises(TimeseriesTimeoutError):
-        await maq.extract()
+        response = await extract_timeseries(maq, dataset_manager)
+        assert response is None
 
 
 def test_split_indices():
