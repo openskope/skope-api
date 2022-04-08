@@ -18,6 +18,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          ./configure dev
           pip install -r timeseries/deploy/requirements/base.txt -r timeseries/deploy/requirements/dev.txt
       - name: Run the tests
         run: |
