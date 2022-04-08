@@ -5,9 +5,12 @@ set -o pipefail
 set -o errexit
 
 ENVIRONMENT=${1:-dev} # dev|staging|prod
+SETTINGS_DIR="timeseries/deploy/settings"
+YAML_CONFIG_FILE="${SETTINGS_DIR}/config.yml"
 
 echo "configuring for **${ENVIRONMENT}** environment"
 
 envsubst > config.mk <<EOF
 ENVIRONMENT=$ENVIRONMENT
 EOF
+cat "${SETTINGS_DIR}/base.yml" "${SETTINGS_DIR}/${ENVIRONMENT}.yml" > "${YAML_CONFIG_FILE}"

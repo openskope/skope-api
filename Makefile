@@ -28,7 +28,6 @@ docker-compose.yml: deploy/base.yml deploy/$(ENVIRONMENT).yml timeseries/deploy/
 	esac
 
 .PHONY: deploy
-
 deploy: build 	##- build and deploy the web app 
 	mkdir -p $(DOCKER_SHARE_MOUNT)
 	docker-compose up -d

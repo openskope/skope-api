@@ -1,3 +1,4 @@
+name: 'SKOPE Production API Services'
 store:
   base_path: '/data'
   template: '/data/{dataset_id}/{variable_id}/cube.tif'

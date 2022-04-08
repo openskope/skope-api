@@ -1,3 +1,4 @@
+name: 'SKOPE Development / Testing API'
 store:
   base_path: 'data'
   template: 'data/{dataset_id}_{variable_id}.tif'

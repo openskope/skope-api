@@ -8,6 +8,7 @@ import pytest
 import rasterio
 
 
+from app.config import get_settings
 from app.core.services import extract_timeseries
 from app.exceptions import SelectedAreaPolygonIsTooLarge, TimeseriesTimeoutError
 from app.main import app
@@ -25,6 +26,7 @@ from app.schemas.timeseries import (
     NoTransform,
 )
 
+settings = get_settings()
 logger = logging.getLogger(__name__)
 
 client = TestClient(app)
@@ -38,9 +40,6 @@ def test_moving_average_smoother():
     smoothed_xs = mas.apply(xs)
     assert np.allclose(smoothed_xs, np.array([1, 1, 1, 4 / 3, 5 / 3, 2, 2, 2]))
     assert len(smoothed_xs) == len(xs) - 2
-
-
-TIME_SERIES_URL = "/timeseries"
 
 
 def build_timeseries_query(**overrides):
@@ -75,14 +74,14 @@ async def test_annual_time_ranges(variable_id, time_range):
         dataset_id="annual_5x5x5_dataset", variable_id=variable_id
     )
     br = ds_meta.find_band_range(time_range)
-    maq = build_timeseries_query(
+    timeseries_query = build_timeseries_query(
         dataset_id="annual_5x5x5_dataset",
         variable_id=variable_id,
         time_range=time_range,
         zonal_statistic=ZonalStatistic.mean.value,
     )
     async with AsyncClient(app=app, base_url="http://test") as ac:
-        response = await ac.post(TIME_SERIES_URL, content=maq.json())
+        response = await ac.post(settings.base_uri, content=timeseries_query.json())
     assert response.status_code == 200
     logger.debug("response: %s", response)
     assert response.json()["series"][0]["values"] == [i * 100 for i in br]
@@ -133,7 +132,7 @@ async def test_missing_property():
         for key in set(maq.dict().keys()).difference({"max_processing_time"}):
             data = copy.deepcopy(maq)
             data.__dict__.pop(key)
-            response = await ac.post(TIME_SERIES_URL, content=data.json())
+            response = await ac.post(settings.base_uri, content=data.json())
             assert response.status_code == 422
             assert response.json()["detail"][0]["loc"] == ["body", key]
 

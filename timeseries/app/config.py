@@ -1,5 +1,8 @@
+from functools import lru_cache
+from logging.config import dictConfig
 from pathlib import Path
-from pydantic import BaseSettings, BaseModel, validator, ValidationError
+from pydantic import BaseSettings, BaseModel
+from typing import Dict, Any
 
 import yaml
 import logging
@@ -7,8 +10,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-BASE_CONFIG_PATH = "deploy/settings/base.yml"
-_VALID_ENVIRONMENTS = ["dev", "staging", "prod"]
+YAML_CONFIG_PATH = "deploy/settings/config.yml"
 
 
 class Store(BaseModel):
@@ -18,45 +20,30 @@ class Store(BaseModel):
 
 
 def yaml_config_settings_source(settings: BaseSettings) -> Dict[str, Any]:
-    with Path(BASE_CONFIG_PATH).open() as f:
+    with Path(YAML_CONFIG_PATH).open() as f:
         return yaml.safe_load(f) or {}
 
 
 class Settings(BaseSettings):
-    environment: str = "dev"
-    name: str
-    base_uri: str = "timeseries"
-    max_processing_time: int = 50000
+    allowed_origins = "*"
+    environment = "dev"
+    name = "SKOPE API Services (development)"
+    base_uri = "timeseries"
+    max_processing_time = 15000  # in milliseconds
     store: Store
 
-    @validator("environment")
-    def validate_environment(cls, v):
-        if v not in _VALID_ENVIRONMENTS:
-            raise ValueError(f"ENVIRONMENT {v} should be one of {_VALID_ENVIRONMENTS}")
-        return v
-
     @classmethod
-    def from_envir(cls, environment):
-        with open(f"deploy/settings/{environment}.yml") as f:
-            overrides = yaml.safe_load(f) or {}
-
-        settings_dict = settings_override(base, overrides)
-        settings_dict["environment"] = environment
-
-        instance = cls(**settings_dict)
-
+    def create(cls):
+        instance = Settings()
+        print("logging from ")
         with open(instance.logging_config_file) as f:
-            logging.config.dictConfig(yaml.safe_load(f))
-
+            dictConfig(yaml.safe_load(f))
+        print("configured logging for ", instance.environment)
         return instance
 
     @property
     def logging_config_file(self):
         return f"deploy/logging/{self.environment}.yml"
-
-    @property
-    def environment_settings_file(self):
-        return f"deploy/settings/{self.environment}.yml"
 
     @property
     def metadata_path(self):
@@ -106,4 +93,6 @@ class Settings(BaseSettings):
             )
 
 
-settings = Settings()
+@lru_cache()
+def get_settings():
+    return Settings.create()

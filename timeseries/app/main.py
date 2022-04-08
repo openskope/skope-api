@@ -1,22 +1,22 @@
+from functools import lru_cache
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.status import HTTP_504_GATEWAY_TIMEOUT, HTTP_422_UNPROCESSABLE_ENTITY
-import logging
 
+from app.config import get_settings
 from app.exceptions import TimeseriesValidationError, TimeseriesTimeoutError
-from app.settings import settings
 from app.routers.v1 import api as v1_api
 from app.routers.v2 import api as v2_api
 
-logger = logging.getLogger(__name__)
 
-app = FastAPI(title="OpenSKOPE Time Series API")
+app = FastAPI(title="SKOPE API Services")
+
 
 # Since the whole API is public there is no danger in allowing all cross origin requests for now
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=get_settings().allowed_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

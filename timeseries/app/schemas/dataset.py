@@ -1,24 +1,22 @@
-from collections import namedtuple
-from datetime import date
 from dateutil.relativedelta import relativedelta
-from enum import Enum
 from pathlib import Path
 from pydantic import BaseModel
 from typing import Dict, Set
 
+from app.config import get_settings
 from app.exceptions import (
     DatasetNotFoundError,
     VariableNotFoundError,
     TimeRangeContainmentError,
-    TimeRangeInvalid,
 )
 from app.schemas.common import BandRange, OptionalTimeRange, Resolution, TimeRange
-from app.settings import settings
 
 import logging
 import yaml
 
 logger = logging.getLogger(__name__)
+
+settings = get_settings()
 
 
 """
