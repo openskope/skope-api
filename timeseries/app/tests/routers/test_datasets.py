@@ -7,7 +7,6 @@ import numpy as np
 import pytest
 import rasterio
 
-
 from app.config import get_settings
 from app.core.services import extract_timeseries
 from app.exceptions import SelectedAreaPolygonIsTooLarge, TimeseriesTimeoutError

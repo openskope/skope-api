@@ -1,10 +1,9 @@
-from functools import lru_cache
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.status import HTTP_504_GATEWAY_TIMEOUT, HTTP_422_UNPROCESSABLE_ENTITY
 
-from app.config import get_settings
+from app.config import get_settings, Settings
 from app.exceptions import TimeseriesValidationError, TimeseriesTimeoutError
 from app.routers.v1 import api as v1_api
 from app.routers.v2 import api as v2_api
@@ -20,6 +19,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/settings")
+async def info(settings: Settings = Depends(get_settings)):
+    info_dict = dict(settings.__dict__)
+    info_dict.update(logfile=settings.logging_config_file)
+    return info_dict
 
 
 @app.exception_handler(TimeseriesTimeoutError)
