@@ -205,16 +205,8 @@ class SkopeFeatureModel(Feature, BaseSkopePolygonModel):
     def shapes(self):
         return [geom.shape(self.geometry)]
 
-    @property
-    def coordinates(self):
-        return self.geometry.coordinates
-
 
 class SkopeFeatureCollectionModel(FeatureCollection, BaseSkopePolygonModel):
     @property
     def shapes(self):
         return [geom.shape(feature.geometry) for feature in self.features]
-
-    @property
-    def coordinates(self):
-        return [feature.geometry.coordinates for feature in self.features]
