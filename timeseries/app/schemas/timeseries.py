@@ -1,4 +1,3 @@
-from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import datetime, date
 from enum import Enum
 from geojson_pydantic import (
@@ -9,17 +8,15 @@ from pydantic import BaseModel, Field, validator
 from scipy import stats
 from typing import Sequence, Optional, Union, Literal, List
 
-import asyncio
 import logging
 import math
 import numba
 import numpy as np
 import pandas as pd
 import rasterio
-import time
 
 from .common import ZonalStatistic, BandRange, TimeRange, OptionalTimeRange
-from .dataset import VariableMetadata, DatasetManager, get_dataset_manager
+from .dataset import VariableMetadata, DatasetManager
 from .geometry import (
     SkopeFeatureCollectionModel,
     SkopeFeatureModel,
@@ -27,7 +24,6 @@ from .geometry import (
     SkopePolygonModel,
 )
 
-from app.exceptions import TimeseriesTimeoutError
 from app.settings import settings
 
 
@@ -319,19 +315,11 @@ class TimeseriesV1Request(BaseModel):
         otr = OptionalTimeRange(gte=gte, lte=lte)
         return metadata.normalize_time_range(otr)
 
-    async def extract(self, metadata):
-        """
-        metadata = get_dataset_manager().get_dataset_variable_meta(
-            dataset_id=self.datasetId,
-            variable_id=self.variableName
-        )
-        """
+    async def to_timeseries_request(self, metadata):
         time_range = self.to_time_range(metadata)
-        start = time_range.gte.isoformat()
-        end = time_range.lte.isoformat()
 
         # delegate to TimeseriesV2Request
-        query = TimeseriesRequest(
+        return TimeseriesRequest(
             resolution=metadata.resolution,
             dataset_id=self.datasetId,
             variable_id=self.variableName,
@@ -342,15 +330,6 @@ class TimeseriesV1Request(BaseModel):
             requested_series=[SeriesOptions(name="original", smoother=NoSmoother())],
             max_processing_time=self.timeout,
         )
-        data = await query.extract()
-        return {
-            "datasetId": self.datasetId,
-            "variableName": self.variableName,
-            "boundaryGeometry": self.boundaryGeometry,
-            "start": start,
-            "end": end,
-            "values": data.series[0].values,
-        }
 
 
 class TimeseriesRequest(BaseModel):
@@ -469,62 +448,6 @@ class TimeseriesRequest(BaseModel):
             # band range, not the adjusted one
             summary_stats.insert(0, Series.get_summary_stats(xs, "Original"))
         return summary_stats
-
-    def extract_sync(self):
-        metadata = get_dataset_manager().get_variable_metadata(
-            dataset_id=self.dataset_id, variable_id=self.variable_id
-        )
-        band_range = self.get_band_range_to_extract(metadata)
-        band_range_transform = self.get_band_ranges_for_transform(metadata)
-        logger.debug(
-            "extract band range %s, transform band range: %s",
-            band_range,
-            band_range_transform,
-        )
-        with rasterio.Env():
-            with rasterio.open(metadata.path) as ds:
-                data_slice = self.extract_slice(ds, band_range=band_range)
-                xs = data_slice["data"]
-                n_cells = data_slice["n_cells"]
-                area = data_slice["area"]
-                transform_xs = (
-                    self.extract_slice(ds, band_range=band_range_transform)["data"]
-                    if band_range_transform
-                    else None
-                )
-
-        txs = self.transform.apply(xs, transform_xs)
-
-        series, pd_series = self.apply_series(
-            txs, metadata=metadata, band_range=band_range
-        )
-        return TimeseriesResponse(
-            dataset_id=self.dataset_id,
-            variable_id=self.variable_id,
-            area=area,
-            n_cells=n_cells,
-            series=series,
-            transform=self.transform,
-            zonal_statistic=self.zonal_statistic,
-            summary_stats=self.get_summary_stats(pd_series, xs),
-        )
-
-    async def extract(self):
-        start_time = time.time()
-        try:
-            # may want to do something like
-            # https://github.com/mapbox/rasterio/blob/master/examples/async-rasterio.py
-            # to reduce request time
-            loop = asyncio.get_event_loop()
-            with ThreadPoolExecutor() as pool:
-                future = loop.run_in_executor(pool, self.extract_sync)
-                return await asyncio.wait_for(future, timeout=self.max_processing_time)
-        except asyncio.TimeoutError as e:
-            process_time = time.time() - start_time
-            raise TimeseriesTimeoutError(
-                message="Request processing time exceeded limit",
-                processing_time=process_time,
-            ) from e
 
     class Config:
         schema_extra = {
