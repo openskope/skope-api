@@ -23,6 +23,7 @@ async def retrieve_timeseries(
 ):
     return await extract_timeseries(request, dataset_manager)
 
+
 router = APIRouter()
 router.include_router(metadata_router)
 router.include_router(timeseries_router)
