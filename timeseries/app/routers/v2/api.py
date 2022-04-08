@@ -1,12 +1,9 @@
-from anyio import create_task_group, fail_after
 from fastapi import APIRouter, Depends
 import logging
 
 from app.core.services import extract_timeseries
-from app.exceptions import TimeseriesTimeoutError
 from app.schemas.timeseries import TimeseriesRequest
 from app.schemas.dataset import get_dataset_manager, load_api_metadata
-from app.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -24,17 +21,7 @@ def metadata(api_metadata=Depends(load_api_metadata)):
 async def retrieve_timeseries(
     request: TimeseriesRequest, dataset_manager=Depends(get_dataset_manager)
 ):
-    timeout = settings.max_processing_time
-    logger.debug("time out after %s", timeout)
-    async with create_task_group() as tg:
-        try:
-            with fail_after(timeout) as scope:
-                output = {"response": {}}
-                await tg.start(extract_timeseries, request, dataset_manager, output)
-                return output["response"]
-        except TimeoutError as e:
-            raise TimeseriesTimeoutError(e.message, timeout)
-
+    return await extract_timeseries(request, dataset_manager)
 
 router = APIRouter()
 router.include_router(metadata_router)

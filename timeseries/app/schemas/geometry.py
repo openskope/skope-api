@@ -81,11 +81,9 @@ class SkopePointModel(Point, SkopeGeometry):
         zonal_statistic: ZonalStatistic,
         band_range: Sequence[int],
     ):
-        logger.info("extracting point: %s", self)
         row_index, column_index = dataset.index(
             self.coordinates[0], self.coordinates[1]
         )
-        logging.info("indices: %s", (row_index, column_index))
         data = dataset.read(
             list(band_range),
             window=windows.Window(column_index, row_index, 1, 1),

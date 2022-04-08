@@ -1,18 +1,33 @@
-from anyio import TASK_STATUS_IGNORED
+from anyio import create_task_group, fail_after, TASK_STATUS_IGNORED
 from anyio.abc import TaskStatus
 from typing import Dict
 
 import logging
 import rasterio
 
+from app.exceptions import TimeseriesTimeoutError
 from app.schemas.dataset import DatasetManager
 from app.schemas.timeseries import TimeseriesRequest, TimeseriesResponse
+from app.settings import settings
 
 
 logger = logging.getLogger(__name__)
 
 
-async def extract_timeseries(
+async def extract_timeseries(request: TimeseriesRequest, dataset_manager: DatasetManager):
+    timeout = request.max_processing_time
+    logger.debug("time out after %s", timeout)
+    async with create_task_group() as tg:
+        try:
+            with fail_after(timeout) as scope:
+                output = {"response": {}}
+                await tg.start(extract_timeseries_anyio, request, dataset_manager, output)
+                return output["response"]
+        except TimeoutError as e:
+            raise TimeseriesTimeoutError(e, timeout)
+
+
+async def extract_timeseries_anyio(
     timeseries_request: TimeseriesRequest,
     dataset_manager: DatasetManager,
     output: Dict,
