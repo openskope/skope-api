@@ -239,18 +239,14 @@ class Series(BaseModel):
         in the case where `xs` is all nan elements)
         """
         stat = f(xs)
-        stat = None if math.isnan(stat) else stat
-        return stat
+        return None if math.isnan(stat) else stat
 
     @classmethod
-    def get_summary_stats(cls, xs, name):
+    def to_summary_stat(cls, xs, name):
         xs_mean = cls.summary_stat(np.nanmean, xs)
         xs_median = cls.summary_stat(np.nanmedian, xs)
         xs_stdev = cls.summary_stat(np.nanstd, xs)
         return SummaryStat(name=name, mean=xs_mean, median=xs_median, stdev=xs_stdev)
-
-    def to_summary_stat(self):
-        return self.get_summary_stats(xs=self._s.to_numpy(), name=self.options.name)
 
 
 class TimeseriesResponse(BaseModel):
@@ -441,13 +437,13 @@ class TimeseriesRequest(BaseModel):
             series_list.append(series)
         return (series_list, pd_series_list)
 
-    def get_summary_stats(self, series, xs):
+    def get_summary_stats(self, series, original_timeseries):
         # Computes summary statistics over requested timeseries band ranges
-        summary_stats = [Series.get_summary_stats(s, s.name) for s in series]
+        summary_stats = [Series.to_summary_stat(s, s.name) for s in series]
         if not isinstance(self.transform, NoTransform):
             # provide original summary stats for z-scores over the original
             # band range, not the adjusted one
-            summary_stats.insert(0, Series.get_summary_stats(xs, "Original"))
+            summary_stats.insert(0, Series.to_summary_stat(original_timeseries, "Original"))
         return summary_stats
 
     class Config:

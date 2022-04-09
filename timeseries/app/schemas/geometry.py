@@ -169,7 +169,7 @@ class BaseSkopePolygonModel(SkopeGeometry):
         zonal_statistic: ZonalStatistic,
         band_range: BandRange,
     ):
-        zonal_func = zonal_statistic.to_numpy_call()
+        zonal_func = zonal_statistic.to_numpy_func()
         masked, transform, window = mask.raster_geometry_mask(
             dataset, shapes=self.shapes, crop=True, all_touched=True
         )
@@ -187,6 +187,7 @@ class BaseSkopePolygonModel(SkopeGeometry):
             )
             lb = band_group.start + offset
             ub = band_group.stop + offset
+            logger.debug("extracting data for band range %s into results[%s : %s]", band_group, lb, ub)
             zonal_func_results = zonal_func(masked_values, axis=(1, 2))
             # result[lb:ub] = [np.nan if np.equal(v, dataset.nodata) else v for v in zonal_func_results]
             result[lb:ub] = zonal_func_results.filled(fill_value=np.nan)

@@ -13,7 +13,7 @@ class ZonalStatistic(str, Enum):
     mean = "mean"
     median = "median"
 
-    def to_numpy_call(self):
+    def to_numpy_func(self):
         return getattr(np, self.value)
 
 
@@ -51,14 +51,14 @@ class BandRange(namedtuple("BandRange", ["gte", "lte"])):
     def from_numpy_pair(cls, xs):
         return cls(gte=int(xs[0]), lte=int(xs[1]))
 
-    def _get_range(self):
+    def _as_range(self):
         return range(self.gte, self.lte + 1)
 
     def __iter__(self):
-        return iter(self._get_range())
+        return iter(self._as_range())
 
     def __len__(self):
-        return len(self._get_range())
+        return len(self._as_range())
 
 
 class TimeRange(BaseModel):

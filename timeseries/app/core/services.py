@@ -17,7 +17,7 @@ async def extract_timeseries(
     request: TimeseriesRequest, dataset_manager: DatasetManager
 ):
     timeout = request.max_processing_time
-    logger.debug("time out after %s", timeout)
+    logger.debug("setting request timeout to %s", timeout)
     async with create_task_group() as tg:
         try:
             with fail_after(timeout) as scope:
@@ -48,8 +48,9 @@ async def extract_timeseries_task(
     )
     with rasterio.Env():
         with rasterio.open(metadata.path) as dataset:
+            # retrieves the slice and applies
             data_slice = timeseries_request.extract_slice(dataset, band_range)
-            xs = data_slice["data"]
+            original_timeseries = data_slice["data"]
             n_cells = data_slice["n_cells"]
             area = data_slice["area"]
             # only needed for fixed interval z score
@@ -61,7 +62,7 @@ async def extract_timeseries_task(
                 else None
             )
 
-    txs = timeseries_request.apply_transform(xs, transform_xs)
+    txs = timeseries_request.apply_transform(original_timeseries, transform_xs)
 
     series, pd_series = timeseries_request.apply_series(
         txs, metadata=metadata, band_range=band_range
@@ -74,5 +75,5 @@ async def extract_timeseries_task(
         series=series,
         transform=timeseries_request.transform,
         zonal_statistic=timeseries_request.zonal_statistic,
-        summary_stats=timeseries_request.get_summary_stats(pd_series, xs),
+        summary_stats=timeseries_request.get_summary_stats(pd_series, original_timeseries),
     )
