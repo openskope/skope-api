@@ -1,1 +1,40 @@
-dev.yml
+version: 1
+disable_existing_loggers: false
+
+formatters:
+  standard:
+    format: '%(asctime)s %(levelname)-7s %(name)s:%(funcName)s:%(lineno)d %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+
+handlers:
+  console:
+    class: 'logging.StreamHandler'
+    level: DEBUG
+    formatter: standard
+  file:
+    class: 'logging.handlers.RotatingFileHandler'
+    maxBytes: 100000
+    backupCount: 10
+    level: DEBUG
+    formatter: standard
+    filename: '/shared/skope-api.log'
+
+root:
+  level: WARNING
+  handlers:
+  - console
+  - file
+  propagate: false
+
+loggers:
+  app:
+    level: DEBUG
+    handlers:
+      - console
+      - file
+  gunicorn:
+    error:
+      propagate: true
+  uvicorn:
+    error:
+      propagate: true
