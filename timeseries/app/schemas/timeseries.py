@@ -443,7 +443,9 @@ class TimeseriesRequest(BaseModel):
         if not isinstance(self.transform, NoTransform):
             # provide original summary stats for z-scores over the original
             # band range, not the adjusted one
-            summary_stats.insert(0, Series.to_summary_stat(original_timeseries, "Original"))
+            summary_stats.insert(
+                0, Series.to_summary_stat(original_timeseries, "Original")
+            )
         return summary_stats
 
     class Config:

@@ -75,5 +75,7 @@ async def extract_timeseries_task(
         series=series,
         transform=timeseries_request.transform,
         zonal_statistic=timeseries_request.zonal_statistic,
-        summary_stats=timeseries_request.get_summary_stats(pd_series, original_timeseries),
+        summary_stats=timeseries_request.get_summary_stats(
+            pd_series, original_timeseries
+        ),
     )

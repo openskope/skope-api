@@ -2,7 +2,7 @@ from collections import namedtuple
 from datetime import date
 from enum import Enum
 from pydantic import BaseModel, root_validator
-from typing import Optional, Literal
+from typing import Optional
 
 import numpy as np
 
@@ -10,8 +10,8 @@ from app.exceptions import TimeRangeInvalid
 
 
 class ZonalStatistic(str, Enum):
-    mean = "mean"
-    median = "median"
+    mean = "nanmean"
+    median = "nanmedian"
 
     def to_numpy_func(self):
         return getattr(np, self.value)
