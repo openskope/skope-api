@@ -10,11 +10,11 @@ from app.exceptions import TimeRangeInvalid
 
 
 class ZonalStatistic(str, Enum):
-    mean = "nanmean"
-    median = "nanmedian"
+    mean = "mean"
+    median = "median"
 
     def to_numpy_func(self):
-        return getattr(np, self.value)
+        return getattr(np, f"nan{self.value}")
 
 
 class Resolution(str, Enum):
