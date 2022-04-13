@@ -35,10 +35,8 @@ class Settings(BaseSettings):
     @classmethod
     def create(cls):
         instance = Settings()
-        print("logging from ")
         with open(instance.logging_config_file) as f:
             dictConfig(yaml.safe_load(f))
-        print("configured logging for ", instance.environment)
         return instance
 
     @property
