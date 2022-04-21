@@ -31,9 +31,15 @@ class RequestedSeries:
         self.output_timeseries = output_timeseries
         self.pandas_series = pandas_series
 
+    @property
+    def original_timeseries_data(self):
+        # FIXME: if smoothing was applied, need to take a little bit off to get back
+        # the correct stats over the original time interval
+        return self.original_timeseries_raw_data["data"]
+
     def get_summary_stats(self):
         return self.timeseries_request.get_summary_stats(
-            self.pandas_series, self.original_timeseries_raw_data["data"]
+            self.pandas_series, self.original_timeseries_data
         )
 
     def to_timeseries_response_dict(self):
@@ -121,6 +127,11 @@ class RequestedSeriesMetadata:
                 # { n_cells: number, area: number, data: List }
                 requested_band_range = self.requested_band_range
                 band_range_to_extract = self.band_range_to_extract
+                logger.debug(
+                    "originally requested band range to actually extracted band range: %s -> %s",
+                    requested_band_range,
+                    band_range_to_extract,
+                )
 
                 original_timeseries_raw_data = selected_area.extract_raster_slice(
                     dataset,

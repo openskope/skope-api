@@ -398,15 +398,9 @@ class TimeseriesRequest(BaseModel):
         for series in self.requested_series_options:
             candidate_br = transform_br + series.get_desired_band_range_adjustment()
             desired_br = desired_br.union(candidate_br)
-            logger.info(
-                "transform band range %s adjusted to candidate band range %s, resulting in desired br: %s",
-                transform_br,
-                candidate_br,
-                desired_br,
-            )
 
         compromise_br = br_avail.intersect(BandRange.from_numpy_pair(desired_br))
-        logger.info("final compromise_br, %s", compromise_br)
+        logger.info("final band range to extract, %s", compromise_br)
         return compromise_br
 
     def get_time_range_after_transforms(
