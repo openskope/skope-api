@@ -153,11 +153,12 @@ class BaseSkopePolygonModel(SkopeGeometry):
         for shape in self.shapes:
             if not shape.is_valid:
                 raise SelectedAreaPolygonIsNotValid(
-                    f"selected area is not a valid polygon: {explain_validity(polygon).lower()}"
+                    f"selected area is not a valid polygon: {explain_validity(shape).lower()}"
                 )
+            # FIXME: why not use shape.intersection(box)? WSG84 projection issues?
             # DE-9IM format
             # https://giswiki.hsr.ch/images/3/3d/9dem_springer.pdf
-            # 'T********' means that the interior of the bounding box must intersect the interior of the selected area
+            # 'T********' indicates the interior of the bounding box must intersect the interior of the selected area
             if not box.relate_pattern(shape, "T********"):
                 raise SelectedAreaOutOfBoundsError(
                     "no interior point of the selected area intersects an interior point of the dataset region"
@@ -178,6 +179,7 @@ class BaseSkopePolygonModel(SkopeGeometry):
         result = np.empty(len(band_range), dtype=np.float64)
         result.fill(np.nan)
         offset = -band_range.gte
+        logger.debug("generating band groups for original range: %s", band_range)
         for band_group in self._make_band_range_groups(
             width=window.width, height=window.height, band_range=band_range
         ):

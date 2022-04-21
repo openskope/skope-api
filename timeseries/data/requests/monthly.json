@@ -21,7 +21,7 @@
   },
   "zonal_statistic": "mean",
   "transform": { "type":  "NoTransform" },
-  "requested_series": [
+  "requested_series_options": [
     {
       "name": "original",
       "smoother": { "type":  "NoSmoother"}

@@ -7,10 +7,130 @@ import rasterio
 
 from app.exceptions import TimeseriesTimeoutError
 from app.schemas.dataset import DatasetManager
-from app.schemas.timeseries import TimeseriesRequest, TimeseriesResponse
-
+from app.schemas.timeseries import TimeseriesRequest, TimeseriesResponse, NoTransform
 
 logger = logging.getLogger(__name__)
+
+
+class RequestedSeries():
+
+    timeseries_request = None
+    original_timeseries_raw_data = None
+    output_timeseries = None
+    pandas_series = None
+
+    def __init__(self, timeseries_request, original_timeseries_raw_data, output_timeseries, pandas_series):
+        self.timeseries_request = timeseries_request
+        self.original_timeseries_raw_data = original_timeseries_raw_data
+        self.output_timeseries = output_timeseries
+        self.pandas_series = pandas_series
+
+    def get_summary_stats(self):
+        return self.timeseries_request.get_summary_stats(self.pandas_series, self.original_timeseries_raw_data["data"])
+
+    def to_timeseries_response_dict(self):
+        timeseries_request = self.timeseries_request
+        return dict(
+            dataset_id=timeseries_request.dataset_id,
+            variable_id=timeseries_request.variable_id,
+            area=self.original_timeseries_raw_data["area"],
+            n_cells=self.original_timeseries_raw_data["n_cells"],
+            transform=timeseries_request.transform,
+            zonal_statistic=timeseries_request.zonal_statistic,
+            series=self.output_timeseries,
+            summary_stats=self.get_summary_stats()
+        )
+
+"""
+Service layer class intermediary that proxies a TimeseriesRequest and service layer calls
+"""
+
+
+class RequestedSeriesMetadata:
+
+    timeseries_request = None
+    variable_metadata = None
+
+    def __init__(
+        self, timeseries_request: TimeseriesRequest, dataset_manager: DatasetManager
+    ):
+        self.timeseries_request = timeseries_request
+        self.variable_metadata = timeseries_request.get_variable_metadata(
+            dataset_manager
+        )
+
+    @property
+    def dataset_path(self):
+        return self.variable_metadata.path
+
+    @property
+    def selected_area(self):
+       return self.timeseries_request.selected_area
+
+    @property
+    def zonal_statistic(self):
+        return self.timeseries_request.zonal_statistic
+
+    @property
+    def transform(self):
+        return self.timeseries_request.transform
+
+    @property
+    def requested_band_range(self):
+        return self.timeseries_request.get_requested_band_range(self.variable_metadata)
+
+    @property
+    def band_range_to_extract(self):
+        return self.timeseries_request.get_band_range_to_extract(self.variable_metadata)
+
+    @property
+    def transform_band_range(self):
+        return self.timeseries_request.get_transform_band_range(self.variable_metadata)
+
+    @property
+    def has_transform(self):
+        transform = self.transform
+        return transform and not isinstance(transform, NoTransform)
+
+    def get_transformed_timeseries(self, original_timeseries_raw_data, dataset):
+        original_series_data = original_timeseries_raw_data.get("data")
+        if not self.has_transform:
+            return original_series_data
+
+        transformed_series_raw_data = self.selected_area.extract_raster_slice(
+            dataset,
+            zonal_statistic=self.zonal_statistic,
+            band_range=self.transform_band_range,
+        )
+        transformed_series_data = transformed_series_raw_data.get("data")
+        return self.transform.apply(original_series_data, transformed_series_data)
+
+    async def process(self):
+        with rasterio.Env():
+            with rasterio.open(self.dataset_path) as dataset:
+                selected_area = self.selected_area
+                # { n_cells: number, area: number, data: List }
+                requested_band_range = self.requested_band_range
+                band_range_to_extract = self.band_range_to_extract
+
+                original_timeseries_raw_data = selected_area.extract_raster_slice(
+                    dataset,
+                    zonal_statistic=self.zonal_statistic,
+                    band_range=band_range_to_extract,
+                )
+                transformed_series = self.get_transformed_timeseries(original_timeseries_raw_data, dataset)
+                # apply smoothing if any
+                timeseries, pd_series = self.timeseries_request.apply_smoothing(
+                    transformed_series,
+                    self.variable_metadata,
+                    band_range_to_extract
+                )
+                return RequestedSeries(
+                    timeseries_request=self.timeseries_request,
+                    original_timeseries_raw_data=original_timeseries_raw_data,
+                    output_timeseries=timeseries,
+                    pandas_series=pd_series
+                )
 
 
 async def extract_timeseries(
@@ -38,17 +158,41 @@ async def extract_timeseries_task(
     task_status: TaskStatus = TASK_STATUS_IGNORED
 ):
     task_status.started()
-    metadata = timeseries_request.get_variable_metadata(dataset_manager)
-    band_range = timeseries_request.get_band_range_to_extract(metadata)
-    band_range_transform = timeseries_request.get_band_ranges_for_transform(metadata)
-    logger.debug(
-        "extract band range %s, transform band range: %s",
-        band_range,
-        band_range_transform,
+    """
+    FIXME: make a single call to generate a list of series metadata sufficient
+    for fulfill the rasterio calls with appropriate band ranges, transform options,
+    smoothing options
+    each object:
+    1. band range to apply
+    2. transform
+    3. smoother
+    """
+    requested_series_metadata = RequestedSeriesMetadata(
+        timeseries_request, dataset_manager
     )
+    requested_series = await requested_series_metadata.process()
+    output["response"] = TimeseriesResponse(**requested_series.to_timeseries_response_dict())
+
+    """
+    response = TimeseriesResponse(
+        dataset_id=timeseries_request.dataset_id,
+        variable_id=timeseries_request.variable_id,
+        area=area,
+        n_cells=n_cells,
+        series=series,
+        transform=timeseries_request.transform,
+        zonal_statistic=timeseries_request.zonal_statistic,
+        summary_stats=timeseries_request.get_summary_stats(
+            pd_series, original_timeseries
+        ),
+    )
+    # band_range = timeseries_request.get_band_range_to_extract(metadata)
+    # band_range_transform = timeseries_request.get_band_ranges_for_transform(metadata)
+    logger.debug("requested series metadata %s", requested_series_metadata)
     with rasterio.Env():
-        with rasterio.open(metadata.path) as dataset:
-            # retrieves the slice and applies
+        with rasterio.open(requested_series_metadata.dataset_path) as dataset:
+            timeseries_data = extract(dataset, requested_series_metadata)
+            # retrieve the raw, original data from the data cube
             data_slice = timeseries_request.extract_slice(dataset, band_range)
             original_timeseries = data_slice["data"]
             n_cells = data_slice["n_cells"]
@@ -79,3 +223,4 @@ async def extract_timeseries_task(
             pd_series, original_timeseries
         ),
     )
+    """

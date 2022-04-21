@@ -42,21 +42,6 @@ def rolling_z_score(xs, width):
     return results
 
 
-def values_to_period_range_series(
-    name: str, values: np.array, time_range: TimeRange
-) -> pd.Series:
-    """
-    Converts a numpy array and TimeRange into a pandas series
-    """
-    # use periods instead of end to avoid an off-by-one
-    # between the number of values and the generated index
-    return pd.Series(
-        values,
-        name=name,
-        index=pd.period_range(start=time_range.gte, periods=len(values), freq="A"),
-    )
-
-
 class WindowType(str, Enum):
     centered = "centered"
     trailing = "trailing"
@@ -168,8 +153,10 @@ class ZScoreFixedInterval(BaseModel):
 
     def apply(self, xs, txs):
         if self.time_range is None:
+            # z score with respect to the already selected interval reflected in the incoming xs
             return stats.zscore(xs, nan_policy="omit")
         else:
+            # z score with respect to a fixed interval
             mean_txs = np.nanmean(txs)
             std_txs = np.nanstd(txs)
             return (xs - mean_txs) / std_txs
@@ -210,9 +197,23 @@ class SeriesOptions(BaseModel):
     def get_desired_band_range_adjustment(self):
         return self.smoother.get_desired_band_range_adjustment()
 
+    def values_to_period_range_series(
+        self, values: np.array, time_range: TimeRange
+    ) -> pd.Series:
+        """
+        Converts a numpy array and TimeRange into a pandas series
+        """
+        # use periods instead of end to avoid an off-by-one
+        # between the number of values and the generated index
+        return pd.Series(
+            values,
+            name=self.name,
+            index=pd.period_range(start=time_range.gte, periods=len(values), freq="A"),
+        )
+
     def apply(self, xs: np.array, time_range: TimeRange) -> pd.Series:
         values = self.smoother.apply(xs)
-        return values_to_period_range_series(self.name, values, time_range)
+        return self.values_to_period_range_series(values, time_range)
 
     class Config:
         schema_extra = {
@@ -324,7 +325,7 @@ class TimeseriesV1Request(BaseModel):
             zonal_statistic=ZonalStatistic.mean,
             time_range=time_range,
             transform=NoTransform(),
-            requested_series=[SeriesOptions(name="original", smoother=NoSmoother())],
+            requested_series_options=[SeriesOptions(name="original", smoother=NoSmoother())],
             max_processing_time=self.timeout,
         )
 
@@ -347,7 +348,7 @@ class TimeseriesRequest(BaseModel):
         settings.max_processing_time, ge=0, le=settings.max_processing_time
     )
     transform: Transform
-    requested_series: List[SeriesOptions]
+    requested_series_options: List[SeriesOptions]
     time_range: OptionalTimeRange
 
     def transforms(self, series_options: SeriesOptions):
@@ -367,8 +368,8 @@ class TimeseriesRequest(BaseModel):
             dataset_id=self.dataset_id, variable_id=self.variable_id
         )
 
-    def get_band_ranges_for_transform(self, metadata: VariableMetadata) -> BandRange:
-        """Get the band range range to extract from the raster file"""
+    def get_transform_band_range(self, metadata: VariableMetadata) -> BandRange:
+        """Get the band range to extract from the raster file"""
         br_avail = metadata.find_band_range(metadata.time_range)
         br_query = self.transform.get_desired_band_range(metadata)
         compromise_br = br_avail.intersect(br_query) if br_query else None
@@ -380,13 +381,19 @@ class TimeseriesRequest(BaseModel):
         )
         return compromise_br
 
+    def get_requested_band_range(self, metadata: VariableMetadata) -> BandRange:
+        dataset_band_range = metadata.find_band_range(metadata.time_range)
+        requested_band_range = metadata.find_band_range(self.time_range)
+        return dataset_band_range.intersect(requested_band_range)
+
     def get_band_range_to_extract(self, metadata: VariableMetadata) -> BandRange:
         """Get the band range range to extract from the raster file"""
         br_avail = metadata.find_band_range(metadata.time_range)
         br_query = metadata.find_band_range(self.time_range)
         transform_br = br_query + self.transform.get_desired_band_range_adjustment()
         desired_br = transform_br
-        for series in self.requested_series:
+        # requested series options currently manages smoothing options only
+        for series in self.requested_series_options:
             candidate_br = transform_br + series.get_desired_band_range_adjustment()
             desired_br = desired_br.union(candidate_br)
             logger.info(
@@ -406,7 +413,7 @@ class TimeseriesRequest(BaseModel):
         metadata: VariableMetadata,
         extract_br: BandRange,
     ) -> TimeRange:
-        """Get the year range after values after applying transformations"""
+        """Get the year range from values after applying transformations"""
         inds = (
             extract_br
             + self.transform.get_desired_band_range_adjustment() * -1
@@ -416,12 +423,12 @@ class TimeseriesRequest(BaseModel):
         yr = metadata.translate_band_range(BandRange.from_numpy_pair(inds))
         return yr
 
-    def apply_series(self, xs, metadata, band_range):
+    def apply_smoothing(self, xs, metadata, band_range):
         series_list = []
         pd_series_list = []
         gte = datetime.fromordinal(self.time_range.gte.toordinal())
         lte = datetime.fromordinal(self.time_range.lte.toordinal())
-        for series_options in self.requested_series:
+        for series_options in self.requested_series_options:
             tr = self.get_time_range_after_transforms(
                 series_options, metadata, band_range
             )
@@ -458,7 +465,7 @@ class TimeseriesRequest(BaseModel):
                 "selected_area": SkopePointModel.Config.schema_extra["example"],
                 "zonal_statistic": ZonalStatistic.mean.value,
                 "transform": ZScoreMovingInterval.Config.schema_extra["example"],
-                "requested_series": [SeriesOptions.Config.schema_extra["example"]],
+                "requested_series_options": [SeriesOptions.Config.schema_extra["example"]],
             },
             "fixed_interval_example": {
                 "resolution": "month",
@@ -468,6 +475,6 @@ class TimeseriesRequest(BaseModel):
                 "selected_area": SkopePointModel.Config.schema_extra["example"],
                 "zonal_statistic": ZonalStatistic.mean.value,
                 "transform": ZScoreFixedInterval.Config.schema_extra["example"],
-                "requested_series": [SeriesOptions.Config.schema_extra["example"]],
+                "requested_series_options": [SeriesOptions.Config.schema_extra["example"]],
             },
         }

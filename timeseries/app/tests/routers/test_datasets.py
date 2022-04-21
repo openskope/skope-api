@@ -45,7 +45,7 @@ def build_timeseries_query(**overrides):
     query_parameters = {
         "selected_area": SkopePointModel(type="Point", coordinates=(-123, 45)).dict(),
         "transform": NoTransform().dict(),
-        "requested_series": [{"name": "original", "smoother": {"type": "NoSmoother"}}],
+        "requested_series_options": [{"name": "original", "smoother": {"type": "NoSmoother"}}],
         "zonal_statistic": ZonalStatistic.mean.value,
     }
     query_parameters.update(overrides)
@@ -91,7 +91,7 @@ async def test_annual_different_smoothers():
     tsq = build_timeseries_query(
         dataset_id="annual_5x5x5_dataset",
         variable_id="float32_variable",
-        requested_series=[
+        requested_series_options=[
             {"name": "original", "smoother": NoSmoother().dict()},
             {
                 "name": "trailing",
