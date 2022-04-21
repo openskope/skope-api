@@ -325,7 +325,9 @@ class TimeseriesV1Request(BaseModel):
             zonal_statistic=ZonalStatistic.mean,
             time_range=time_range,
             transform=NoTransform(),
-            requested_series_options=[SeriesOptions(name="original", smoother=NoSmoother())],
+            requested_series_options=[
+                SeriesOptions(name="original", smoother=NoSmoother())
+            ],
             max_processing_time=self.timeout,
         )
 
@@ -465,7 +467,9 @@ class TimeseriesRequest(BaseModel):
                 "selected_area": SkopePointModel.Config.schema_extra["example"],
                 "zonal_statistic": ZonalStatistic.mean.value,
                 "transform": ZScoreMovingInterval.Config.schema_extra["example"],
-                "requested_series_options": [SeriesOptions.Config.schema_extra["example"]],
+                "requested_series_options": [
+                    SeriesOptions.Config.schema_extra["example"]
+                ],
             },
             "fixed_interval_example": {
                 "resolution": "month",
@@ -475,6 +479,8 @@ class TimeseriesRequest(BaseModel):
                 "selected_area": SkopePointModel.Config.schema_extra["example"],
                 "zonal_statistic": ZonalStatistic.mean.value,
                 "transform": ZScoreFixedInterval.Config.schema_extra["example"],
-                "requested_series_options": [SeriesOptions.Config.schema_extra["example"]],
+                "requested_series_options": [
+                    SeriesOptions.Config.schema_extra["example"]
+                ],
             },
         }

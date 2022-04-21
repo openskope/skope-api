@@ -12,21 +12,29 @@ from app.schemas.timeseries import TimeseriesRequest, TimeseriesResponse, NoTran
 logger = logging.getLogger(__name__)
 
 
-class RequestedSeries():
+class RequestedSeries:
 
     timeseries_request = None
     original_timeseries_raw_data = None
     output_timeseries = None
     pandas_series = None
 
-    def __init__(self, timeseries_request, original_timeseries_raw_data, output_timeseries, pandas_series):
+    def __init__(
+        self,
+        timeseries_request,
+        original_timeseries_raw_data,
+        output_timeseries,
+        pandas_series,
+    ):
         self.timeseries_request = timeseries_request
         self.original_timeseries_raw_data = original_timeseries_raw_data
         self.output_timeseries = output_timeseries
         self.pandas_series = pandas_series
 
     def get_summary_stats(self):
-        return self.timeseries_request.get_summary_stats(self.pandas_series, self.original_timeseries_raw_data["data"])
+        return self.timeseries_request.get_summary_stats(
+            self.pandas_series, self.original_timeseries_raw_data["data"]
+        )
 
     def to_timeseries_response_dict(self):
         timeseries_request = self.timeseries_request
@@ -38,8 +46,9 @@ class RequestedSeries():
             transform=timeseries_request.transform,
             zonal_statistic=timeseries_request.zonal_statistic,
             series=self.output_timeseries,
-            summary_stats=self.get_summary_stats()
+            summary_stats=self.get_summary_stats(),
         )
+
 
 """
 Service layer class intermediary that proxies a TimeseriesRequest and service layer calls
@@ -65,7 +74,7 @@ class RequestedSeriesMetadata:
 
     @property
     def selected_area(self):
-       return self.timeseries_request.selected_area
+        return self.timeseries_request.selected_area
 
     @property
     def zonal_statistic(self):
@@ -118,18 +127,18 @@ class RequestedSeriesMetadata:
                     zonal_statistic=self.zonal_statistic,
                     band_range=band_range_to_extract,
                 )
-                transformed_series = self.get_transformed_timeseries(original_timeseries_raw_data, dataset)
+                transformed_series = self.get_transformed_timeseries(
+                    original_timeseries_raw_data, dataset
+                )
                 # apply smoothing if any
                 timeseries, pd_series = self.timeseries_request.apply_smoothing(
-                    transformed_series,
-                    self.variable_metadata,
-                    band_range_to_extract
+                    transformed_series, self.variable_metadata, band_range_to_extract
                 )
                 return RequestedSeries(
                     timeseries_request=self.timeseries_request,
                     original_timeseries_raw_data=original_timeseries_raw_data,
                     output_timeseries=timeseries,
-                    pandas_series=pd_series
+                    pandas_series=pd_series,
                 )
 
 
@@ -171,7 +180,9 @@ async def extract_timeseries_task(
         timeseries_request, dataset_manager
     )
     requested_series = await requested_series_metadata.process()
-    output["response"] = TimeseriesResponse(**requested_series.to_timeseries_response_dict())
+    output["response"] = TimeseriesResponse(
+        **requested_series.to_timeseries_response_dict()
+    )
 
     """
     response = TimeseriesResponse(

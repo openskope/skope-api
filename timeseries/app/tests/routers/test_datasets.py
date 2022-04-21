@@ -45,7 +45,9 @@ def build_timeseries_query(**overrides):
     query_parameters = {
         "selected_area": SkopePointModel(type="Point", coordinates=(-123, 45)).dict(),
         "transform": NoTransform().dict(),
-        "requested_series_options": [{"name": "original", "smoother": {"type": "NoSmoother"}}],
+        "requested_series_options": [
+            {"name": "original", "smoother": {"type": "NoSmoother"}}
+        ],
         "zonal_statistic": ZonalStatistic.mean.value,
     }
     query_parameters.update(overrides)
