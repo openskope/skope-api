@@ -123,21 +123,22 @@ class RequestedSeriesMetadata:
         transform = self.transform
         return transform and not isinstance(transform, NoTransform)
 
-    def get_transformed_timeseries(self, original_timeseries_raw_data, dataset):
+    def apply_transform(self, original_timeseries_raw_data, dataset):
+        logger.debug("applying transform %s", self.transform)
         original_series_data = original_timeseries_raw_data.get("data")
         if not self.has_transform:
             return original_series_data
 
         transform_band_range = self.transform_band_range
-        if transform_band_range is None:
-            return original_series_data
-
-        transformed_series_raw_data = self.selected_area.extract_raster_slice(
-            dataset,
-            zonal_statistic=self.zonal_statistic,
-            band_range=transform_band_range,
-        )
-        transformed_series_data = transformed_series_raw_data.get("data")
+        transformed_series_data = original_series_data
+        if transform_band_range is not None:
+            # only extract an additional raster slice if the band ranges differ
+            transformed_series_raw_data = self.selected_area.extract_raster_slice(
+                dataset,
+                zonal_statistic=self.zonal_statistic,
+                band_range=transform_band_range,
+            )
+            transformed_series_data = transformed_series_raw_data.get("data")
         return self.transform.apply(original_series_data, transformed_series_data)
 
     async def process(self):
@@ -158,9 +159,10 @@ class RequestedSeriesMetadata:
                     zonal_statistic=self.zonal_statistic,
                     band_range=band_range_to_extract,
                 )
-                transformed_series = self.get_transformed_timeseries(
+                transformed_series = self.apply_transform(
                     original_timeseries_raw_data, dataset
                 )
+                logger.debug("transformed series: %s", transformed_series)
                 # apply smoothing if any
                 (
                     timeseries,

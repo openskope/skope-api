@@ -155,8 +155,10 @@ class ZScoreFixedInterval(BaseModel):
     def apply(self, xs, txs):
         if self.time_range is None:
             # z score with respect to the already selected interval reflected in the incoming xs
-            return stats.zscore(xs, nan_policy="omit")
+            logger.debug("applying zscore selected interval")
+            return stats.zscore(txs, nan_policy="omit")
         else:
+            logger.debug("applying zscore fixed interval")
             # z score with respect to a fixed interval
             mean_txs = np.nanmean(txs)
             std_txs = np.nanstd(txs)
