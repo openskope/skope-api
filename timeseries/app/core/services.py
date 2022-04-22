@@ -18,7 +18,7 @@ class RequestedSeries:
     original_timeseries_raw_data = None
     output_timeseries = None
     pandas_series = None
-    band_range_adjustments = None
+    band_range_adjustment = None
 
     def __init__(
         self,
@@ -26,30 +26,33 @@ class RequestedSeries:
         original_timeseries_raw_data,
         output_timeseries,
         pandas_series,
-        band_range_adjustments,
+        band_range_adjustment,
     ):
         self.timeseries_request = timeseries_request
         self.original_timeseries_raw_data = original_timeseries_raw_data
         self.output_timeseries = output_timeseries
         self.pandas_series = pandas_series
-        self.band_range_adjustments = band_range_adjustments
+        self.band_range_adjustment = band_range_adjustment
 
     @property
     def original_timeseries_data(self):
         # FIXME: if smoothing was applied, need to take a little bit off to get back
         # the correct stats over the original time interval
         logger.debug("output timeseries: %s", self.output_timeseries)
-        band_range_adjustment = self.band_range_adjustments[0]
+        # pull last band range adjustment instead
         original_timeseries = self.original_timeseries_raw_data["data"]
-        start = -band_range_adjustment[0]
-        end = len(original_timeseries) - band_range_adjustment[1]
-        logger.debug(
-            "adjusting by %s pulling timeseries from %s to %s",
-            band_range_adjustment,
-            start,
-            end,
-        )
-        return original_timeseries[start:end]
+        band_range_adjustment = self.band_range_adjustment
+        if band_range_adjustment:
+            start = -band_range_adjustment[0]
+            end = len(original_timeseries) - band_range_adjustment[1]
+            logger.debug(
+                "adjusting by %s pulling timeseries from %s to %s",
+                band_range_adjustment,
+                start,
+                end,
+            )
+            return original_timeseries[start:end]
+        return original_timeseries
 
     def get_summary_stats(self):
         return self.timeseries_request.get_summary_stats(
@@ -159,7 +162,7 @@ class RequestedSeriesMetadata:
                 (
                     timeseries,
                     pd_series,
-                    band_range_adjustments,
+                    band_range_adjustment,
                 ) = self.timeseries_request.apply_smoothing(
                     transformed_series, self.variable_metadata, band_range_to_extract
                 )
@@ -168,7 +171,7 @@ class RequestedSeriesMetadata:
                     original_timeseries_raw_data=original_timeseries_raw_data,
                     output_timeseries=timeseries,
                     pandas_series=pd_series,
-                    band_range_adjustments=band_range_adjustments,
+                    band_range_adjustment=band_range_adjustment,
                 )
 
 

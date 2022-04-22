@@ -425,16 +425,17 @@ class TimeseriesRequest(BaseModel):
         pd_series_list = []
         gte = datetime.fromordinal(self.time_range.gte.toordinal())
         lte = datetime.fromordinal(self.time_range.lte.toordinal())
-        band_range_adjustments = []
+        band_range_adjustment = None
         for series_options in self.requested_series_options:
             tr = self.get_time_range_after_transforms(
                 series_options, metadata, band_range
             )
             pd_series = series_options.apply(xs, tr).loc[gte:lte]
             pd_series_list.append(pd_series)
-            band_range_adjustments.append(
-                series_options.smoother.get_desired_band_range_adjustment()
-            )
+            if not isinstance(series_options.smoother, NoSmoother):
+                band_range_adjustment = (
+                    series_options.smoother.get_desired_band_range_adjustment()
+                )
             compromise_tr = tr.intersect(self.time_range)
             logger.debug("compromise time range: %s", compromise_tr)
             values = [None if math.isnan(x) else x for x in pd_series.tolist()]
@@ -444,7 +445,7 @@ class TimeseriesRequest(BaseModel):
                 values=values,
             )
             series_list.append(series)
-        return (series_list, pd_series_list, band_range_adjustments)
+        return (series_list, pd_series_list, band_range_adjustment)
 
     def get_summary_stats(self, series, original_timeseries):
         # Computes summary statistics over requested timeseries band ranges
