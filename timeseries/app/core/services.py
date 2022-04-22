@@ -128,10 +128,14 @@ class RequestedSeriesMetadata:
         if not self.has_transform:
             return original_series_data
 
+        transform_band_range = self.transform_band_range
+        if transform_band_range is None:
+            return original_series_data
+
         transformed_series_raw_data = self.selected_area.extract_raster_slice(
             dataset,
             zonal_statistic=self.zonal_statistic,
-            band_range=self.transform_band_range,
+            band_range=transform_band_range,
         )
         transformed_series_data = transformed_series_raw_data.get("data")
         return self.transform.apply(original_series_data, transformed_series_data)
