@@ -18,6 +18,7 @@ class RequestedSeries:
     original_timeseries_raw_data = None
     output_timeseries = None
     pandas_series = None
+    band_range_adjustments = None
 
     def __init__(
         self,
@@ -25,17 +26,30 @@ class RequestedSeries:
         original_timeseries_raw_data,
         output_timeseries,
         pandas_series,
+        band_range_adjustments,
     ):
         self.timeseries_request = timeseries_request
         self.original_timeseries_raw_data = original_timeseries_raw_data
         self.output_timeseries = output_timeseries
         self.pandas_series = pandas_series
+        self.band_range_adjustments = band_range_adjustments
 
     @property
     def original_timeseries_data(self):
         # FIXME: if smoothing was applied, need to take a little bit off to get back
         # the correct stats over the original time interval
-        return self.original_timeseries_raw_data["data"]
+        logger.debug("output timeseries: %s", self.output_timeseries)
+        band_range_adjustment = self.band_range_adjustments[0]
+        original_timeseries = self.original_timeseries_raw_data["data"]
+        start = -band_range_adjustment[0]
+        end = len(original_timeseries) - band_range_adjustment[1]
+        logger.debug(
+            "adjusting by %s pulling timeseries from %s to %s",
+            band_range_adjustment,
+            start,
+            end,
+        )
+        return original_timeseries[start:end]
 
     def get_summary_stats(self):
         return self.timeseries_request.get_summary_stats(
@@ -142,7 +156,11 @@ class RequestedSeriesMetadata:
                     original_timeseries_raw_data, dataset
                 )
                 # apply smoothing if any
-                timeseries, pd_series = self.timeseries_request.apply_smoothing(
+                (
+                    timeseries,
+                    pd_series,
+                    band_range_adjustments,
+                ) = self.timeseries_request.apply_smoothing(
                     transformed_series, self.variable_metadata, band_range_to_extract
                 )
                 return RequestedSeries(
@@ -150,6 +168,7 @@ class RequestedSeriesMetadata:
                     original_timeseries_raw_data=original_timeseries_raw_data,
                     output_timeseries=timeseries,
                     pandas_series=pd_series,
+                    band_range_adjustments=band_range_adjustments,
                 )
 
 
