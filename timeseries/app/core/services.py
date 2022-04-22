@@ -38,11 +38,10 @@ class RequestedSeries:
     def original_timeseries_data(self):
         # FIXME: if smoothing was applied, need to take a little bit off to get back
         # the correct stats over the original time interval
-        logger.debug("output timeseries: %s", self.output_timeseries)
         # pull last band range adjustment instead
         original_timeseries = self.original_timeseries_raw_data["data"]
         band_range_adjustment = self.band_range_adjustment
-        if band_range_adjustment:
+        if band_range_adjustment is not None:
             start = -band_range_adjustment[0]
             end = len(original_timeseries) - band_range_adjustment[1]
             logger.debug(
