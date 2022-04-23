@@ -12,6 +12,7 @@ import pyproj
 
 
 from .common import ZonalStatistic, BandRange
+from app.config import get_settings
 from app.exceptions import (
     SelectedAreaOutOfBoundsError,
     SelectedAreaPolygonIsTooLarge,
@@ -19,6 +20,8 @@ from app.exceptions import (
 )
 
 logger = logging.getLogger(__name__)
+
+settings = get_settings()
 
 
 def bounding_box(bounds) -> geom.Polygon:
@@ -106,7 +109,7 @@ class SkopePointModel(Point, SkopeGeometry):
 class BaseSkopePolygonModel(SkopeGeometry):
     @staticmethod
     def _make_band_range_groups(
-        *, width: int, height: int, band_range: BandRange, max_size=250000
+        *, width: int, height: int, band_range: BandRange, max_size=settings.default_max_cells
     ):
         n_cells_per_band = width * height  # 25
         n_cells_per_full_chunk = max_size - max_size % n_cells_per_band

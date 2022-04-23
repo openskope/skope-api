@@ -27,10 +27,10 @@ class TimeRangeInvalid(TimeseriesValidationError):
 
 
 class SelectedAreaPolygonIsTooLarge(TimeseriesValidationError):
-    """Selected area polygon contains more cells than analysis service is willing too load"""
+    """Selected area polygon contains more cells than analysis service can load"""
 
     field = "selected_area"
-    template = "Selected area polygon selects {n_cells} cells which is more the {max_cells} max"
+    template = "The selected polygon exceeds the max allowable cells: {n_cells} > max {max_cells} "
 
     def __init__(self, n_cells, max_cells):
         super().__init__(self.template.format(n_cells=n_cells, max_cells=max_cells))

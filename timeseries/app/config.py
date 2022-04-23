@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     name = "SKOPE API Services (development)"
     base_uri = "timeseries"
     max_processing_time = 15000  # in milliseconds
+    default_max_cells = 500000  # max number of cells to extract from data cubes
     store: Store
 
     @classmethod

@@ -1,22 +1,27 @@
 from anyio import create_task_group, fail_after, TASK_STATUS_IGNORED
 from anyio.abc import TaskStatus
-from typing import Dict
+from typing import Dict, List
 
 import logging
 import rasterio
 
 from app.exceptions import TimeseriesTimeoutError
 from app.schemas.dataset import DatasetManager
-from app.schemas.timeseries import TimeseriesRequest, TimeseriesResponse, NoTransform
+from app.schemas.timeseries import (
+    TimeseriesRequest,
+    TimeseriesResponse,
+    NoTransform,
+    Series,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class RequestedSeries:
 
-    timeseries_request = None
+    timeseries_request: TimeseriesRequest = None
     original_timeseries_raw_data = None
-    output_timeseries = None
+    output_timeseries: List[Series] = None
     pandas_series = None
     band_range_adjustment = None
 
@@ -162,7 +167,6 @@ class RequestedSeriesMetadata:
                 transformed_series = self.apply_transform(
                     original_timeseries_raw_data, dataset
                 )
-                logger.debug("transformed series: %s", transformed_series)
                 # apply smoothing if any
                 (
                     timeseries,
