@@ -25,7 +25,7 @@ def yaml_config_settings_source(settings: BaseSettings) -> Dict[str, Any]:
 
 
 class Settings(BaseSettings):
-    allowed_origins = "*"
+    allowed_origins = ["*"]
     environment = "dev"
     name = "SKOPE API Services (development)"
     base_uri = "timeseries"

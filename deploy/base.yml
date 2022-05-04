@@ -11,4 +11,4 @@ services:
       GEOSERVER_ADMIN_USER: skope
       STABLE_EXTENSIONS: importer-plugin
       TOMCAT_EXTRAS: "false"
-    image: kartoza/geoserver:2.20.3
+    image: kartoza/geoserver:2.20.4
