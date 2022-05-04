@@ -15,7 +15,7 @@ class ZonalStatistic(str, Enum):
     median = "median"
 
     def to_numpy_func(self):
-        return getattr(ma, f"nan{self.value}")
+        return getattr(ma, f"{self.value}")
 
 
 class Resolution(str, Enum):
