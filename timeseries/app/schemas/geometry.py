@@ -200,7 +200,7 @@ class BaseSkopePolygonModel(SkopeGeometry):
             )
             zonal_func_results = zonal_func(masked_values, axis=(1, 2))
             # result[lb:ub] = [np.nan if np.equal(v, dataset.nodata) else v for v in zonal_func_results]
-            result[lb:ub] = zonal_func_results.filled(fill_value=np.nan)
+            result[lb:ub] = np.ma.filled(zonal_func_results, fill_value=np.nan)
 
         return {"n_cells": n_cells, "area": area, "data": result}
 

@@ -5,6 +5,7 @@ from pydantic import BaseModel, root_validator
 from typing import Optional
 
 import numpy as np
+import numpy.ma as ma
 
 from app.exceptions import TimeRangeInvalid
 
@@ -14,7 +15,7 @@ class ZonalStatistic(str, Enum):
     median = "median"
 
     def to_numpy_func(self):
-        return getattr(np, f"nan{self.value}")
+        return getattr(ma, f"nan{self.value}")
 
 
 class Resolution(str, Enum):
