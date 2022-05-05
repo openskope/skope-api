@@ -3,29 +3,51 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.status import HTTP_504_GATEWAY_TIMEOUT, HTTP_422_UNPROCESSABLE_ENTITY
 
-from app.config import get_settings, Settings
+from app.config import get_settings
 from app.exceptions import TimeseriesValidationError, TimeseriesTimeoutError
 from app.routers.v1 import api as v1_api
 from app.routers.v2 import api as v2_api
 
+import sentry_sdk
+from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
+
+import logging
+
 
 app = FastAPI(title="SKOPE API Services")
 
+settings = get_settings()
+
+logger = logging.getLogger(__name__)
+
+
+if settings.is_production:
+    sentry_sdk.init(dsn=settings.sentry_dsn)
+    try:
+        app.add_middleware(SentryAsgiMiddleware)
+    except Exception:
+        logger.error("Unable to initialize Sentry middleware")
+        pass
 
 # Since the whole API is public there is no danger in allowing all cross origin requests for now
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=get_settings().allowed_origins,
+    allow_origins=settings.allowed_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
 @app.get("/settings")
-async def info(settings: Settings = Depends(get_settings)):
+async def info():
     info_dict = dict(settings.__dict__)
     info_dict.update(logfile=settings.logging_config_file)
     return info_dict
+
+
+@app.get("/test-sentry")
+async def test_sentry():
+    raise Exception("Testing sentry integration")
 
 
 @app.exception_handler(TimeseriesTimeoutError)

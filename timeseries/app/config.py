@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     max_processing_time = 15000  # in milliseconds
     default_max_cells = 500000  # max number of cells to extract from data cubes
     store: Store
+    sentry_dsn = "https://79be8c27ac14446e8af51b6d5f3dc90f@sentry.comses.net/5"
 
     @classmethod
     def create(cls):
@@ -39,6 +40,10 @@ class Settings(BaseSettings):
         with open(instance.logging_config_file) as f:
             dictConfig(yaml.safe_load(f))
         return instance
+
+    @property
+    def is_production(self):
+        return self.environment == "prod"
 
     @property
     def logging_config_file(self):

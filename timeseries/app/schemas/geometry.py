@@ -109,7 +109,11 @@ class SkopePointModel(Point, SkopeGeometry):
 class BaseSkopePolygonModel(SkopeGeometry):
     @staticmethod
     def _make_band_range_groups(
-        *, width: int, height: int, band_range: BandRange, max_size=settings.default_max_cells
+        *,
+        width: int,
+        height: int,
+        band_range: BandRange,
+        max_size=settings.default_max_cells,
     ):
         n_cells_per_band = width * height  # 25
         n_cells_per_full_chunk = max_size - max_size % n_cells_per_band
