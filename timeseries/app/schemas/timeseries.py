@@ -38,7 +38,7 @@ def rolling_z_score(xs, width):
     for i in numba.prange(n):
         m = np.nanmean(xs[i : (i + width)])
         s = np.nanstd(xs[i : (i + width)])
-        results[i] = np.nan if s == 0 else xs[i + width] - m / s
+        results[i] = np.nan if s == 0 else (xs[i + width] - m) / s
     return results
     """ FIXME: consider converting xs numpy array into a pandas DataFrame and use something like the following
     from https://stackoverflow.com/questions/47164950/compute-rolling-z-score-in-pandas-dataframe 

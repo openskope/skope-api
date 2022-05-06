@@ -45,11 +45,6 @@ async def info():
     return info_dict
 
 
-@app.get("/test-sentry")
-async def test_sentry():
-    raise Exception("Testing sentry integration")
-
-
 @app.exception_handler(TimeseriesTimeoutError)
 async def timeseries_timeout_error_handler(
     request: Request, exc: TimeseriesTimeoutError
