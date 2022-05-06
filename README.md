@@ -9,27 +9,23 @@ Backend services for dataset metadata and timeseries data for SKOPE
 
 ### Dataset Metadata
 
-Dataset metadata currently needs to be specified twice, in `timeseries/metadata.yml` and
-`timeseries/deploy/metadata/prod.yml`. 
+Dataset metadata currently needs to be specified twice and should :
+
+- `timeseries/metadata.yml` contains the full dataset metadata exposed by the [metadata endpoint](https://api.openskope.org/docs#/metadata/metadata_metadata_get) and consumed by the [skopeui](https://github.com/openskope/skopeui) app
+- `timeseries/deploy/metadata/prod.yml` contains a subset of the dataset metadata used by the backend services to handle timeseries extraction (time ranges, time resolution, and available variables) from the datacubes available in the store (runtime settings for the store dynamically generated at build time at `timeseries/deploy/settings/config.yml`)
 
 ### Development
 
-Put into `dev` configuration
+Set up `dev` configuration
 
 ```bash
 ./configure dev
 ```
 
-Build the project
+Build the project & run the backend server and geoserver
 
 ```bash
-make build
-```
-
-Run the server
-
-```bash
-docker-compose up -d
+make deploy
 ```
 
 Try out the analysis endpoint
@@ -47,20 +43,14 @@ make test
 
 ## Production
 
-Put into `prod` configuration
+Set up for `prod` deployment
 
 ```bash
 ./configure prod
 ```
 
-Build the project
+build & deploy
 
 ```bash
-make build
-```
-
-Run the server
-
-```bash
-docker-compose up -d
+make deploy
 ```
