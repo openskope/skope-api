@@ -3,7 +3,7 @@
 [![DOI](https://zenodo.org/badge/338436138.svg)](https://zenodo.org/badge/latestdoi/338436138)
 [![skope-api build](https://github.com/openskope/skope-api/actions/workflows/test.yml/badge.svg)](https://github.com/openskope/skope-api/actions/workflows/test.yml)
 
-Backend services for dataset metadata and timeseries data for SKOPE
+Backend services for dataset metadata and timeseries data extracted from SKOPE datasets - see https://api.openskope.org/docs for API details and examples
 
 ## Project Setup
 
