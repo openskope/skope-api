@@ -32,7 +32,7 @@ authors:
   orcid: "https://orcid.org/0000-0002-4557-8602"  
 title: "Synthesizing Knowledge of Past Environments (SKOPE) Web Application"
 version: "2022.05.1"
-doi: "10.5281/zenodo.6522974"
+doi: "10.5281/zenodo.6522961"
 date-released: "2022-05-06"
 abstract: >
   SKOPE (Synthesizing Knowledge of Past Environments) is an online resource for paleoenvironmental data and models. It enables scholars to easily discover, explore, visualize, and synthesize knowledge of environments in the recent or remote past. Given a location and temporal interval, SKOPE offers access to diverse sources of long-term, high-resolution environmental data. SKOPE builds on vast amounts of prior data collection and previous research, transforming those into readily usable environmental knowledge.
