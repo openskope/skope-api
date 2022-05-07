@@ -1,5 +1,7 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
 cff-version: 1.2.0
-message: "If you use the SKOPE application software, please cite it as below."
+message: "If you use the SKOPE application, please cite it as below."
 authors:
 - family-names: "Bocinsky"
   given-names: "Kyle"  
@@ -19,7 +21,8 @@ authors:
   given-names: "Allen"
   orcid: "https://orcid.org/0000-0002-6523-6079"
 - family-names: "Ludäscher"
-  given-names: "Bertram"  
+  given-names: "Bertram"
+  orcid: "https://orcid.org/0000-0001-9140-936X"
 - family-names: "McPhillips"
   given-names: "Timothy"
 - family-names: "Nguyễn"
@@ -29,10 +32,22 @@ authors:
   orcid: "https://orcid.org/0000-0002-4557-8602"  
 title: "Synthesizing Knowledge of Past Environments (SKOPE) Web Application"
 version: "2022.05.1"
-doi: "10.5281/zenodo.6525764"
+doi: "10.5281/zenodo.6522974"
 date-released: "2022-05-06"
-url: "https://github.com/openskope/skope-api/releases/tag/v2022.05.1"
 abstract: >
   SKOPE (Synthesizing Knowledge of Past Environments) is an online resource for paleoenvironmental data and models. It enables scholars to easily discover, explore, visualize, and synthesize knowledge of environments in the recent or remote past. Given a location and temporal interval, SKOPE offers access to diverse sources of long-term, high-resolution environmental data. SKOPE builds on vast amounts of prior data collection and previous research, transforming those into readily usable environmental knowledge.
   
   The initial prototype of the SKOPE application was developed with contributions from Adam Brin, Johnathan Rush, Sarah Oas, Jeffrey Terstriep, Xingchen Hong, and Shaowen Wang.
+repository-code: 'https://github.com/openskope/skopeui'
+url: 'https://www.openskope.org'
+repository: 'https://github.com/openskope/skopeui'
+keywords:
+  - environmental data
+  - precipitation
+  - palmer drought severity index (pdsi)
+  - paleocar
+  - lbda
+  - srtm
+license: MIT
+version: v2022-05.1
+date-released: '2022-05-06'
