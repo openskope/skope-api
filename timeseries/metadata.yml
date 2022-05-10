@@ -347,7 +347,7 @@
     ring chronologies are available.
   methodSummary: >-
     In addition to reconstructions of calendar-year and growing-season precipitation,
-    there are two substantial differences betwrrn PaleoCAR v2 and v3:
+    there are two substantial differences between PaleoCAR v2 and v3:
 
     - We used the detrended and indexed (standardized) series ('ARSTND') available
     from the ITRDB instead of the 'Standard' chronologies used in previous reconstructions.
@@ -356,7 +356,6 @@
 
     - We selected models by minimizing the corrected Akaike information criterion in a
     stepwise fashion, instead of the predicted residual error sum of squares (PRESS) statistic.
-
 
     For each pixel, for each year, the model selects the tree ring chronologies
     (within a 10-degree buffer of the Four Corners states; from the National
