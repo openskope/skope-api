@@ -14,23 +14,23 @@ help: 	##- Instructions for using this Makefile. Run ./configure {dev|staging|pr
 
 .PHONY: build
 build: docker-compose.yml | $(GEOSERVER_ADMIN_PASSWORD_PATH) 	##- Build and pull the required docker images 
-	docker-compose build --pull
+	docker compose build --pull
 
 $(GEOSERVER_ADMIN_PASSWORD_PATH):
 	echo "Creating geoserver secret"; \
 	mkdir -p geoserver/docker/secrets; \
-	echo -n $$(head /dev/urandom | tr -dc '[:alnum:]' | head -c22) > geoserver/docker/secrets/geoserver_admin_password
+	echo -n $$(openssl rand -base64 22) > geoserver/docker/secrets/geoserver_admin_password
 
 docker-compose.yml: deploy/base.yml deploy/$(ENVIRONMENT).yml timeseries/deploy/Dockerfile config.mk
 	case "$(ENVIRONMENT)" in \
-	  dev|prod) docker-compose -f deploy/base.yml -f "deploy/$(ENVIRONMENT).yml" --project-directory . config > docker-compose.yml;; \
+	  dev|prod) docker compose -f deploy/base.yml -f "deploy/$(ENVIRONMENT).yml" --project-directory . config > docker-compose.yml;; \
 	  *) echo "invalid environment. must be dev or prod" 1>&2; exit 1;; \
 	esac
 
 .PHONY: deploy
 deploy: build 	##- build and deploy the web app 
 	mkdir -p $(DOCKER_SHARE_MOUNT)
-	docker-compose up -d
+	docker compose up -d
 
 ##
 ## Testing
@@ -39,4 +39,4 @@ deploy: build 	##- build and deploy the web app
 .PHONY: test
 
 test: 	##- Run python unit tests
-	docker-compose run --rm server pytest
+	docker compose run --rm server pytest
