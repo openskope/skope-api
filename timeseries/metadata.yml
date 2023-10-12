@@ -278,7 +278,7 @@
     - id: gdd_may_sept
       class: Temperature
       name: Summer (May-Sept) Growing Degree Days
-      units: F
+      units: °F
       timeseriesServiceUri: paleocar_v2/gdd_may_sept
       wmsLayer: 'SKOPE:paleocar_v2_gdd_may_sept_${year}'
       min: 0
@@ -431,7 +431,7 @@
     - id: gdd_may_sept
       class: Temperature
       name: Summer (May-Sept) Growing Degree Days
-      units: F
+      units: °F
       timeseriesServiceUri: paleocar_v3/gdd_may_sept
       wmsLayer: 'SKOPE:paleocar_v3_gdd_may_sept_${year}'
       min: 0
