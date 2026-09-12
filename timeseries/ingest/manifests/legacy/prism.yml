@@ -1,0 +1,8 @@
+dataset_id: prism
+variables:
+  - id: ppt
+    uri: /legacy/datasets/prism/ppt/cube.tif
+  - id: tmax
+    uri: /legacy/datasets/prism/tmax/cube.tif
+  - id: tmin
+    uri: /legacy/datasets/prism/tmin/cube.tif

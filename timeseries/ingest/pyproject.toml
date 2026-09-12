@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cog-stac-pipeline"
+version = "0.1.0"
+description = "Build COG slices, STAC catalogs, and lookup dictionaries for timeseries datasets."
+requires-python = ">=3.12"
+dependencies = [
+    "boto3",
+    "numpy<2",
+    "pystac",
+    "python-dateutil",
+    "PyYAML",
+    "rio-stac",
+]
+
+[project.scripts]
+cog-stac-pipeline = "cog_stac_pipeline.main:main"
+
+[dependency-groups]
+dev = [
+    "pytest",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

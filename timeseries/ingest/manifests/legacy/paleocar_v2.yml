@@ -1,0 +1,8 @@
+dataset_id: paleocar_v2
+variables:
+  - id: gdd_may_sept
+    uri: /legacy/datasets/paleocar_v2/gdd_may_sept/cube.tif
+  - id: maize_farming_niche
+    uri: /legacy/datasets/paleocar_v2/maize_farming_niche/cube.tif
+  - id: ppt_water_year
+    uri: /legacy/datasets/paleocar_v2/ppt_water_year/cube.tif

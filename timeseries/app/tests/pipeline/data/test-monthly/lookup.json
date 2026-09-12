@@ -1,0 +1,244 @@
+{
+  "ppt": {
+    "0001-01": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 1
+    },
+    "0001-02": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 2
+    },
+    "0001-03": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 3
+    },
+    "0001-04": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 4
+    },
+    "0001-05": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 5
+    },
+    "0001-06": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 6
+    },
+    "0001-07": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 7
+    },
+    "0001-08": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 8
+    },
+    "0001-09": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 9
+    },
+    "0001-10": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 10
+    },
+    "0001-11": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 11
+    },
+    "0001-12": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 12
+    },
+    "0002-01": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 13
+    },
+    "0002-02": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 14
+    },
+    "0002-03": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 15
+    },
+    "0002-04": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 16
+    },
+    "0002-05": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 17
+    },
+    "0002-06": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 18
+    },
+    "0002-07": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 19
+    },
+    "0002-08": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 20
+    },
+    "0002-09": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 21
+    },
+    "0002-10": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 22
+    },
+    "0002-11": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 23
+    },
+    "0002-12": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 24
+    },
+    "0003-01": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 25
+    },
+    "0003-02": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 26
+    },
+    "0003-03": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 27
+    },
+    "0003-04": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 28
+    },
+    "0003-05": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 29
+    },
+    "0003-06": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 30
+    },
+    "0003-07": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 31
+    },
+    "0003-08": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 32
+    },
+    "0003-09": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 33
+    },
+    "0003-10": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 34
+    },
+    "0003-11": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 35
+    },
+    "0003-12": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 36
+    },
+    "0004-01": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 37
+    },
+    "0004-02": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 38
+    },
+    "0004-03": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 39
+    },
+    "0004-04": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 40
+    },
+    "0004-05": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 41
+    },
+    "0004-06": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 42
+    },
+    "0004-07": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 43
+    },
+    "0004-08": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 44
+    },
+    "0004-09": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 45
+    },
+    "0004-10": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 46
+    },
+    "0004-11": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 47
+    },
+    "0004-12": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 48
+    },
+    "0005-01": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 49
+    },
+    "0005-02": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 50
+    },
+    "0005-03": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 51
+    },
+    "0005-04": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 52
+    },
+    "0005-05": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 53
+    },
+    "0005-06": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 54
+    },
+    "0005-07": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 55
+    },
+    "0005-08": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 56
+    },
+    "0005-09": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 57
+    },
+    "0005-10": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 58
+    },
+    "0005-11": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 59
+    },
+    "0005-12": {
+      "file": "monthly_5x5x60_dataset_float32_variable.tif",
+      "bidx": 60
+    }
+  }
+}

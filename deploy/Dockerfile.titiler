@@ -1,0 +1,12 @@
+FROM ghcr.io/developmentseed/titiler:latest
+
+COPY titiler_custom/ /titiler_custom/
+COPY deploy/colormaps/custom.json /titiler_custom/custom.json
+
+USER root
+RUN python3 /titiler_custom/build_colormaps.py
+USER 1000
+
+WORKDIR /titiler_custom
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80"]

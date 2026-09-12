@@ -1,0 +1,17 @@
+services:
+  server:
+    build:
+      args:
+        ENVIRONMENT: dev
+    image: openskope/skope-api:dev
+    volumes:
+      - ./timeseries/app:/code/app
+      - ./timeseries/metadata.yml:/code/metadata.yml:ro
+      - ./cog-input:/data:ro
+      - ./deploy/settings/dev.yml:/code/config/app_settings.yml:ro
+      - ./deploy/colormaps/custom.json:/code/config/colormaps.json:ro
+    ports:
+      - "127.0.0.1:8001:8000"
+  titiler:
+    volumes:
+      - ./cog-input:/data:ro

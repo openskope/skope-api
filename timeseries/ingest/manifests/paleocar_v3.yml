@@ -1,0 +1,26 @@
+dataset_id: paleocar_v3
+variables:
+  - id: gdd_cotton_annual
+    uri: s3://skope/paleocar_v3/gdd_cotton_annual/prediction_scaled.tif
+  - id: gdd_cotton_maysept
+    uri: s3://skope/paleocar_v3/gdd_cotton_maysept/prediction_scaled.tif
+  - id: gdd_cotton_wateryear
+    uri: s3://skope/paleocar_v3/gdd_cotton_wateryear/prediction_scaled.tif
+  - id: gdd_maize_annual
+    uri: s3://skope/paleocar_v3/gdd_maize_annual/prediction_scaled.tif
+  - id: gdd_maize_maysept
+    uri: s3://skope/paleocar_v3/gdd_maize_maysept/prediction_scaled.tif
+  - id: gdd_maize_wateryear
+    uri: s3://skope/paleocar_v3/gdd_maize_wateryear/prediction_scaled.tif
+  - id: gdd_wheat_annual
+    uri: s3://skope/paleocar_v3/gdd_wheat_annual/prediction_scaled.tif
+  - id: gdd_wheat_maysept
+    uri: s3://skope/paleocar_v3/gdd_wheat_maysept/prediction_scaled.tif
+  - id: gdd_wheat_wateryear
+    uri: s3://skope/paleocar_v3/gdd_wheat_wateryear/prediction_scaled.tif
+  - id: ppt_annual
+    uri: s3://skope/paleocar_v3/ppt_annual/prediction_scaled.tif
+  - id: ppt_maysept
+    uri: s3://skope/paleocar_v3/ppt_maysept/prediction_scaled.tif
+  - id: ppt_wateryear
+    uri: s3://skope/paleocar_v3/ppt_wateryear/prediction_scaled.tif

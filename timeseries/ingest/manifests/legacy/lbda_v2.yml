@@ -1,0 +1,4 @@
+dataset_id: lbda_v2
+variables:
+  - id: pmdi
+    uri: /legacy/datasets/lbda_v2/pmdi/cube.tif

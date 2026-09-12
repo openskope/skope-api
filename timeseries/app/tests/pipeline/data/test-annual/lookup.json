@@ -1,0 +1,9 @@
+{
+  "ppt": {
+    "0001": {"file": "annual_5x5x5_dataset_float32_variable.tif", "bidx": 1},
+    "0002": {"file": "annual_5x5x5_dataset_float32_variable.tif", "bidx": 2},
+    "0003": {"file": "annual_5x5x5_dataset_float32_variable.tif", "bidx": 3},
+    "0004": {"file": "annual_5x5x5_dataset_float32_variable.tif", "bidx": 4},
+    "0005": {"file": "annual_5x5x5_dataset_float32_variable.tif", "bidx": 5}
+  }
+}

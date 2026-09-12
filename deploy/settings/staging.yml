@@ -1,0 +1,10 @@
+base_uri: 'timeseries'
+max_processing_time: 10000
+max_concurrent_jobs: 1
+name: 'SKOPE Staging API Services'
+store:
+  base_path: '/data'
+  template: '/data/{dataset_id}/{variable_id}/cube.tif'
+  uncertainty_template: '/data/{dataset_id}/{variable_id}/uncertainty.tif'
+tile_server_url: 'http://titiler:80'
+storage_base_url: '/data'

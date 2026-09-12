@@ -1,0 +1,4 @@
+dataset_id: srtm
+variables:
+  - id: srtm_elevation
+    uri: /legacy/datasets/srtm/srtm_elevation/cube.tif

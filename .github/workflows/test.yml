@@ -1,19 +1,18 @@
 name: Test SKOPE Time Series API
 
-on: [push]
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-      - name: setup / configure for dev
-        run: |
-          ./configure dev
       - name: Run the tests
-        run: |
-          make test
+        run: make test

@@ -1,0 +1,33 @@
+# Web framework
+fastapi==0.141.1
+uvicorn==0.52.4
+
+# Data validation
+pydantic==2.13.5
+pydantic-settings==2.15.0
+geojson_pydantic==2.1.2
+
+# Geospatial (rasterio 1.5.x requires Python >=3.12 — satisfied by Python 3.13)
+rasterio==1.5.1
+Shapely==2.1.2
+pyproj==3.8.0
+
+# Numeric / scientific
+numpy==2.5.3
+pandas==3.0.5
+scipy==1.18.1
+
+# Async / AWS
+aioboto3==15.5.0
+anyio==4.15.1
+httpx==0.28.1
+
+# Serialization / config
+python-dateutil==2.9.0.post0
+PyYAML==6.0.3
+
+# Observability
+sentry-sdk==2.69.1
+
+# Job store
+redis==8.1.0

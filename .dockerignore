@@ -1,0 +1,31 @@
+# Git
+.git/
+.github/
+
+# Python caches and environments
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.venv/
+env/
+
+# IDE and OS files
+.DS_Store
+.vscode/
+.idea/
+
+# Local Data and Logs
+img_logs/
+cog-input/
+timeseries/ingest/output/
+*.log
+
+# Tests 
+timeseries/app/tests/
+
+# Deployment configs (we only COPY what we need)
+deploy/compose/
+docker-compose.yml
+no_overwrite_dockercompose.yml

@@ -1,0 +1,90 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+    restart: always
+    depends_on:
+      redis:
+        condition: service_healthy
+      titiler:
+        condition: service_healthy
+    environment:
+      REDIS_URL: redis://redis:6379
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8000), 2).close()"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 20s
+    networks:
+      - internal_geospatial_net # Internal network to see Titiler
+      - default # External access to reach S3 and serve the frontend
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save "" --appendonly no
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - internal_geospatial_net
+
+  titiler:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.titiler
+    image: openskope/skope-api-titiler:latest
+    restart: always
+    environment:
+      CPL_VSIL_CURL_ALLOWED_EXTENSIONS: .tif,.ovr
+      GDAL_DISABLE_READDIR_ON_OPEN: EMPTY_DIR
+      AWS_NO_SIGN_REQUEST: YES
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 80), 2).close()"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 20s
+    networks:
+      # Titiler is ONLY on the internal network.
+      - internal_geospatial_net
+
+  ingest:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.ingest
+      target: runtime
+    image: openskope/skope-api-ingest:latest
+    profiles:
+      - ingest
+    environment:
+      AWS_NO_SIGN_REQUEST: YES
+      CPL_VSIL_CURL_ALLOWED_EXTENSIONS: .tif,.ovr
+      DATASET_NAME: paleocar_v3
+      DATASET_START_DATETIME: "0103-01-01T00:00:00+00:00"
+      DATASET_TIME_DELTA: '{"years": 1}'
+      GDAL_DISABLE_READDIR_ON_OPEN: EMPTY_DIR
+      INPUT_DIR: /data
+      INPUT_MANIFEST_PATH: /ingest/manifests/paleocar_v3.yml
+      METADATA_FILE_PATH: /ingest/metadata.yml
+      OUTPUT_DIR: /output/paleocar_v3
+      TRUNC_TO_UINT16: "true"
+    volumes:
+      - ./timeseries/ingest/metadata.yml:/ingest/metadata.yml
+      - ./cog-input:/data
+      - ./timeseries/ingest/output:/output
+
+  ingest-test:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.ingest
+      target: test
+    profiles:
+      - test
+
+networks:
+  internal_geospatial_net:
+    driver: bridge

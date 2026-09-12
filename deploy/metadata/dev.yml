@@ -1,0 +1,134 @@
+- id: paleocar_v3
+  ordering: 1
+  title: 'PaleoCAR: SW USA Paleoclimate Reconstruction (V3)'
+  originator: Bocinsky, R.K.; Kohler, T.A.
+  references: 'Bocinsky, R. Kyle, and Timothy A. Kohler. 2014. A 2,000-year reconstruction
+    of the rain-fed maize agricultural niche in the US Southwest. Nature Communications
+    5:5618. [doi:10.1038/ncomms6618](https://doi.org/10.1038/ncomms6618).
+
+
+    Bocinsky, R. Kyle, Johnathan Rush, Keith W. Kintigh, and Timothy A. Kohler. 2016.
+    Exploration and exploitation in the macrohistory of the pre-Hispanic Pueblo Southwest.
+    Science Advances 2(4):e1501532. [https://doi.org/10.1126/sciadv.1501532](https://doi.org/10.1126/sciadv.1501532)'
+  contactInformation: '> DOC/NOAA/NESDIS/NCEI
+
+    > National Centers for Environmental Information, NESDIS, NOAA, U.S. Department
+    of Commerce
+
+    > 325 Broadway, E/NE31
+
+    > Boulder, CO 80305-3328
+
+    > USA
+
+    > https://www.ncdc.noaa.gov/data-access/paleoclimatology-data
+
+    > email: paleo@noaa.gov
+
+    > phone: 303-497-6280
+
+    > fax: 303-497-6513'
+  uncertainty: "There are two primary sources of uncertainty in PaleoCAR reconstructions.\
+    \ The first is that the PaleoCAR algorithm attempts to select the most relevant\
+    \ three ring chronologies for reconstructing a particular variable of interest\
+    \ at a particular time. This selection process \u2014 here minimizing the corrected\
+    \ Akaike information criterion in a stepwise fashion \u2014 can lead to different\
+    \ sets chronologies being selected for adjacent pixels in a gridded reconstruction.\
+    \ Discrepancies between selected chronologies can manifest as spatiotemporal \"\
+    artifacts\", or discontinuities (Bocinsky and Kohler 2014:8). These are amplified\
+    \ by the chained mean-variance matching technique (Bocinsky et al. 2016:10). Additional\
+    \ uncertainty is associated with the lack of fit in the regression models; fit\
+    \ decreases as fewer tree ring chronologies are available."
+  methodSummary: "In addition to reconstructions of calendar-year and growing-season\
+    \ precipitation, there are two substantial differences between PaleoCAR v2 and\
+    \ v3:\n- We used the detrended and indexed (standardized) series ('ARSTND') available\
+    \ from the ITRDB instead of the 'Standard' chronologies used in previous reconstructions.\
+    \ This led to four or fewer chronologies available for the reconstruction for\
+    \ the periods of 1\u2013102 CE and 418\u2013589 CE.\n- We selected models by minimizing\
+    \ the corrected Akaike information criterion in a stepwise fashion, instead of\
+    \ the predicted residual error sum of squares (PRESS) statistic.\nFor each pixel,\
+    \ for each year, the model selects the tree ring chronologies (within a 10-degree\
+    \ buffer of the Four Corners states; from the National Tree Ring Database) that\
+    \ best predict PRISM data for that location and uses linear regression to estimate\
+    \ the paleoenvironmental variable for that date and location."
+  description: "High spatial resolution (30 arc-second, ~800 m) Southwestern United\
+    \ States tree-ring reconstructions of net growing season growing degree days (May\u2013\
+    Sept), net calendar-year precipitation (Jan\u2013Dec), net water-year precipitation\
+    \ (previous Oct\u2013Sept), and net growing-season precipitation (May\u2013Sept)."
+  sourceUrl: https://www.ncdc.noaa.gov/paleo/study/19783
+  type: dataset
+  status: Published
+  revised: '2021-11-01'
+  region:
+    zoom: 4
+    center:
+    - 37
+    - -108.5
+    resolution: 800m
+    name: Southwestern USA
+    style:
+      color: red
+      weight: 1
+    extents:
+    - - 43
+      - -115
+    - - 31
+      - -102
+  timespan:
+    resolution:
+      year: 1
+    resolutionLabel: yearly
+    period:
+      timeZero: 1
+      gte: '0103'
+      lte: '2000'
+      suffix: CE
+  crs: EPSG:4269
+  transform:
+  - 0.008333333332949996
+  - 0.0
+  - -114.995833333457
+  - 0.0
+  - -0.008333333333010806
+  - 42.9958333336016
+  - 0.0
+  - 0.0
+  - 1.0
+  variables:
+  - id: ppt_annual
+    class: Precipitation
+    name: "Annual (Jan\u2013Dec) Precipitation"
+    units: mm
+    styles: default,raster
+    colormap: skope-precip
+    description: (Annual)
+    min: 0.0
+    max: 3260.0
+  - id: ppt_annual_predscaled
+    class: Precipitation
+    name: Annual (Jan-Dec) Precipitation, Scaled
+    units: mm
+    styles: default,raster
+    colormap: skope-precip
+    description: (Annual, Scaled)
+    min: 0.0
+    max: 3615.0
+  - id: gdd_cotton_annual
+    class: Growing Degree Days
+    name: "Annual (Jan\u2013Dec) Growing Degree Days"
+    units: "°F GDD"
+    visible: false
+    styles: default,raster
+    colormap: skope-precip
+    description: (Annual)
+    min: 0.0
+    max: 4145.0
+  - id: gdd_cotton_annual_predscaled
+    class: Growing Degree Days
+    name: "Annual (Jan\u2013Dec) Growing Degree Days, Scaled"
+    units: "°F GDD"
+    styles: default,raster
+    colormap: skope-precip
+    description: (Annual, Scaled)
+    min: 0.0
+    max: 4355.0

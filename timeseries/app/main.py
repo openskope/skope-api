@@ -1,25 +1,56 @@
-from fastapi import FastAPI, Request, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from starlette.status import HTTP_504_GATEWAY_TIMEOUT, HTTP_422_UNPROCESSABLE_ENTITY
-
-from app.config import get_settings
-from app.exceptions import TimeseriesValidationError, TimeseriesTimeoutError
-from app.routers.v1 import api as v1_api
-from app.routers.v2 import api as v2_api
-
+import logging
+import httpx
 import sentry_sdk
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.status import HTTP_422_UNPROCESSABLE_CONTENT
+from contextlib import asynccontextmanager
 
-import logging
-
-
-app = FastAPI(title="SKOPE API Services")
+from app.config import get_settings
+from app.exceptions import TimeseriesValidationError
+from app.store.jobs import cleanup_stale_jobs, create_job_store
+from app.store.data_reader import get_data_reader
+from app.store.index_loaders import load_registry, resolve_colormaps
+from app.routers.v3 import api as v3_api
 
 settings = get_settings()
-
 logger = logging.getLogger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    cleanup_stale_jobs()
+    logger.info("Stale jobs cleaned up.")
+
+    # The limits ensure we don't overwhelm Titiler while handling concurrency
+    limits = httpx.Limits(max_keepalive_connections=20, max_connections=100)
+    async_client = httpx.AsyncClient(
+        timeout=httpx.Timeout(10.0, read=60.0), limits=limits
+    )
+    job_store = create_job_store(settings.redis_url)
+    try:
+        await job_store.healthcheck()
+        app.state.client = async_client
+        app.state.job_store = job_store
+        app.state.global_registry = load_registry(settings.registry_path)
+        app.state.data_reader = get_data_reader(settings.storage_base_url)
+
+        await resolve_colormaps(
+            app.state.global_registry,
+            settings.colormaps_path,
+            async_client,
+            settings.tile_server_url,
+        )
+
+        yield
+    finally:
+        await async_client.aclose()
+        await job_store.close()
+
+
+app = FastAPI(title="SKOPE API Services", lifespan=lifespan)
 
 if settings.is_production:
     sentry_sdk.init(dsn=settings.sentry_dsn)
@@ -27,9 +58,7 @@ if settings.is_production:
         app.add_middleware(SentryAsgiMiddleware)
     except Exception:
         logger.error("Unable to initialize Sentry middleware")
-        pass
 
-# Since the whole API is public there is no danger in allowing all cross origin requests for now
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
@@ -38,30 +67,12 @@ app.add_middleware(
 )
 
 
-@app.get("/settings")
-async def info():
-    info_dict = dict(settings.__dict__)
-    info_dict.update(logfile=settings.logging_config_file)
-    return info_dict
-
-
-@app.exception_handler(TimeseriesTimeoutError)
-async def timeseries_timeout_error_handler(
-    request: Request, exc: TimeseriesTimeoutError
-):
-    return JSONResponse(
-        status_code=HTTP_504_GATEWAY_TIMEOUT,
-        content={"detail": exc.message, "processing_time": exc.processing_time},
-    )
-
-
 @app.exception_handler(TimeseriesValidationError)
 async def timeseries_error_handler(request: Request, exc: TimeseriesValidationError):
     return JSONResponse(
-        status_code=HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=HTTP_422_UNPROCESSABLE_CONTENT,
         content={"detail": exc.to_request_validation_error().errors()},
     )
 
 
-app.include_router(v1_api.router)
-app.include_router(v2_api.router)
+app.include_router(v3_api.router)
