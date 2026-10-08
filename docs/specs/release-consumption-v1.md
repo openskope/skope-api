@@ -175,14 +175,17 @@ datasets:
   alter them. When an outlier or percentile policy informs the endpoints, the
   method and its scope MUST be recorded in `note` rather than recomputed by the
   client.
-- **DISP-005:** Every dataset and variable entry MUST carry a numeric `order`,
-  and clients MUST sort by it, breaking ties by identifier. YAML mapping order
-  carries no meaning, so file order MUST NOT be relied on.
+- **DISP-005:** Every dataset and variable entry MUST carry a numeric `order`.
+  The API MUST list datasets, and each dataset's variables, in `/metadata`
+  sorted by `order`, breaking ties by identifier. YAML mapping order carries no
+  meaning, so file order MUST NOT be relied on. Clients MAY rely on the served
+  order and need not sort the lists themselves.
 - **DISP-006:** `map_view` is optional. When present it MUST use named `lon` and
   `lat` keys within WGS 84 ranges, never a positional pair. Without
   `map_view`, a client MUST fit the initial view to the dataset's bbox.
 - **DISP-007:** `default_variable`, when present, MUST name a variable of the
-  pinned release. Without it, a client selects the lowest-ordered variable.
+  pinned release. Without it, a client selects the lowest-ordered variable,
+  which is the first one listed.
 - **DISP-008:** `ticks` defaults to a count; an explicit list MAY replace it
   when round numbers read better, and every listed tick MUST lie within the
   range. `labels` MAY shorten the curated meaning of a category for display; a
