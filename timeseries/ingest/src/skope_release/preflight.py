@@ -121,14 +121,20 @@ def _same_number(a, b) -> bool:
 
 
 def _scan_narrowing(read_path: str, band_count: int, source_nodata, target: str, target_nodata) -> str | None:
-    """COG-014: every valid source value must be representable in the target type."""
+    """COG-014: every valid source value must be representable in the target type.
+
+    One pass of full-width swaths over every band, so a pixel-interleaved
+    source decodes each block once rather than once per band.
+    """
     lo, hi = gdalio.INTEGER_RANGES.get(target, (-math.inf, math.inf))
+    bands = list(range(1, band_count + 1))
     with gdal.Open(read_path) as ds:
-        for b in range(1, band_count + 1):
-            band = ds.GetRasterBand(b)
-            for y in range(0, ds.RasterYSize, 512):
-                rows = min(512, ds.RasterYSize - y)
-                block = band.ReadAsArray(0, y, ds.RasterXSize, rows)
+        first = ds.GetRasterBand(1)
+        itemsize = gdal.GetDataTypeSizeBytes(first.DataType)
+        rows = gdalio.swath_rows(ds.RasterXSize, band_count, itemsize, first.GetBlockSize()[1], ds.RasterYSize)
+        for y in range(0, ds.RasterYSize, rows):
+            swath = ds.ReadAsArray(0, y, ds.RasterXSize, min(rows, ds.RasterYSize - y), band_list=bands)
+            for b, block in enumerate(swath.reshape(band_count, -1), start=1):
                 valid = block if source_nodata is None else block[block != source_nodata]
                 if valid.size == 0:
                     continue
