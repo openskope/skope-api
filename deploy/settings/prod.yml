@@ -1,5 +1,5 @@
 base_uri: 'timeseries'
-max_processing_time: 10000
+max_processing_time: 20000
 max_concurrent_jobs: 1
 name: 'SKOPE Production API Services'
 tile_server_url: 'http://titiler:80'

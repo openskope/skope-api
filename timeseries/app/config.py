@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     environment: str = "dev"
     name: str = "SKOPE API Services (development)"
     base_uri: str = "timeseries"
-    max_processing_time: int = 15000  # in milliseconds
+    max_processing_time: int = 20000  # in milliseconds
     max_concurrent_jobs: int = Field(default=1, ge=1, le=32)
     default_max_cells: int = 1_000_000
     max_series_options: int = Field(default=10, ge=1, le=100)
