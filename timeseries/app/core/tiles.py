@@ -27,9 +27,12 @@ async def stream_tile(
         f"{settings.tile_server_url}/cog/tiles/WebMercatorQuad/{z}/{x}/{y}"
     )
 
+    # A one-band view of the COG. The tile server reprojects through a warped
+    # dataset, and GDAL's warper processes every band of that dataset, so
+    # opening the file itself would decode every timestep in the chunk.
     params = {
-        "url": cog_path,
-        "bidx": band,
+        "url": f"vrt://{cog_path}?bands={band}",
+        "bidx": 1,
         "colormap_name": colormap,
     }
     if rescale is not None:
