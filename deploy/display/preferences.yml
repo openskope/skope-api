@@ -32,5 +32,5 @@ datasets:
         range: [0, 2177.5]
         note: >-
           Provisional: half the legacy registry's maximum for the
-          prediction_scaled product (4355 °F GDD), carried over from the UI's
+          prediction_scaled product (4355 °C GDD), carried over from the UI's
           COLOR_MAX_PCT of 0.5.

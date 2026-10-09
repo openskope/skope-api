@@ -77,13 +77,16 @@ empty_timesteps:
     reason: >-
       PaleoCAR v3 has no reconstruction for these years: too few tree-ring
       chronologies are available (see the lineage).
+# Units: the GDD sources hold °C GDD, not the legacy registry's °F. At the same
+# pixels, paleocar_v2's °F GDD maize product averages 1.8 times this one's
+# (2026-10-08). Provisional until the dataset creator confirms (§20.2).
 variables:
   - id: "gdd_cotton_annual"
     title: "Annual (Jan–Dec) Cotton Growing Degree Days"
     description: >-
       Calendar-year (January–December) growing degree days for cotton,
       reconstructed by PaleoCAR (the prediction_scaled product).
-    unit: "°F GDD"
+    unit: "°C GDD"
     category: "Growing Degree Days"
   - id: "ppt_annual"
     title: "Annual (Jan–Dec) Precipitation"
