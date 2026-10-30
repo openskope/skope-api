@@ -194,6 +194,23 @@ class TimeseriesResponse(BaseModel):
     zonal_statistic: ZonalStatistic
 
 
+class JobStatus(str, Enum):
+    pending = "PENDING"
+    processing = "PROCESSING"
+    success = "SUCCESS"
+    failed = "FAILED"
+    timed_out = "TIMED_OUT"
+
+
+class JobStatusResponse(BaseModel):
+    """What a client sees of an extraction job. The stored job also keeps the
+    base series for /analyze, which is internal and never listed here."""
+
+    status: JobStatus
+    result: Optional[TimeseriesResponse] = None
+    error: Optional[str] = None
+
+
 # ---------------------------
 # Request Models
 

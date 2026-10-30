@@ -14,6 +14,8 @@ from app.config import get_settings
 from app.registry.compose import normalize_key
 from app.registry.metadata import MetadataResponse
 from app.schemas.timeseries import (
+    JobStatus,
+    JobStatusResponse,
     TimeRange,
     TimeseriesAnalyzeRequest,
     TimeseriesRequest,
@@ -180,7 +182,7 @@ async def create_timeseries_job(
     # Generate a unique job ID, store initial job status, initiate background processing, and return the job ID to the client
     job_id = str(uuid.uuid4())
     try:
-        await store.update_job(job_id, {"status": "PENDING"})
+        await store.update_job(job_id, {"status": JobStatus.pending})
         background_tasks.add_task(
             run_timeseries_pipeline_task,
             job_id=job_id,
@@ -209,7 +211,7 @@ async def analyze_timeseries(
         raise HTTPException(
             status_code=404, detail="Extraction not found. It may have expired."
         )
-    if extraction.get("status") != "SUCCESS":
+    if extraction.get("status") != JobStatus.success:
         raise HTTPException(
             status_code=409,
             detail=f"Extraction not complete: {extraction.get('status')}",
@@ -235,12 +237,15 @@ async def analyze_timeseries(
 
 
 # 5. Timeseries job status report and results retrieval
-@router.get("/timeseries/status/{job_id}")
+@router.get(
+    "/timeseries/status/{job_id}",
+    response_model=JobStatusResponse,
+    response_model_exclude_unset=True,
+)
 async def get_job_status(
     job_id: str = Path(...), store: JobStore = Depends(get_job_store)
 ):
     job = await store.get_job_status(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    job.pop("base_series", None)
     return job
