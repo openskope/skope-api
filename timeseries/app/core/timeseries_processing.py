@@ -1,4 +1,5 @@
 import logging
+import time
 import warnings
 import anyio
 import numpy as np
@@ -9,7 +10,7 @@ import rasterio.windows
 from rasterio.features import geometry_mask
 from pyproj import CRS
 from shapely.ops import unary_union
-from typing import Dict, List, Iterator, Tuple, Sequence
+from typing import Callable, Dict, List, Iterator, Tuple, Sequence
 
 # Local imports
 from app.config import get_settings
@@ -105,15 +106,21 @@ def extract_summarystat_timeseries(
     window: Window,
     precomputed_mask: np.ndarray,
     chunk_size: int,
+    check_cancelled: Callable[[], None] | None = None,
 ) -> Tuple[str, np.ndarray, np.ndarray]:
     """Returns (uri, mean_array, median_array) — both zonal statistics are always computed
-    so the analysis layer can select either without a second raster read."""
+    so the analysis layer can select either without a second raster read.
+
+    `check_cancelled` runs before each chunk read and raises to stop the
+    extraction, so a passed deadline stops it within one chunk read."""
     mean_results: List[float] = []
     median_results: List[float] = []
     try:
         with rasterio.Env(**RASTERIO_ENV_KWARGS):
             with rasterio.open(file_uri) as src:
                 for band_chunk in generate_band_chunks(band_indices, chunk_size):
+                    if check_cancelled is not None:
+                        check_cancelled()
                     data = src.read(band_chunk, window=window).astype(np.float32)
 
                     if src.nodata is not None:
@@ -238,17 +245,38 @@ async def execute_timeseries_job(
     async def _worker_wrapper(uri: str, bands: List[int]):
         async with limiter:
             result = await anyio.to_thread.run_sync(
-                extract_summarystat_timeseries, uri, bands, window, mask, chunk_size
+                extract_summarystat_timeseries,
+                uri,
+                bands,
+                window,
+                mask,
+                chunk_size,
+                anyio.from_thread.check_cancelled,
             )
             results.append(result)
 
+    # A passed deadline cancels this task; the cancellation is not an Exception,
+    # so it leaves as "stopped".
+    started = time.monotonic()
+    outcome = "stopped"
     try:
         async with anyio.create_task_group() as tg:
             for uri, bands in file_mapping.items():
                 tg.start_soon(_worker_wrapper, uri, bands)
+        outcome = "done"
     except Exception as e:
+        outcome = "failed"
         logger.error(f"Task group failed during Map phase: {e}")
         raise RuntimeError("Timeseries extraction failed.") from e
+    finally:
+        logger.info(
+            "Extraction %s after %.1f s: %d cells x %d timesteps, chunk %d.",
+            outcome,
+            time.monotonic() - started,
+            n_cells,
+            len(timestep_list),
+            chunk_size,
+        )
 
     # Sort by insertion order of file_mapping to preserve chronological ordering
     uri_order = {uri: i for i, uri in enumerate(uris)}

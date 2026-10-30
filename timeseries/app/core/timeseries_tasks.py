@@ -57,7 +57,7 @@ async def run_timeseries_pipeline_task(
         await store.update_job(
             job_id,
             {
-                "status": "FAILED",
+                "status": "TIMED_OUT",
                 "error": f"Processing exceeded {payload.max_processing_time} ms.",
             },
         )

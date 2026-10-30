@@ -7,6 +7,8 @@ Background tasks run synchronously inside Starlette's TestClient, so each
 client.post() returns only after the task has written its final status.
 """
 
+import time
+
 import pytest
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
@@ -179,8 +181,41 @@ def test_extract_processing_deadline_is_enforced(pipeline_client):
     )
 
     job = _get_status(pipeline_client, job_id)
-    assert job["status"] == "FAILED"
+    assert job["status"] == "TIMED_OUT"
     assert job["error"] == "Processing exceeded 0 ms."
+
+
+@pytest.mark.integration
+def test_extract_stops_reading_at_its_deadline(pipeline_client, monkeypatch):
+    # One band per read, each taking longer than the deadline. The release's
+    # 5 bands sit in 3 files read in parallel, so a stopped job reads at most
+    # one band per file; a job that runs on reads all 5.
+    reads = []
+
+    def slow_chunks(band_indices, chunk_size):
+        for band in band_indices:
+            yield [band]
+            # Resumed once the band has been read.
+            time.sleep(0.3)
+            reads.append(band)
+
+    monkeypatch.setattr(
+        "app.core.timeseries_processing.generate_band_chunks", slow_chunks
+    )
+    controller = ExtractionJobController(limit=1)
+    pipeline_client.app.dependency_overrides[get_job_controller] = lambda: controller
+
+    job_id = _do_extract(
+        pipeline_client,
+        "test_annual",
+        "0001",
+        "0005",
+        max_processing_time=100,
+    )
+
+    assert _get_status(pipeline_client, job_id)["status"] == "TIMED_OUT"
+    assert len(reads) <= 3
+    assert controller.active == 0
 
 
 # ---------------------------------------------------------------------------
