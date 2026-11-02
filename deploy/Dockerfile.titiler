@@ -9,4 +9,6 @@ USER 1000
 
 WORKDIR /titiler_custom
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80"]
+# Tile reads don't run in parallel on threads, so each worker process serves
+# one tile at a time. The host's 8 vCPUs are shared with the API's workers.
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80", "--workers", "2"]
