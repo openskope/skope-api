@@ -11,6 +11,7 @@ docker-compose.yml
 timeseries/deploy/settings/config.yml
 cog-input/
 timeseries/ingest/output/
+experiments/paleocar-v3-encoding/results/
 
 
 ### Pulled from https://github.com/github/gitignore/blob/master/Python.gitignore
