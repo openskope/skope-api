@@ -894,13 +894,13 @@ Adopting these requirements does not by itself establish Portolan conformance.
 - **COG-011:** `BIGTIFF=IF_SAFER` SHOULD be the default. A build plan MUST select
   `BIGTIFF=YES` when compressed output can plausibly exceed 4 GiB and validation
   MUST confirm the resulting container type is readable by deployed tooling.
-- **COG-012:** `INTERLEAVE=BAND` against `INTERLEAVE=TILE`, and `BLOCKSIZE=512`
-  against `BLOCKSIZE=256`, MUST be benchmarked with representative one-timestep
-  tile reads, multi-timestep extraction reads, file sizes, request counts, and
-  supported GDAL/TiTiler versions before either becomes a profile default. The
-  benchmark MUST follow the staged representative-data plan in Section 18 rather
-  than generating every candidate layout for every dataset. GDAL added the
-  interleave modes in 3.11 and describes their access layouts in its
+- **COG-012:** Interleave and block size MUST be chosen by the EXP-003
+  benchmark, using representative map views, multi-timestep extraction reads,
+  file sizes, read or request counts, and supported GDAL/TiTiler versions, before
+  either becomes a profile default. The benchmark MUST follow the
+  representative-data plan in Section 18 rather than generating every candidate
+  layout for every dataset. GDAL added the interleave modes in 3.11 and
+  describes their access layouts in its
   [COG creation options](https://gdal.org/en/stable/drivers/raster/cog.html#creation-options).
 
 ### 12.1 Candidate GDAL defaults
@@ -937,10 +937,10 @@ The GDAL driver documents `BLOCKSIZE=512`, automatic overview generation, and
   copied between spaces without an explicit labeled conversion and scope.
 - **COG-016:** Output encoding MUST preserve each selected source product's
   inspected datatype, nodata, scale, and offset. A narrower datatype MAY be
-  approved only per variable, after an experiment such as EXP-004 proves exact
-  representability and a measurable operational benefit. Nontrivial
-  scale/offset packing, rounding, or other lossy quantization MUST require
-  separate science review.
+  declared per variable when an experiment such as EXP-004 has measured an
+  operational benefit for that pair of datatypes and preflight proves exact
+  representability for the variable (COG-014). Nontrivial scale/offset packing,
+  rounding, or other lossy quantization MUST require separate science review.
 
 A dataset-wide UInt16 switch is insufficient because LBDA contains negative
 values, PaleoCAR variables have different value distributions and units, and
@@ -1580,7 +1580,7 @@ test.
 | AT-009 | Reject non-finite statistics, all-nodata bands without policy, nodata collisions, invalid scale/offset, overflow, truncation, and incompatible per-variable encodings. | OBS-007 through OBS-009, COG-013, COG-014 |
 | AT-010 | Validate COG tiling, internal overviews, lossless compression, CRS/geotransform, band encoding, descriptions, and no `.ovr` or `.aux.xml`. | COG-001 through COG-003, COG-005 through COG-008, COG-010, COG-011 |
 | AT-011 | Recompute final per-band statistics from native encoded pixels and compare embedded minimum, maximum, mean, standard deviation, valid percent, and STAC Raster metadata. | COG-004, COG-008, STAC-008, VAL-006 |
-| AT-012 | Benchmark one-timestep tiles and multi-timestep extraction for block sizes and BAND/TILE/PIXEL interleave using the staged representative-data plan; record compatibility and select no default without results. | COG-012, EXP-002, EXP-003 |
+| AT-012 | Benchmark map views and multi-timestep extraction for the EXP-003 layouts using the representative-data plan; record compatibility and select no default without results. | COG-012, EXP-002, EXP-003 |
 | AT-013 | Verify STAC asset media type, role, Projection fields, Raster fields, multihash checksum, byte size, and rejection of `proj:epsg` and `titiler:*` authority fields. | STAC-006 through STAC-010, OBS-011, COG-009 |
 | AT-014 | Freeze a validated plan before writing, reject writer input from any other state, construct a separate final observation after byte inspection, reject serializer access to planned facts, and reject mutation of either state. | AUTH-001, AUTH-002, OBS-012, OBS-013 |
 | AT-015 | Validate the release manifest schema, required integrity fields, dataset identity and source records, forbidden geospatial fields, path rules, checksums, controlled roles, STAC entrypoint integrity, and an exhaustive inventory covering the Collection, Items when applicable, the overview, and every COG. Prove the layout is closed: a file present in the release but absent from the inventory, and a file carrying a role outside the controlled vocabulary, each fail validation. | MAN-001 through MAN-006, MAN-007, MAN-008, REL-001, VAL-007 |
@@ -1595,11 +1595,11 @@ test.
 | AT-024 | Validate the single-COG SRTM fixture: derive spatial extent from its bytes, reject spatial Items and invented dates, require a Collection asset at `cogs/srtm_elevation.tif` and the `srtm_elevation` band name, preserve the reviewed 2000 acquisition interval in STAC, reject the legacy `2009` lookup key, and record generation, validation, transfer, tile, and window-read limits. | ORG-009, MIG-007, MIG-008, STAC-004, STAC-012, API-006 |
 | AT-025 | Run each Phase 0 experiment in an isolated temporary location; verify it cannot write a manifest, publish a release, modify legacy bytes, or become a production dependency. | EXP-001 |
 | AT-026 | Test scaled-integer fixtures whose native and physical ranges differ; reject unlabeled or unconverted reuse among native statistics, physical values, valid ranges, and visualization ranges. | COG-015, META-006, META-007 |
-| AT-027 | Generate the temporal benchmark matrix from representative variables only; compare cold and warm tiles, slider sequences, polygon extractions, concurrency, range traffic, resources, output size, build time, and object count; verify identical scientific results and document selection against the declared decision rule. | EXP-002, EXP-003 |
+| AT-027 | Generate the temporal benchmark matrix from representative variables only; take the deciding measurements of map views and polygon extractions over the full temporal range, at the deployed concurrency, with the same cache state for every layout; report output size, object count, peak memory, read or request counts and bytes, and build time; verify identical extraction results and tile pixels; and document the selection against the rule fixed before the deciding measurements. | EXP-002, EXP-003 |
 | AT-028 | Resolve the official CGIAR-CSI Version 4.1 available-tile index for the reviewed SRTM footprint, distinguish published tiles from expected absent ocean cells, stream and freeze every published-tile checksum, assemble the candidate raster with reviewed deterministic nodata for absent cells, and compare its grid, coverage, nodata, and pixels with the legacy copy. Reject a missing indexed tile and any unreviewed substitution with NASA SRTM or another product/version. | META-004, OBS-002, OBS-011, MIG-003, MIG-005 |
 | AT-029 | Build PaleoCAR v3 fixtures with exactly the twelve canonical variables, validate every source-folder-to-variable mapping, reject the four-variable and raw S3-spelling inventories and record `gdd_maize_may_sept` as the canonical identifier. | MIG-009 |
 | AT-030 | If uncertainty products are published (Section 20), select paired estimate and uncertainty source roles entirely through curated policy and resolved source mappings; switch a fixture from the scaled pair to the unscaled pair without code or schema changes; require a new release identity and checksums, retain the earlier release unchanged, reject mixed or undocumented pairings, and require an explicit dataset-version review when semantics change. | META-009, REL-008 |
-| AT-031 | Build source-preserving `UInt32` and candidate `UInt16` COGs for representative PaleoCAR v3 estimate and uncertainty variables; scan every valid source value before conversion; reject overflow, truncation, nodata collision, or any pixel/API result difference; and report compressed size, range traffic, memory, tile and extraction latency, and build time before approving a per-variable override. | COG-013, COG-014, COG-016, MIG-010, EXP-004 |
+| AT-031 | Build source-preserving `UInt32` and candidate `UInt16` COGs for a representative PaleoCAR v3 variable in the selected layout, and report compressed size, read volume, peak memory, map-view and extraction latency, and build time. | COG-016, MIG-010, EXP-004 |
 | AT-032 | Publish a proposal schema fixture through the production-like nginx static path; verify the canonical `v0.1.0` URL and `$id`, unauthenticated GET/HEAD, media type, CORS, immutable caching, disabled directory listing, repository-to-served checksum equality, availability with FastAPI stopped, survival across rollback, and rejection of a different-byte overwrite. | SKOPE-005, SKOPE-006, SKOPE-008, SKOPE-009 |
 | AT-033 | Compile reviewed person and organization fixtures from curated records in `curated.yml`; validate canonical ORCID/ROR URIs, preserve selected identifiers in STAC, reject conflicting names and implicit project-to-dataset role inheritance, publish only the reviewed organizational contact URL, and verify the release has no runtime dependency on project metadata or unreviewed legacy personal details. | META-010, META-011 |
 | AT-034 | Compile each dataset `curated.yml` fixture into a frozen plan; validate RFC 8785 declaration-graph serialization, identity profile, full SHA-256 digest and its exclusions, deterministic bytes, agreement between the manifest's release and declaration fields and the resolved declaration, and publication order. Reject generated-output digest inputs, reuse of a release ID for a different digest, and conflation of the assigned release ID with the computed declaration digest. Run a batch invocation of four datasets in which one fails, and prove the other three publish as complete, independently valid releases and that the batch itself has no identifier, digest, manifest, or rollback. Prove each release contains exactly one dataset and that a build writes nothing outside its own staging and release paths, including the published catalog. | REL-010, REL-011, MAN-003, MAN-006, MAN-008, MAN-010, MAN-011, ORCH-008, TXN-001, TXN-004 |
@@ -1622,39 +1622,45 @@ documentation before the next phase depends on it.
   paths, MUST use read-only source data, MUST NOT write release
   manifests, MUST NOT modify legacy artifacts, and MUST NOT become a production
   dependency without approval through the applicable implementation phase.
-- **EXP-002:** The temporal chunk experiment MUST initially generate full-grid,
-  full-temporal-range variants of a representative continuous PaleoCAR variable
-  at chunk sizes of 1, 25, 100, and 250 timesteps using `INTERLEAVE=BAND` and
-  `BLOCKSIZE=512`. It
-  MUST use a representative categorical PaleoCAR variable to test enough chunks
-  to detect datatype, resampling, or access-pattern differences. It MAY use
-  `lbda_v2` as a file-open-overhead control. It MUST NOT generate all candidate
-  layouts for every variable or dataset, and SRTM MUST be evaluated separately
-  as a static raster.
-- **EXP-003:** After the initial experiment, only the best two temporal chunk
-  candidates MUST advance. Each MUST be built in every combination of
-  `INTERLEAVE=BAND` or `TILE` and `BLOCKSIZE=512` or `256`, giving eight layouts
-  of the representative continuous variable. Selection MUST prioritize
-  interactive one-timestep map-tile latency, subject to documented guardrails
-  for multi-timestep polygon extraction latency, peak memory, reader
-  compatibility, range-request bytes and count, release object count, output
-  size, and build time. Tests MUST cover cold and warm tiles at overview and
-  native-resolution zooms; adjacent 12- and 50-timestep slider sequences; 10-,
-  100-, 500-, and full-range extractions over small, medium, and large polygons;
-  and representative concurrency. Scientific results MUST agree across layouts.
-- **EXP-004:** The PaleoCAR v3 datatype experiment MUST use the
-  source-preserving `UInt32` output as its reference. It MUST scan the full valid
-  value domain of every variable considered for `UInt16`, reserve a
-  non-colliding nodata value, compare decoded pixels and current tile,
-  extraction, and summary-statistic results exactly, and measure compressed
-  size, range-request traffic, peak memory, latency, and build time. A passing
-  experiment MAY recommend a `UInt16` override only for the variables actually
-  proven and measured; it MUST NOT enable a dataset-wide conversion switch.
+- **EXP-002:** The temporal chunk experiment MUST build full-grid variants of
+  a representative continuous variable of the dataset being released, at several
+  chunk sizes spanning a few dozen to a few hundred timesteps (for example 25,
+  100, and 250), each built in every EXP-003 layout. Variants MAY be screened
+  over a window of timesteps that hold data; the deciding measurements follow
+  EXP-003. When a dataset to be released has a categorical variable, a
+  representative one MUST be tested with enough chunks to detect datatype,
+  resampling, or access-pattern differences. It MAY use `lbda_v2` as a
+  file-open-overhead control. It MUST NOT generate candidate layouts for every
+  variable or dataset, and SRTM MUST be evaluated separately as a static raster.
+- **EXP-003:** Every chunk size MUST be built in every combination of the
+  candidate interleaves and block sizes, and of the source-preserving datatype or
+  a candidate narrowing under EXP-004, plus one variant with the layout of the
+  release being replaced, as a reference. The candidate interleaves SHOULD
+  include `BAND` and `TILE` and MAY include `PIXEL`; the candidate block sizes
+  SHOULD span small to large blocks (for example `64`, `128`, `256`, and `512`).
+  - Before the deciding measurements, the experiment MUST document how
+    candidates are chosen, which operations are measured and how, and the
+    selection rule with its limits. The report MUST state that rule and apply it
+    unchanged.
+  - The deciding measurements MUST cover map views and multi-timestep extraction
+    over study areas of several sizes, over the full temporal range, at the
+    deployed concurrency, with the same cache state for every layout. They SHOULD
+    include cold reads, the slowest case a user meets.
+  - The selected layout MUST be readable by every deployed reader. Output size,
+    object count, peak memory, and read or request counts and bytes MUST be
+    reported. Extraction results and tile pixels MUST be identical across
+    layouts.
+- **EXP-004:** A datatype narrowing MUST be measured once per pair of source
+  and target datatypes, on a representative variable in the layout EXP-003
+  selects, against the source-preserving output. Compressed size, read volume,
+  peak memory, map-view and extraction latency, and build time MUST be reported.
+  The measurement decides whether the narrowing is worth declaring; whether a
+  variable may declare it is decided by preflight (COG-014).
 
-`paleocar_v2/gdd_may_sept` is the initial continuous `int16` benchmark
-candidate and `paleocar_v2/maize_farming_niche` is the initial categorical
-`uint8` candidate. These choices exercise the approximately 2,000-band,
-1,560-by-1,440 grid that dominates the mixed tile and extraction tradeoff.
+`paleocar_v3/ppt_annual` is the continuous benchmark variable and
+`paleocar_v2/maize_farming_niche` the categorical `uint8` candidate. These
+choices exercise the approximately 2,000-band, 1,560-by-1,440 grid that
+dominates the mixed tile and extraction tradeoff.
 Benchmark artifacts are disposable evidence, not releases, and SHOULD be
 removed after their measurements and toolchain identity are recorded.
 
@@ -1802,8 +1808,8 @@ remains open in Section 20.
 
 - **MIG-010:** The PaleoCAR v3 reference build MUST apply COG-016 to each
   selected source product. Current source inspection establishes `UInt32` as the
-  provisional output datatype; a `UInt16` override MAY be approved only per
-  variable after EXP-004.
+  provisional output datatype; a `UInt16` override MAY be declared per variable
+  once EXP-004 has measured the benefit and the variable passes preflight.
 
 ## 19. Alternatives considered
 
