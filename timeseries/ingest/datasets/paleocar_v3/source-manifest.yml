@@ -1,15 +1,11 @@
-# Sources and build settings for paleocar_v3 (META-004). Each source is the
-# PaleoCAR `prediction_scaled` product, published under the bare quantity name.
 schema_version: "0.1.0"
 dataset: "paleocar_v3"
 release:
-  created: "2026-10-07T15:10:00Z"
-  chunk_size: 100
-  # PROVISIONAL encoding (spec §20.3): EXP-002, EXP-003, and EXP-004 have not
-  # been run. Their results supersede these values in a new release.
+  created: "2026-11-04T00:00:00Z"
+  chunk_size: 250
   cog:
-    blocksize: 512
-    interleave: "BAND"
+    blocksize: 128
+    interleave: "TILE"
     compress: "ZSTD"
     level: 9
     bigtiff: "IF_SAFER"
@@ -20,21 +16,167 @@ variables:
       checksum: "12204386dbde76acd840a144bc4974fd754e27e872d222f7ca8a342bb86760473c99"
       bands: "descriptions"
     encoding:
-      data_type: "uint32"
-      nodata: 4294967295
+      data_type: "uint16"
+      nodata: 65535
       scale: 1.0
       offset: 0.0
       predictor: 2
       overview_resampling: "AVERAGE"
+      narrowing:
+        approved_by: "SKOPE maintainers, 2026-11-04"
+        evidence: "EXP-004 (docs/experiments/paleocar-v3-encoding.md); preflight scans every valid value (COG-014)"
+  - id: "gdd_cotton_may_sept"
+    source:
+      uri: "s3://skope/paleocar_v3/gdd_cotton_maysept/prediction_scaled.tif"
+      bands: "descriptions"
+    encoding:
+      data_type: "uint16"
+      nodata: 65535
+      scale: 1.0
+      offset: 0.0
+      predictor: 2
+      overview_resampling: "AVERAGE"
+      narrowing:
+        approved_by: "SKOPE maintainers, 2026-11-04"
+        evidence: "EXP-004 (docs/experiments/paleocar-v3-encoding.md); preflight scans every valid value (COG-014)"
+  - id: "gdd_cotton_water_year"
+    source:
+      uri: "s3://skope/paleocar_v3/gdd_cotton_wateryear/prediction_scaled.tif"
+      bands: "descriptions"
+    encoding:
+      data_type: "uint16"
+      nodata: 65535
+      scale: 1.0
+      offset: 0.0
+      predictor: 2
+      overview_resampling: "AVERAGE"
+      narrowing:
+        approved_by: "SKOPE maintainers, 2026-11-04"
+        evidence: "EXP-004 (docs/experiments/paleocar-v3-encoding.md); preflight scans every valid value (COG-014)"
+  - id: "gdd_maize_annual"
+    source:
+      uri: "s3://skope/paleocar_v3/gdd_maize_annual/prediction_scaled.tif"
+      bands: "descriptions"
+    encoding:
+      data_type: "uint16"
+      nodata: 65535
+      scale: 1.0
+      offset: 0.0
+      predictor: 2
+      overview_resampling: "AVERAGE"
+      narrowing:
+        approved_by: "SKOPE maintainers, 2026-11-04"
+        evidence: "EXP-004 (docs/experiments/paleocar-v3-encoding.md); preflight scans every valid value (COG-014)"
+  - id: "gdd_maize_may_sept"
+    source:
+      uri: "s3://skope/paleocar_v3/gdd_maize_maysept/prediction_scaled.tif"
+      bands: "descriptions"
+    encoding:
+      data_type: "uint16"
+      nodata: 65535
+      scale: 1.0
+      offset: 0.0
+      predictor: 2
+      overview_resampling: "AVERAGE"
+      narrowing:
+        approved_by: "SKOPE maintainers, 2026-11-04"
+        evidence: "EXP-004 (docs/experiments/paleocar-v3-encoding.md); preflight scans every valid value (COG-014)"
+  - id: "gdd_maize_water_year"
+    source:
+      uri: "s3://skope/paleocar_v3/gdd_maize_wateryear/prediction_scaled.tif"
+      bands: "descriptions"
+    encoding:
+      data_type: "uint16"
+      nodata: 65535
+      scale: 1.0
+      offset: 0.0
+      predictor: 2
+      overview_resampling: "AVERAGE"
+      narrowing:
+        approved_by: "SKOPE maintainers, 2026-11-04"
+        evidence: "EXP-004 (docs/experiments/paleocar-v3-encoding.md); preflight scans every valid value (COG-014)"
+  - id: "gdd_wheat_annual"
+    source:
+      uri: "s3://skope/paleocar_v3/gdd_wheat_annual/prediction_scaled.tif"
+      bands: "descriptions"
+    encoding:
+      data_type: "uint16"
+      nodata: 65535
+      scale: 1.0
+      offset: 0.0
+      predictor: 2
+      overview_resampling: "AVERAGE"
+      narrowing:
+        approved_by: "SKOPE maintainers, 2026-11-04"
+        evidence: "EXP-004 (docs/experiments/paleocar-v3-encoding.md); preflight scans every valid value (COG-014)"
+  - id: "gdd_wheat_may_sept"
+    source:
+      uri: "s3://skope/paleocar_v3/gdd_wheat_maysept/prediction_scaled.tif"
+      bands: "descriptions"
+    encoding:
+      data_type: "uint16"
+      nodata: 65535
+      scale: 1.0
+      offset: 0.0
+      predictor: 2
+      overview_resampling: "AVERAGE"
+      narrowing:
+        approved_by: "SKOPE maintainers, 2026-11-04"
+        evidence: "EXP-004 (docs/experiments/paleocar-v3-encoding.md); preflight scans every valid value (COG-014)"
+  - id: "gdd_wheat_water_year"
+    source:
+      uri: "s3://skope/paleocar_v3/gdd_wheat_wateryear/prediction_scaled.tif"
+      bands: "descriptions"
+    encoding:
+      data_type: "uint16"
+      nodata: 65535
+      scale: 1.0
+      offset: 0.0
+      predictor: 2
+      overview_resampling: "AVERAGE"
+      narrowing:
+        approved_by: "SKOPE maintainers, 2026-11-04"
+        evidence: "EXP-004 (docs/experiments/paleocar-v3-encoding.md); preflight scans every valid value (COG-014)"
   - id: "ppt_annual"
     source:
       uri: "s3://skope/paleocar_v3/ppt_annual/prediction_scaled.tif"
       checksum: "12209cec240a41ec6683488b51bd0c11081776d476d1de763277608f052819fc6fb5"
       bands: "descriptions"
     encoding:
-      data_type: "uint32"
-      nodata: 4294967295
+      data_type: "uint16"
+      nodata: 65535
       scale: 1.0
       offset: 0.0
       predictor: 2
       overview_resampling: "AVERAGE"
+      narrowing:
+        approved_by: "SKOPE maintainers, 2026-11-04"
+        evidence: "EXP-004 (docs/experiments/paleocar-v3-encoding.md); preflight scans every valid value (COG-014)"
+  - id: "ppt_may_sept"
+    source:
+      uri: "s3://skope/paleocar_v3/ppt_maysept/prediction_scaled.tif"
+      bands: "descriptions"
+    encoding:
+      data_type: "uint16"
+      nodata: 65535
+      scale: 1.0
+      offset: 0.0
+      predictor: 2
+      overview_resampling: "AVERAGE"
+      narrowing:
+        approved_by: "SKOPE maintainers, 2026-11-04"
+        evidence: "EXP-004 (docs/experiments/paleocar-v3-encoding.md); preflight scans every valid value (COG-014)"
+  - id: "ppt_water_year"
+    source:
+      uri: "s3://skope/paleocar_v3/ppt_wateryear/prediction_scaled.tif"
+      bands: "descriptions"
+    encoding:
+      data_type: "uint16"
+      nodata: 65535
+      scale: 1.0
+      offset: 0.0
+      predictor: 2
+      overview_resampling: "AVERAGE"
+      narrowing:
+        approved_by: "SKOPE maintainers, 2026-11-04"
+        evidence: "EXP-004 (docs/experiments/paleocar-v3-encoding.md); preflight scans every valid value (COG-014)"

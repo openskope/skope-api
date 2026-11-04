@@ -69,8 +69,9 @@ temporal:
   endpoint_inclusion: "inclusive"
   timestep_meaning: "aggregation_period"
   description: >-
-    Each timestep is one calendar year (January–December) CE; its value
-    aggregates that year.
+    Each timestep is one year CE. Its value aggregates a period that ends in
+    that year: the calendar year, May–September, or the water year from the
+    previous October, as each variable's description states.
 empty_timesteps:
   - first: "0417"
     last: "0589"
@@ -88,10 +89,80 @@ variables:
       reconstructed by PaleoCAR (the prediction_scaled product).
     unit: "°C GDD"
     category: "Growing Degree Days"
+  - id: "gdd_cotton_may_sept"
+    title: "Summer (May–Sept) Cotton Growing Degree Days"
+    description: >-
+      Summer (May–September) growing degree days for cotton, reconstructed by
+      PaleoCAR (the prediction_scaled product).
+    unit: "°C GDD"
+    category: "Growing Degree Days"
+  - id: "gdd_cotton_water_year"
+    title: "Water-year (Oct–Sept) Cotton Growing Degree Days"
+    description: >-
+      Water-year (the previous October through September) growing degree days
+      for cotton, reconstructed by PaleoCAR (the prediction_scaled product).
+    unit: "°C GDD"
+    category: "Growing Degree Days"
+  - id: "gdd_maize_annual"
+    title: "Annual (Jan–Dec) Maize Growing Degree Days"
+    description: >-
+      Calendar-year (January–December) growing degree days for maize,
+      reconstructed by PaleoCAR (the prediction_scaled product).
+    unit: "°C GDD"
+    category: "Growing Degree Days"
+  - id: "gdd_maize_may_sept"
+    title: "Summer (May–Sept) Maize Growing Degree Days"
+    description: >-
+      Summer (May–September) growing degree days for maize, reconstructed by
+      PaleoCAR (the prediction_scaled product).
+    unit: "°C GDD"
+    category: "Growing Degree Days"
+  - id: "gdd_maize_water_year"
+    title: "Water-year (Oct–Sept) Maize Growing Degree Days"
+    description: >-
+      Water-year (the previous October through September) growing degree days
+      for maize, reconstructed by PaleoCAR (the prediction_scaled product).
+    unit: "°C GDD"
+    category: "Growing Degree Days"
+  - id: "gdd_wheat_annual"
+    title: "Annual (Jan–Dec) Wheat Growing Degree Days"
+    description: >-
+      Calendar-year (January–December) growing degree days for wheat,
+      reconstructed by PaleoCAR (the prediction_scaled product).
+    unit: "°C GDD"
+    category: "Growing Degree Days"
+  - id: "gdd_wheat_may_sept"
+    title: "Summer (May–Sept) Wheat Growing Degree Days"
+    description: >-
+      Summer (May–September) growing degree days for wheat, reconstructed by
+      PaleoCAR (the prediction_scaled product).
+    unit: "°C GDD"
+    category: "Growing Degree Days"
+  - id: "gdd_wheat_water_year"
+    title: "Water-year (Oct–Sept) Wheat Growing Degree Days"
+    description: >-
+      Water-year (the previous October through September) growing degree days
+      for wheat, reconstructed by PaleoCAR (the prediction_scaled product).
+    unit: "°C GDD"
+    category: "Growing Degree Days"
   - id: "ppt_annual"
     title: "Annual (Jan–Dec) Precipitation"
     description: >-
       Calendar-year (January–December) total precipitation, reconstructed by
       PaleoCAR (the prediction_scaled product).
+    unit: "mm"
+    category: "Precipitation"
+  - id: "ppt_may_sept"
+    title: "Summer (May–Sept) Precipitation"
+    description: >-
+      Summer (May–September) total precipitation, reconstructed by PaleoCAR
+      (the prediction_scaled product).
+    unit: "mm"
+    category: "Precipitation"
+  - id: "ppt_water_year"
+    title: "Water-year (Oct–Sept) Precipitation"
+    description: >-
+      Water-year (the previous October through September) total precipitation,
+      reconstructed by PaleoCAR (the prediction_scaled product).
     unit: "mm"
     category: "Precipitation"
