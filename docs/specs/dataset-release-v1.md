@@ -843,6 +843,12 @@ serialized files and their measured sizes and checksums.
   serializers MUST consume only a `FinalObservation`; they MUST NOT consume
   planned output facts. Manifest generation MUST consume the `FinalObservation`
   and a measured exhaustive file inventory.
+- **OBS-014:** Sources MAY be read from a local mirror holding `<bucket>/<key>`
+  copies of object-store sources. Only a fetch step writes to the mirror. It
+  completes each copy under a temporary name and gives it its final name only
+  when it matches the source manifest's checksum, when one is declared.
+  Preflight and build MUST NOT write to the mirror; they verify every source,
+  mirror copies included, against its checksum (OBS-011).
 
 The tolerance in OBS-003 is for deciding whether source grids represent the
 same intended grid, not for hiding output disagreement. The legacy PaleoCAR v2
