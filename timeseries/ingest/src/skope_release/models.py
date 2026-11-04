@@ -242,7 +242,7 @@ Resampling = Literal["AVERAGE", "MODE", "NEAREST", "BILINEAR", "CUBIC", "LANCZOS
 class CogOptions(Strict):
     """COG creation options that are part of the declaration (Section 12.1)."""
 
-    blocksize: Literal[256, 512]
+    blocksize: Literal[128, 256, 512]
     interleave: Literal["BAND", "TILE", "PIXEL"]
     compress: Literal["ZSTD", "DEFLATE", "LZW"]
     level: int | None = None

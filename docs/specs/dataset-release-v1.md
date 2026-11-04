@@ -907,10 +907,10 @@ Adopting these requirements does not by itself establish Portolan conformance.
 
 | Option | Candidate | Rationale and required evaluation |
 | --- | --- | --- |
-| `BLOCKSIZE` | `512` | GDAL default and Portolan's usual choice; benchmark small-window extraction against `256` (EXP-003). |
+| `BLOCKSIZE` | `128` | Selected for PaleoCAR v3 by EXP-003 (ADR 0007): full-range extraction takes about half as long as with `512`, and map views framed on a study area stay within 0.08 s per slider step of the fastest layout. |
 | `COMPRESS` | `ZSTD` | Lossless and supported by GDAL when built with libzstd; verify every deployed reader. |
 | `PREDICTOR` | datatype-specific | Integer and floating-point predictors require compression and size benchmarks. |
-| `INTERLEAVE` | unresolved | Benchmark `BAND` against `TILE` (EXP-003); `PIXEL` remains the compatibility baseline. |
+| `INTERLEAVE` | `TILE` | Selected for PaleoCAR v3 by EXP-003 (ADR 0007): the blocks of one tile position across all bands are stored together, so a multi-timestep read is contiguous. `PIXEL` remains the compatibility baseline. |
 | `OVERVIEWS` | `IGNORE_EXISTING` | Rebuild overviews from final encoded values rather than trusting source overviews. |
 | `OVERVIEW_RESAMPLING` | per variable | Category-preserving or continuous method according to scientific semantics. |
 | `STATISTICS` | `YES` | GDAL 3.8 or later forces inclusion rather than copying only available source statistics. |
@@ -1958,10 +1958,10 @@ named owner accepting the result.
 
 | Decision | Alternatives | Evidence available | Recommended default | Needed experiment or input | Consequence of deferral |
 | --- | --- | --- | --- | --- | --- |
-| Exact temporal chunk policy | One timestep; fixed counts of 25, 100, or 250; target byte size | Temporal PaleoCAR rasters are approximately 1,900-2,000 bands on a 1,560-by-1,440 grid; tile requests read one band while extraction groups many requested bands by file | Use 100 timesteps as a provisional baseline only; choose from the staged experiment using tile latency with extraction and operational guardrails | Run EXP-002 and EXP-003 on representative PaleoCAR variables; do not reproduce every layout for every dataset | COG filenames and Item boundaries cannot be finalized |
-| COG interleave and block size | `INTERLEAVE=BAND` or `TILE`; `BLOCKSIZE=512` or `256` | Map tiles read one timestep, so they favour band-separated layouts; polygon extraction reads many timesteps over a small window, so it favours smaller blocks; the current ingest writes `TILE` with 128-pixel blocks | Provisionally `BAND` and `512`; choose from EXP-003 together with chunk size | Run EXP-003's eight-layout comparison | The COG options in the source manifest's `release` block cannot be finalized, and a later change needs a new release |
+| Exact temporal chunk policy | One timestep; fixed counts of 25, 100, or 250; target byte size | Temporal PaleoCAR rasters are approximately 1,900-2,000 bands on a 1,560-by-1,440 grid; tile requests read one band while extraction groups many requested bands by file. In EXP-003 on `paleocar_v3/ppt_annual`, 250-timestep files gave the fastest full-range extraction; a range that falls within one file gets no parallel reads ([report](../experiments/paleocar-v3-encoding.md)) | 250 timesteps for PaleoCAR v3 (ADR 0007) | None for PaleoCAR v3; another temporal dataset reruns EXP-002 and EXP-003 or justifies reusing this result | COG filenames and Item boundaries cannot be finalized |
+| COG interleave and block size | `INTERLEAVE=BAND` or `TILE`; `BLOCKSIZE=64`, `128`, `256`, or `512` | In EXP-003 on `paleocar_v3/ppt_annual`, full-range extraction summed over four study areas took 6.0 s with `TILE` and 128-pixel blocks against 13.0 s with `BAND` and 512; map views framed on a study area differed by at most 0.08 s per slider step across the candidates ([report](../experiments/paleocar-v3-encoding.md)) | `TILE` and `128` for PaleoCAR v3 (ADR 0007) | None for PaleoCAR v3; another temporal dataset reruns EXP-003 or justifies reusing this result | The COG options in the source manifest's `release` block cannot be finalized, and a later change needs a new release |
 | PaleoCAR v3 uncertainty products | Publish estimates only; publish each uncertainty product as a paired variable (for example `<id>_pi_deviation`) | Each of twelve S3 quantity directories contains `prediction`, `prediction_scaled`, `pi_deviation`, and `pi_deviation_scaled`; the estimate is `prediction_scaled`, and `prediction` is an intermediate product; TIFF headers declare no explanatory scale, offset, unit, or statistics | Publish `prediction_scaled` estimates only until the creator answers; if uncertainty is published, add one variable per uncertainty product, paired under META-009 | The dataset creator's answers (Section 20.2) | Uncertainty variables and their pairing cannot be finalized; estimates can be released |
-| PaleoCAR v3 `UInt16` relevance | Preserve source `UInt32`; lossless per-variable `UInt16` | `UInt16` can reduce storage, range traffic, and memory, but current source files lack complete statistics and the dataset-wide switch provides no range or nodata proof | Use source-preserving `UInt32`; permit only per-variable exceptions that pass EXP-004 | Full-domain scans and representative COG, tile, extraction, and summary benchmarks | Releases can proceed with larger `UInt32` outputs; only the optional optimization is deferred |
+| PaleoCAR v3 `UInt16` relevance | Preserve source `UInt32`; lossless per-variable `UInt16` | In EXP-004 on `paleocar_v3/ppt_annual` in the selected layout, `UInt16` was 11% smaller and 8% faster to extract than `UInt32`, with identical results ([report](../experiments/paleocar-v3-encoding.md)) | `UInt16` with nodata 65535 for each variable whose preflight proves every valid value representable (COG-014, ADR 0007) | Each variable's preflight scan | Releases can proceed with larger `UInt32` outputs; only the optional optimization is deferred |
 | Grid comparison tolerance | Fixed numeric epsilon; pixel-relative; CRS-unit-aware | PaleoCAR source transforms differ at floating representation scale | CRS-unit-aware tolerance capped at a small fraction of a pixel | Test real headers and reprojection libraries across four datasets | Source preflight rules cannot be finalized |
 | Scientific category vocabulary | Preserve free text; SKOPE list; external ontology identifiers | Current `class` values are inconsistent and undocumented | Preserve source terms with warnings | Domain-owner vocabulary review | Category filtering remains non-portable |
 | SRTM legacy resolution | The legacy COG is the 90 m product; it is CGIAR's aggregated 250 m product | The legacy registry reads `250m` under a 90m title, and CGIAR publishes both resolutions | Inspect the legacy COG's pixel size before MIG-005 | Read the legacy COG header | If the legacy product is 250 m, the 90 m rebuild in MIG-005 changes the product and its size |
@@ -2024,15 +2024,15 @@ requires a new release.
 
 Encoding and layout:
 
-- Temporal chunk size 100; `INTERLEAVE=BAND`; `BLOCKSIZE=512`;
-  `COMPRESS=ZSTD` with `LEVEL=9`; `PREDICTOR=2` for integer and `3` for
-  floating-point data; `OVERVIEWS=IGNORE_EXISTING`; `STATISTICS=YES`;
-  `BIGTIFF=IF_SAFER`; `SPARSE_OK=FALSE`. EXP-002, EXP-003, and EXP-004 have not
-  been run; their results supersede these values.
+- Temporal chunk size 250; `INTERLEAVE=TILE`; `BLOCKSIZE=128` (EXP-002 to
+  EXP-004, ADR 0007); `COMPRESS=ZSTD` with `LEVEL=9`; `PREDICTOR=2` for integer
+  and `3` for floating-point data; `OVERVIEWS=IGNORE_EXISTING`;
+  `STATISTICS=YES`; `BIGTIFF=IF_SAFER`; `SPARSE_OK=FALSE`.
 - Overview resampling is `AVERAGE` for continuous variables and `MODE` for
   categorical variables.
-- Output encoding preserves the source datatype, nodata, scale, and offset; no
-  `UInt16` override is approved.
+- Output encoding preserves the source datatype, nodata, scale, and offset,
+  except where a variable declares a narrowing under COG-016; PaleoCAR v3
+  variables declare `UInt16` with nodata 65535.
 - Grid tolerance (OBS-003): source CRSs MUST be equivalent and shapes identical;
   each origin coordinate MAY differ by at most 0.001 pixel, and each pixel size
   by an amount that accumulates to at most 0.001 pixel across the grid. The
