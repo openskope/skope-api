@@ -70,7 +70,7 @@ def read_path(uri: str, mirror: Path | None) -> str:
     parsed = urlparse(uri)
     if parsed.scheme == "s3":
         if mirror is not None:
-            local = mirror / parsed.netloc / parsed.path.lstrip("/")
+            local = mirror_path(uri, mirror)
             if local.is_file():
                 return str(local)
         return f"/vsis3/{parsed.netloc}{parsed.path}"
@@ -81,9 +81,16 @@ def read_path(uri: str, mirror: Path | None) -> str:
     raise ValueError(f"unsupported source URI scheme: {uri}")
 
 
-def sha256_multihash(path: str | os.PathLike) -> str:
-    """Stream a local or `/vsi` path and return its SHA-256 multihash (OBS-011)."""
-    digest = hashlib.sha256()
+def mirror_path(uri: str, mirror: Path) -> Path | None:
+    """Where a mirror holds a source URI's copy, or None for a URI it cannot hold."""
+    parsed = urlparse(uri)
+    if parsed.scheme == "s3":
+        return mirror / parsed.netloc / parsed.path.lstrip("/")
+    return None
+
+
+def _blocks(path: str | os.PathLike):
+    """Stream a local or `/vsi` path in blocks."""
     path = str(path)
     if path.startswith("/vsi"):
         handle = gdal.VSIFOpenL(path, "rb")
@@ -94,13 +101,29 @@ def sha256_multihash(path: str | os.PathLike) -> str:
                 block = gdal.VSIFReadL(1, _CHUNK, handle)
                 if not block:
                     break
-                digest.update(block)
+                yield block
         finally:
             gdal.VSIFCloseL(handle)
     else:
         with open(path, "rb") as handle:
-            for block in iter(lambda: handle.read(_CHUNK), b""):
-                digest.update(block)
+            yield from iter(lambda: handle.read(_CHUNK), b"")
+
+
+def sha256_multihash(path: str | os.PathLike) -> str:
+    """Stream a local or `/vsi` path and return its SHA-256 multihash (OBS-011)."""
+    digest = hashlib.sha256()
+    for block in _blocks(path):
+        digest.update(block)
+    return "1220" + digest.hexdigest()
+
+
+def copy_with_multihash(source: str | os.PathLike, target: Path) -> str:
+    """Stream `source` into the local file `target`; return the copy's SHA-256 multihash."""
+    digest = hashlib.sha256()
+    with open(target, "wb") as out:
+        for block in _blocks(source):
+            digest.update(block)
+            out.write(block)
     return "1220" + digest.hexdigest()
 
 

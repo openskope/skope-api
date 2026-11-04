@@ -63,8 +63,10 @@ disagree, the build fails rather than picking one.
             │                                │
             └──────────────┬─────────────────┘
                            ▼
-                  preflight: validate both, inspect every source,
-                  compute missing checksums, freeze the declaration
+                  fetch (optional): copy the sources into the local mirror
+                           ▼
+                  preflight: validate both, inspect and checksum every
+                  source, freeze the declaration
                            ▼
                   build in staging: write COGs → reopen and inspect bytes
                   → STAC → overview.yml → validate everything
@@ -191,14 +193,31 @@ Changing any of these later means a new release (section 5).
   release ID and `created`. A changed declaration always needs a new ID, even if
   the output bytes would come out identical.
 
-### 2.5 Run the preflight
+### 2.5 Fetch the sources
+
+Preflight reads every source in full, and the build reads each one again. A
+source in object storage is streamed every time unless the local source mirror
+holds a copy, so fetch the sources once before the first preflight:
+
+```bash
+make release-fetch ARGS="<dataset>" RELEASE_SOURCE_MIRROR=<mirror>
+```
+
+Fetch copies each `s3://` source to `<mirror>/<bucket>/<key>` and gives the copy
+its final name only when it is complete and matches the declared checksum. It
+skips a source the mirror already holds, after checking it. For a source with no
+declared checksum it prints the computed one, for you to commit to the source
+manifest. Pass the same `RELEASE_SOURCE_MIRROR` to the preflight and the build.
+
+### 2.6 Run the preflight
 
 The preflight validates without writing anything. For each requested dataset it:
 
 1. validates `curated.yml` and the source manifest;
 2. opens and inspects every source raster: grids, band counts, band
    descriptions, encodings;
-3. streams any source without a checksum and computes it;
+3. checksums every source, compares it with the declared checksum, and
+   computes any checksum the manifest omits;
 4. freezes the resolved declaration and computes its digest.
 
 Read the report. Every finding names a requirement ID, a severity, the file, and
@@ -485,7 +504,7 @@ Release spec:
 | Release layout and release ID | §6 (REL-001–011) |
 | `curated.yml` and source manifest | §7 (META-001–012) |
 | STAC requirements | §9 (STAC-001–012), §10 (SKOPE-001–009) |
-| Preflight and build-state invariants | §11 (OBS-001–013) |
+| Fetch, preflight, and build-state invariants | §11 (OBS-001–014) |
 | COG profile and encoding | §12 (COG-001–016) |
 | Manifest and declaration digest | §13 (MAN-001–011) |
 | Publication, recovery, promotion, mounts | §14 (TXN-001–017) |

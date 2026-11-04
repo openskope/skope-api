@@ -20,7 +20,7 @@ TEST_COMPOSE = SKOPE_RELEASE_ROOT=$(CURDIR)/timeseries/app/tests/registry/data \
 	-f deploy/compose/dev.yml
 
 .PHONY: help check-environment check-release-pin verify-releases prepare config build deploy \
-	deploy-dev deploy-staging deploy-production down restart logs ps ingest release \
+	deploy-dev deploy-staging deploy-production down restart logs ps ingest release release-fetch \
 	preflight-legacy-data migrate-legacy-data test test-api test-ingest
 
 # Make 'help' the default target if someone just types `make`
@@ -91,6 +91,13 @@ release: prepare ##- Run the dataset release tool, e.g. make release ARGS="prefl
 	@$(COMPOSE) --profile ingest build release
 	PRODUCER_REVISION="$$(git rev-parse HEAD)$$(test -z "$$(git status --porcelain)" || echo -dirty)" \
 		$(COMPOSE) --profile ingest run --rm release $(ARGS)
+
+# The mirror is mounted writable only here; preflight and build read it read-only.
+release-fetch: prepare ##- Copy declared sources into the source mirror, e.g. make release-fetch ARGS="paleocar_v3"
+	@mkdir -p "$(RELEASE_SOURCE_MIRROR)"
+	@$(COMPOSE) --profile ingest build release
+	$(COMPOSE) --profile ingest run --rm -v "$(abspath $(RELEASE_SOURCE_MIRROR))":/mirror \
+		-e SKOPE_RELEASE_SOURCE_MIRROR=/mirror release fetch $(ARGS)
 
 preflight-legacy-data: ##- Validate all legacy migration inputs without creating output
 	MIGRATION_PREFLIGHT_ONLY=true ./scripts/migrate-legacy-datasets.sh \

@@ -70,6 +70,26 @@ def cmd_preflight(args) -> int:
     return 1 if failed else 0
 
 
+def cmd_fetch(args) -> int:
+    from .fetch import fetch_dataset
+    from .preflight import DatasetFiles
+
+    if args.source_mirror is None:
+        raise SystemExit("fetch needs a source mirror: --source-mirror or SKOPE_RELEASE_SOURCE_MIRROR (OBS-014)")
+    failed = []
+    for directory in _dataset_dirs(args):
+        report = Report()
+        outcomes = fetch_dataset(DatasetFiles(directory), mirror=args.source_mirror, report=report)
+        _print_report(f"fetch {directory.name}", report, args.json)
+        for variable, outcome in outcomes:
+            print(f"{variable}: {outcome}")
+        if not report.ok:
+            failed.append(directory.name)
+    if failed:
+        print(f"fetch failed for: {', '.join(failed)}")
+    return 1 if failed else 0
+
+
 def cmd_build(args) -> int:
     from .build import build_and_publish
     from .preflight import preflight_many
@@ -175,6 +195,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("dataset", nargs="+")
     p.add_argument("--release", action="append", metavar="DATASET=RELEASE_ID", help="also check the release ID")
     p.set_defaults(func=cmd_preflight)
+
+    p = sub.add_parser("fetch", help="copy declared sources into the source mirror (OBS-014)")
+    p.add_argument("dataset", nargs="+")
+    p.set_defaults(func=cmd_fetch)
 
     p = sub.add_parser("build", help="build and publish one release per dataset")
     p.add_argument("dataset", nargs="+")
