@@ -26,6 +26,20 @@ datasets:
           Provisional: half the legacy registry's maximum for the
           prediction_scaled product (3615 mm), carried over from the UI's
           COLOR_MAX_PCT of 0.5.
+      ppt_may_sept:
+        order: 12
+        palette: skope-precip
+        range: [0, 682.0]
+        note: >-
+          Provisional: half the largest band maximum in
+          paleocar_v3-r-2026.11.04 (1364 mm).
+      ppt_water_year:
+        order: 14
+        palette: skope-precip
+        range: [0, 2165.0]
+        note: >-
+          Provisional: half the largest band maximum in
+          paleocar_v3-r-2026.11.04 (4330 mm).
       gdd_cotton_annual:
         order: 20
         palette: skope-precip
@@ -34,3 +48,59 @@ datasets:
           Provisional: half the legacy registry's maximum for the
           prediction_scaled product (4355 °C GDD), carried over from the UI's
           COLOR_MAX_PCT of 0.5.
+      gdd_cotton_may_sept:
+        order: 22
+        palette: skope-precip
+        range: [0, 1568.0]
+        note: >-
+          Provisional: half the largest band maximum in
+          paleocar_v3-r-2026.11.04 (3136 °C GDD).
+      gdd_cotton_water_year:
+        order: 24
+        palette: skope-precip
+        range: [0, 2167.0]
+        note: >-
+          Provisional: half the largest band maximum in
+          paleocar_v3-r-2026.11.04 (4334 °C GDD).
+      gdd_maize_annual:
+        order: 30
+        palette: skope-precip
+        range: [0, 2507.0]
+        note: >-
+          Provisional: half the largest band maximum in
+          paleocar_v3-r-2026.11.04 (5014 °C GDD).
+      gdd_maize_may_sept:
+        order: 32
+        palette: skope-precip
+        range: [0, 1491.0]
+        note: >-
+          Provisional: half the largest band maximum in
+          paleocar_v3-r-2026.11.04 (2982 °C GDD).
+      gdd_maize_water_year:
+        order: 34
+        palette: skope-precip
+        range: [0, 2506.5]
+        note: >-
+          Provisional: half the largest band maximum in
+          paleocar_v3-r-2026.11.04 (5013 °C GDD).
+      gdd_wheat_annual:
+        order: 40
+        palette: skope-precip
+        range: [0, 3896.5]
+        note: >-
+          Provisional: half the largest band maximum in
+          paleocar_v3-r-2026.11.04 (7793 °C GDD).
+      gdd_wheat_may_sept:
+        order: 42
+        palette: skope-precip
+        range: [0, 1971.5]
+        note: >-
+          Provisional: half the largest band maximum in
+          paleocar_v3-r-2026.11.04 (3943 °C GDD).
+      gdd_wheat_water_year:
+        order: 44
+        palette: skope-precip
+        range: [0, 3872.0]
+        note: >-
+          Provisional: half the largest band maximum in
+          paleocar_v3-r-2026.11.04 (7744 °C GDD).

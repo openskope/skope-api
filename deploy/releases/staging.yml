@@ -3,8 +3,7 @@
 # `make verify-releases ENVIRONMENT=staging` before deploying.
 release_root: /srv/datasets/releases
 releases:
-  # Prototype: 2 of the 12 variables, provisional encoding. Not for production.
   - dataset: paleocar_v3
-    release_id: paleocar_v3-r-2026.10.07
-    declaration_digest: fa5b29a944289e7677f1bff46216a2222f20f5eb73d7237e9d453e0c2e1f059e
-    manifest_sha256: b2f29d873f9aec2c1ca4c4e5872b19b39c004a4da57337ae76a4f9647914098c
+    release_id: paleocar_v3-r-2026.11.04
+    declaration_digest: ebb5bb56d7b0b93b162e2d6f0e8bfc311f8023cafd5a8cd37f73309cdd0b6bd4
+    manifest_sha256: 899b8be2a700f2fb597b6043d865a68d625a75f62ead0d1ec77de634194d4101
