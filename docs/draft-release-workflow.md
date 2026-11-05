@@ -268,8 +268,8 @@ If any step fails, no manifest is written and nothing becomes selectable.
 - **Local:** the staging directory is renamed atomically to
   `<release-root>/<release-id>`. This fails if that path already exists or if
   staging is on a different filesystem. The build makes the release readable
-  and not writable by every user (files 0444, directories 0555), so TiTiler,
-  which runs as uid 1000, can read it.
+  and not writable by every user (files 0444, directories 0555), so the API and
+  TiTiler, which run as uid 1000, can read it.
 - **Object storage:** objects are uploaded under `<prefix>/<release-id>/`, data
   and STAC first, sizes and checksums verified, and the manifest uploaded last.
   A retry reuses an object already there only if its size and checksum match;
@@ -495,7 +495,7 @@ version's Collection with `predecessor-version`.
 | Publish (object storage) | Existing object mismatch | A retry found different bytes at the prefix | TXN-007 |
 | CI (display files) | Display check fails | Undefined palette, `kind` mismatch, range or tick out of order, non-numeric `order`, positional `map_view`, unknown field | DISP-012 |
 | Promotion | Checksum or size mismatch | Release bytes changed or were copied incompletely | TXN-011 |
-| Serving | Map tiles return 502 "Upstream tile server error" while extraction works; TiTiler logs `Permission denied` | The release is not readable by every user (TiTiler runs as uid 1000, the API as root), e.g. one published before TXN-018 or copied by hand. Fix with `chmod` to 0444 files and 0555 directories; the bytes and checksums are unchanged | TXN-018 |
+| Serving | Map tiles return 502 "Upstream tile server error" and extraction fails; the API and TiTiler logs show `Permission denied` | The release is not readable by uid 1000, which the API and TiTiler run as, e.g. one published before TXN-018 or copied by hand. Fix with `chmod` to 0444 files and 0555 directories; the bytes and checksums are unchanged | TXN-018 |
 | API startup | Digest or identity mismatch | Typo in the pin, or `manifest_sha256` taken from a different file | PIN-004 |
 | API startup | Duplicate dataset | Two pin entries for the same dataset | PIN-005 |
 | API startup | Missing display entry | A dataset or variable pinned without display entries | DISP-001, DISP-013 |

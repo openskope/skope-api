@@ -11,17 +11,11 @@ handlers:
     class: 'logging.StreamHandler'
     level: DEBUG
     formatter: standard
-  file:
-    class: 'logging.handlers.WatchedFileHandler'
-    level: DEBUG
-    formatter: standard
-    filename: 'skope-api.log'
 
 root:
   level: WARNING
   handlers:
   - console
-  - file
   propagate: false
 
 loggers:
@@ -29,7 +23,7 @@ loggers:
     level: DEBUG
     handlers:
       - console
-      - file
+    propagate: false
   gunicorn:
     error:
       propagate: true

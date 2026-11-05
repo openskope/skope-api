@@ -21,4 +21,9 @@ COPY deploy/display /code/config/display
 
 COPY timeseries/app /code/app
 
+# Run unprivileged, as the same uid as TiTiler, so both read releases the same
+# way. The app's own files stay root-owned and read-only to it.
+RUN useradd --uid 1000 --create-home skope
+USER skope
+
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--reload"]
