@@ -1,4 +1,4 @@
-"""Build one release in staging and publish it locally (TXN-001 to TXN-003, TXN-008).
+"""Build one release in staging and publish it locally (TXN-001 to TXN-003, TXN-008, TXN-018).
 
 Steps, in the order TXN-001 requires:
   1. write COGs                      (cog_writer)
@@ -7,7 +7,8 @@ Steps, in the order TXN-001 requires:
   4. generate STAC and the overview  (stac_serializer, overview)
   5. every pre-manifest validation   (stac_validate, crosscheck, overview rule check)
   6. write the manifest last         (manifest)
-  7. atomically rename staging to the release path
+  7. atomically rename staging to the release path, making it read-only for
+     every user around the rename (TXN-018)
 
 A failure leaves the staging directory in place and names it, and never
 touches a published release (TXN-008).
@@ -39,6 +40,8 @@ from .stac_validate import validate_stac
 log = logging.getLogger(__name__)
 
 STAGING_DIR = ".staging"  # readers ignore dot-directories (TXN-003)
+RELEASE_FILE_MODE = 0o444  # TXN-018
+RELEASE_DIR_MODE = 0o555
 
 
 @dataclass(frozen=True)
@@ -78,6 +81,19 @@ def _check_revision(plan: ValidatedBuildPlan, report: Report) -> None:
             f"producer revision {revision!r} is not a clean commit; release builds need a clean checkout",
             dataset=plan.dataset_id,
         )
+
+
+def _make_contents_read_only(staging: Path) -> None:
+    """Readable and not writable by every user (TXN-018), whatever the umask was.
+
+    Leaves `staging` itself writable: moving a directory to a new parent needs
+    write permission on it, so it gets its mode after the rename.
+    """
+    for directory, subdirectories, files in os.walk(staging):
+        for name in files:
+            os.chmod(os.path.join(directory, name), RELEASE_FILE_MODE)
+        for name in subdirectories:
+            os.chmod(os.path.join(directory, name), RELEASE_DIR_MODE)
 
 
 def stage_release(plan: object, staging: Path) -> tuple[str, Report]:
@@ -136,7 +152,9 @@ def build_and_publish(plan: object, release_root: Path) -> tuple[Published, Repo
         if destination.exists():
             report.add("TXN-002", f"{destination} appeared during the build")
             report.raise_if_errors("publication")
+        _make_contents_read_only(staging)
         os.rename(staging, destination)
+        os.chmod(destination, RELEASE_DIR_MODE)
     except ReleaseError as exc:
         exc.report.add("TXN-008", f"build failed; staging left at {staging} for inspection or cleanup", severity="warning")
         raise

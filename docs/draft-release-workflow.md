@@ -267,7 +267,9 @@ If any step fails, no manifest is written and nothing becomes selectable.
 
 - **Local:** the staging directory is renamed atomically to
   `<release-root>/<release-id>`. This fails if that path already exists or if
-  staging is on a different filesystem.
+  staging is on a different filesystem. The build makes the release readable
+  and not writable by every user (files 0444, directories 0555), so TiTiler,
+  which runs as uid 1000, can read it.
 - **Object storage:** objects are uploaded under `<prefix>/<release-id>/`, data
   and STAC first, sizes and checksums verified, and the manifest uploaded last.
   A retry reuses an object already there only if its size and checksum match;
@@ -459,6 +461,11 @@ pin change.
 | Which release an environment serves, or hiding a dataset | No | Pin file |
 | Listing, deprecation, "latest version" | No | Recorded outside releases |
 
+**The release a new one replaces** needs nothing done to it. Pinning the new
+release (4.1) is the whole change; the old one stays where it is, unchanged, as
+the rollback target (4.5), and its ledger entry stays as it is. `withdrawn` is
+only for a release found to be wrong.
+
 **Release or dataset version?** A dataset's `version` is the version of the
 source science. Repackaging (chunking, COG options, a metadata correction) is a
 new release of the same version. When science review finds a change alters the
@@ -488,6 +495,7 @@ version's Collection with `predecessor-version`.
 | Publish (object storage) | Existing object mismatch | A retry found different bytes at the prefix | TXN-007 |
 | CI (display files) | Display check fails | Undefined palette, `kind` mismatch, range or tick out of order, non-numeric `order`, positional `map_view`, unknown field | DISP-012 |
 | Promotion | Checksum or size mismatch | Release bytes changed or were copied incompletely | TXN-011 |
+| Serving | Map tiles return 502 "Upstream tile server error" while extraction works; TiTiler logs `Permission denied` | The release is not readable by every user (TiTiler runs as uid 1000, the API as root), e.g. one published before TXN-018 or copied by hand. Fix with `chmod` to 0444 files and 0555 directories; the bytes and checksums are unchanged | TXN-018 |
 | API startup | Digest or identity mismatch | Typo in the pin, or `manifest_sha256` taken from a different file | PIN-004 |
 | API startup | Duplicate dataset | Two pin entries for the same dataset | PIN-005 |
 | API startup | Missing display entry | A dataset or variable pinned without display entries | DISP-001, DISP-013 |
@@ -507,7 +515,7 @@ Release spec:
 | Fetch, preflight, and build-state invariants | §11 (OBS-001–014) |
 | COG profile and encoding | §12 (COG-001–016) |
 | Manifest and declaration digest | §13 (MAN-001–011) |
-| Publication, recovery, promotion, mounts | §14 (TXN-001–017) |
+| Publication, recovery, promotion, mounts | §14 (TXN-001–018) |
 | Batch builds | §14.4 (ORCH-006, ORCH-008), §18 (MIG-003) |
 | Overview and time-to-band rule | §15 (API-001–010) |
 | Validation passes and findings | §16 (VAL-001–008) |

@@ -1,6 +1,8 @@
-"""Building and publishing a release locally (AT-006, AT-018, AT-021, AT-024; TXN-001 to TXN-003, TXN-008)."""
+"""Building and publishing a release locally (AT-006, AT-018, AT-021, AT-024; TXN-001 to TXN-003, TXN-008, TXN-018)."""
 
+import os
 import shutil
+import stat
 from pathlib import Path
 
 import pytest
@@ -55,6 +57,32 @@ def test_published_layout(released):
     staging = published.path.parent / ".staging"
     assert [p for p in staging.iterdir()] == []  # staging renamed away; lease released
     assert len(published.manifest_sha256) == 64
+
+
+def test_published_release_is_read_only_for_everyone(released):
+    """TXN-018: files 0444, directories 0555, whatever the umask."""
+    published, _ = released
+    for path in [published.path, *published.path.rglob("*")]:
+        assert stat.S_IMODE(path.stat().st_mode) == (0o555 if path.is_dir() else 0o444), path
+
+
+def test_modes_are_set_around_the_rename(temporal_dataset, tmp_path, monkeypatch):
+    """TXN-018: contents read-only before the rename; the release directory stays
+    writable until after it, since moving a directory to a new parent needs that."""
+    rename = os.rename
+    seen = {}
+
+    def checked_rename(source, destination):
+        source = Path(source)
+        seen["top"] = stat.S_IMODE(source.stat().st_mode)
+        seen["manifest"] = stat.S_IMODE((source / "release-manifest.json").stat().st_mode)
+        seen["cogs"] = stat.S_IMODE((source / "cogs").stat().st_mode)
+        rename(source, destination)
+
+    monkeypatch.setattr(build_module.os, "rename", checked_rename)
+    publish(temporal_dataset(), tmp_path / "releases")
+    assert seen["top"] & stat.S_IWUSR
+    assert (seen["manifest"], seen["cogs"]) == (0o444, 0o555)
 
 
 def test_static_release(static_dataset, tmp_path):
