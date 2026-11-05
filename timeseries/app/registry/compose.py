@@ -224,8 +224,18 @@ def _check_release(
     c.same("PIN-004", "manifest dataset", pinned.dataset, manifest.dataset.id)
 
     # Every inventoried file exists with its recorded size; promotion also
-    # compares every checksum (TXN-011).
+    # compares every checksum (TXN-011), logging progress since it reads
+    # every byte of the release.
     files = {f.path: f for f in manifest.files}
+    total_gb = sum(f.size for f in manifest.files) / 1e9
+    checked, checked_gb = 0, 0.0
+    if full:
+        logger.info(
+            "%s: checking the checksum of %d files, %.1f GB",
+            pinned.release_id,
+            len(manifest.files),
+            total_gb,
+        )
     for entry in manifest.files:
         file_path = path / entry.path
         if not file_path.is_file():
@@ -241,6 +251,16 @@ def _check_release(
                 f"file checksum: {entry.path}",
                 entry.checksum,
                 multihash(file_path),
+            )
+            checked += 1
+            checked_gb += entry.size / 1e9
+            logger.info(
+                "%s: %d of %d files checked, %.1f of %.1f GB",
+                pinned.release_id,
+                checked,
+                len(manifest.files),
+                checked_gb,
+                total_gb,
             )
 
     overview_entry = files.get(OVERVIEW)

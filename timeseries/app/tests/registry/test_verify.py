@@ -1,6 +1,7 @@
 """`python -m app.registry.verify`: promotion's full byte check (TXN-011)."""
 
 import json
+import logging
 
 import numpy as np
 
@@ -27,6 +28,20 @@ def test_prints_a_record_per_verified_release(tmp_path, monkeypatch, capsys):
     assert record["release_id"] == "annual-r-2026.01.01"
     assert record["path"] == str(path)
     assert record["result"] == "passed"
+
+
+def test_logs_progress_per_file(tmp_path, monkeypatch, caplog):
+    _setup(tmp_path, monkeypatch)
+    caplog.set_level(logging.INFO, logger="app.registry.compose")
+
+    assert verify.main() == 0
+
+    messages = [r.getMessage() for r in caplog.records]
+    progress = [m for m in messages if "files checked" in m]
+    assert len(progress) > 1
+    assert progress[0].startswith("annual-r-2026.01.01: 1 of ")
+    n = len(progress)
+    assert progress[-1].startswith(f"annual-r-2026.01.01: {n} of {n} files checked")
 
 
 def test_fails_on_changed_bytes(tmp_path, monkeypatch, capsys):

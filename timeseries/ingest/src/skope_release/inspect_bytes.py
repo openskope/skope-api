@@ -8,9 +8,10 @@ values (COG-004, AT-011). A COG is checksummed only after it validates (COG-009)
 
 from __future__ import annotations
 
+import logging
 import math
 import multiprocessing
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
 import numpy as np
@@ -29,6 +30,8 @@ from .plan import (
     ValidatedBuildPlan,
     require_plan,
 )
+
+log = logging.getLogger(__name__)
 
 STAT_RELATIVE_TOLERANCE = 1e-10  # GDAL serializes ~13 significant digits (Section 20.3)
 VALID_PERCENT_TOLERANCE = 0.005
@@ -229,8 +232,14 @@ def observe(plan: object, staging: Path, report: Report) -> FinalObservation | N
                 jobs.append((variable.id, chunk, plan.layout.cog_path(variable.id, chunk), list(plan.layout.chunk_keys(chunk))))
         else:
             jobs.append((variable.id, None, f"cogs/{variable.id}.tif", [variable.id]))
+    results = [None] * len(jobs)
     with ProcessPoolExecutor(max_workers=workers(), mp_context=multiprocessing.get_context("spawn")) as pool:
-        results = list(pool.map(_inspect_job, [(plan, str(staging), *job) for job in jobs]))
+        futures = {pool.submit(_inspect_job, (plan, str(staging), *job)): i for i, job in enumerate(jobs)}
+        # Progress in completion order; results stay in job order.
+        for done, future in enumerate(as_completed(futures), 1):
+            i = futures[future]
+            results[i] = future.result()
+            log.info("inspected %d of %d COGs: %s", done, len(jobs), jobs[i][2])
     assets: list[AssetObservation] = []
     for asset, findings in results:  # in job order, so the observation is deterministic
         report.extend(findings)

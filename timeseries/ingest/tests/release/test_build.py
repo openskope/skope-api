@@ -1,5 +1,6 @@
 """Building and publishing a release locally (AT-006, AT-018, AT-021, AT-024; TXN-001 to TXN-003, TXN-008, TXN-018)."""
 
+import logging
 import os
 import shutil
 import stat
@@ -83,6 +84,22 @@ def test_modes_are_set_around_the_rename(temporal_dataset, tmp_path, monkeypatch
     publish(temporal_dataset(), tmp_path / "releases")
     assert seen["top"] & stat.S_IWUSR
     assert (seen["manifest"], seen["cogs"]) == (0o444, 0o555)
+
+
+def test_long_steps_log_progress(temporal_dataset, tmp_path, caplog):
+    """Inspection and the manifest's checksums log each file as it finishes."""
+    caplog.set_level(logging.INFO)
+    published = publish(temporal_dataset(), tmp_path / "releases")
+    messages = [r.getMessage() for r in caplog.records]
+    inspected = [m for m in messages if m.startswith("inspected ")]
+    assert len(inspected) == 6 and inspected[-1].startswith("inspected 6 of 6 COGs: cogs/")
+    checksummed = [m for m in messages if m.startswith("checksummed ")]
+    assert len(checksummed) == 11 and checksummed[-1].startswith("checksummed 11 of 11 files")
+
+    caplog.clear()
+    assert verify_release(published.path, Report()) is not None
+    verified = [r.getMessage() for r in caplog.records if r.getMessage().startswith("verified ")]
+    assert len(verified) == 11 and verified[-1].startswith("verified 11 of 11 files")
 
 
 def test_static_release(static_dataset, tmp_path):

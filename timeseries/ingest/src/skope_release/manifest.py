@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 from pathlib import Path
 
@@ -13,7 +14,9 @@ from .identity import IDENTITY_PROFILE
 from .models import ReleaseManifest
 from .plan import FinalObservation, require_observation
 
-MANIFEST = "release-manifest.json"
+log = logging.getLogger(__name__)
+
+MANIFEST ="release-manifest.json"
 SCHEMA_VERSION = "1.0.0"
 
 # REL-001: the only files a release may contain, with their roles (MAN-008).
@@ -50,7 +53,10 @@ def build_manifest(observation: object, root: Path, report: Report) -> dict | No
     ctx = {"dataset": obs.dataset_id}
     observed = {a.path: a for a in obs.assets}
     files = []
-    for rel in release_files(root):
+    rels = release_files(root)
+    total_gb = sum((root / rel).lstat().st_size for rel in rels) / 1e9
+    checked_gb = 0.0
+    for done, rel in enumerate(rels, 1):
         roles = roles_for(rel)
         path = root / rel
         if roles is None or path.is_symlink():
@@ -58,6 +64,8 @@ def build_manifest(observation: object, root: Path, report: Report) -> dict | No
             continue
         checksum = gdalio.sha256_multihash(path)
         size = path.stat().st_size
+        checked_gb += size / 1e9
+        log.info("checksummed %d of %d files, %.1f of %.1f GB: %s", done, len(rels), checked_gb, total_gb, rel)
         fact = observed.get(rel)
         if fact is not None and (fact.size, fact.checksum) != (size, checksum):
             report.add("COG-009", "COG bytes changed after validation", path=rel, **ctx)
@@ -114,7 +122,9 @@ def verify_release(root: Path, report: Report, *, full: bool = True) -> ReleaseM
     for rel in release_files(root):
         if rel not in listed:
             report.add("REL-001", "file is not in the manifest inventory", path=rel, **ctx)
-    for rel, entry in sorted(listed.items()):
+    total_gb = sum(f.size for f in manifest.files) / 1e9
+    checked_gb = 0.0
+    for done, (rel, entry) in enumerate(sorted(listed.items()), 1):
         if roles_for(rel) != list(entry.roles):
             report.add("MAN-008", f"roles {list(entry.roles)} do not match the layout", path=rel, **ctx)
         if ".." in rel.split("/") or rel.startswith("/"):
@@ -126,8 +136,11 @@ def verify_release(root: Path, report: Report, *, full: bool = True) -> ReleaseM
             continue
         if path.stat().st_size != entry.size:
             report.add("MAN-005", f"size {path.stat().st_size} differs from the manifest's {entry.size}", path=rel, **ctx)
-        elif full and gdalio.sha256_multihash(path) != entry.checksum:
-            report.add("MAN-005", "checksum differs from the manifest", path=rel, **ctx)
+        elif full:
+            if gdalio.sha256_multihash(path) != entry.checksum:
+                report.add("MAN-005", "checksum differs from the manifest", path=rel, **ctx)
+            checked_gb += entry.size / 1e9
+            log.info("verified %d of %d files, %.1f of %.1f GB: %s", done, len(listed), checked_gb, total_gb, rel)
     return manifest if report.ok else None
 
 
