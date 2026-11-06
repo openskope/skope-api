@@ -21,7 +21,9 @@ async def run_timeseries_pipeline_task(
     timestep_list: list[str],
     job_controller: ExtractionJobController,
 ):
-    """Extract the timesteps the request handler already selected (PROTO-007)."""
+    """Extract the timesteps the request handler already selected: the whole
+    axis, whatever the requested range. The response holds only the requested
+    range (PROTO-007), computed from the whole series."""
     try:
         with anyio.fail_after(payload.max_processing_time / 1000):
             await store.update_job(job_id, {"status": JobStatus.processing})
@@ -33,7 +35,6 @@ async def run_timeseries_pipeline_task(
                 timestep_list=timestep_list,
                 dataset_crs=grid.code,
                 dataset_transform_array=list(grid.transform),
-                resolved_time_range=(timestep_list[0], timestep_list[-1]),
             )
 
             # Save result + base series to JobStore.

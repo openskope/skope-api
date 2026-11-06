@@ -27,7 +27,6 @@ from app.schemas.timeseries import (
     NoTransform,
     ZScoreMovingInterval,
     ZScoreFixedInterval,
-    ZonalStatistic,
 )
 
 logger = logging.getLogger(__name__)
@@ -142,11 +141,14 @@ def extract_summarystat_timeseries(
         raise
 
 
-def apply_zscore_transform(base_series: pd.Series, transform) -> pd.Series:
+def apply_zscore_transform(
+    base_series: pd.Series, transform, default_reference: TimeRange | None = None
+) -> pd.Series:
     """Applies a Z-score transform to a time-indexed pd.Series.
 
-    For ZScoreFixedInterval with a time_range, the reference slice is obtained by
-    label-based indexing on the series.
+    For ZScoreFixedInterval, the reference slice is obtained by label-based
+    indexing on the series. Without a time_range of its own, the reference is
+    `default_reference` (the requested range), or the whole series without one.
     """
     if transform is None or isinstance(transform, NoTransform):
         return base_series
@@ -159,13 +161,14 @@ def apply_zscore_transform(base_series: pd.Series, transform) -> pd.Series:
         return (base_series - roll.mean()) / rolling_std
 
     if isinstance(transform, ZScoreFixedInterval):
-        if transform.time_range is None:
+        reference = transform.time_range or default_reference
+        if reference is None:
             ref = base_series
         else:
-            ref = base_series.loc[transform.time_range.gte : transform.time_range.lte]
+            ref = base_series.loc[reference.gte : reference.lte]
             if len(ref) == 0:
                 raise ValueError(
-                    f"Reference range [{transform.time_range.gte}, {transform.time_range.lte}] "
+                    f"Reference range [{reference.gte}, {reference.lte}] "
                     f"has no overlap with the extracted series "
                     f"[{base_series.index[0]}, {base_series.index[-1]}]. "
                     "Ensure the reference interval falls within the extraction time range."
@@ -217,8 +220,9 @@ async def execute_timeseries_job(
     dataset_crs: str,
     dataset_transform_array: List[float],
     max_concurrency: int = 10,
-    resolved_time_range: Tuple[str, str] | None = None,
 ) -> Tuple[TimeseriesResponse, dict]:
+    """Reads the area over `timestep_list` (the whole axis) into a base series,
+    and answers the request from it the way /analyze does."""
     uris = list(file_mapping.keys())
     if not uris:
         raise ValueError("No matching files found in the requested time range.")
@@ -291,70 +295,35 @@ async def execute_timeseries_job(
             f"Extracted {len(full_mean)} values for {len(timestep_list)} timesteps."
         )
 
-    # Time-indexed series — enables label-based slicing in apply_zscore_transform
-    base_mean_series = pd.Series(full_mean, index=timestep_list)
-    base_median_series = pd.Series(full_median, index=timestep_list)
-
     # TODO: "mean"/"median" keys are hardwired to match ZonalStatistic enum values.
     # If new statistics are added to the enum, updates to extract_summarystat_timeseries and this block are needed
-    base_series = (
-        base_mean_series
-        if request.zonal_statistic == ZonalStatistic.mean
-        else base_median_series
-    )
-    transformed_series = apply_zscore_transform(base_series, request.transform)
-
-    output_series_list = []
-    summary_stats = []
-    for option in request.requested_series_options:
-        smoothed = apply_temporal_transform(transformed_series, option.smoother)
-        output_series_list.append(
-            Series(
-                options=option,
-                time_range={
-                    "gte": (
-                        resolved_time_range[0]
-                        if resolved_time_range
-                        else request.time_range.gte
-                    ),
-                    "lte": (
-                        resolved_time_range[1]
-                        if resolved_time_range
-                        else request.time_range.lte
-                    ),
-                },
-                timesteps=list(smoothed.index),
-                values=smoothed.replace({np.nan: None}).to_list(),
-            )
-        )
-        summary_stats.append(summarize_series(option.name, smoothed))
-
-    timeseries_response = TimeseriesResponse(
-        dataset_id=request.dataset_id,
-        variable_id=request.variable_id,
-        area=total_area,
-        n_cells=n_cells,
-        summary_stats=summary_stats,
-        series=output_series_list,
-        transform=request.transform,
-        zonal_statistic=request.zonal_statistic,
-    )
     base_series_payload = {
         "timesteps": timestep_list,
         "mean": [None if np.isnan(v) else float(v) for v in full_mean],
         "median": [None if np.isnan(v) else float(v) for v in full_median],
     }
+    timeseries_response = execute_analyze_request(
+        payload=request,
+        base_series_payload=base_series_payload,
+        extraction_metadata={
+            "dataset_id": request.dataset_id,
+            "variable_id": request.variable_id,
+            "area": total_area,
+            "n_cells": n_cells,
+        },
+    )
     return timeseries_response, base_series_payload
 
 
 def execute_analyze_request(
-    payload: TimeseriesAnalyzeRequest,
+    payload: TimeseriesAnalyzeRequest | TimeseriesRequest,
     base_series_payload: dict,
     extraction_metadata: dict,
 ) -> TimeseriesResponse:
     """Applies transform and smoothing to a stored base series without any raster I/O.
 
-    Called synchronously by POST /v3/timeseries/analyze.
+    Called synchronously by POST /v3/timeseries/analyze, and by the extraction
+    job for its own response, so both answer a request the same way.
     """
     stat_key = payload.zonal_statistic.value  # "mean" or "median"
     # dtype=float turns the stored nulls (timesteps without a value) into NaN,
@@ -365,35 +334,37 @@ def execute_analyze_request(
         dtype=float,
     )
 
-    # Transform on the FULL extraction series so that:
-    # - ZScoreFixedInterval can reference any stored timestep as a reference period
-    # - ZScoreMovingInterval has access to data before the response range (no NaN bleed-in)
-    transformed_full = apply_zscore_transform(full_base_series, payload.transform)
-
-    # Slice to the requested time range after transform
     if payload.time_range:
-        response_series = transformed_full.loc[
+        response_index = full_base_series.loc[
             payload.time_range.gte : payload.time_range.lte
-        ]
-        if response_series.empty:
+        ].index
+        if response_index.empty:
             raise ValueError(
                 f"Requested time_range [{payload.time_range.gte}, {payload.time_range.lte}] "
                 f"has no overlap with the extraction range "
                 f"[{base_series_payload['timesteps'][0]}, {base_series_payload['timesteps'][-1]}]."
             )
     else:
-        response_series = transformed_full
+        response_index = full_base_series.index
+
+    # Transform and smooth the FULL extraction series, and only then slice to the
+    # requested range, so a timestep's value never depends on the range asked for:
+    # - ZScoreFixedInterval can reference any stored timestep as a reference period
+    # - ZScoreMovingInterval and smoothing windows reach the timesteps before
+    #   (and, for centered smoothing, after) the response range
+    transformed_full = apply_zscore_transform(
+        full_base_series, payload.transform, default_reference=payload.time_range
+    )
 
     output_series_list = []
     summary_stats = []
     for option in payload.requested_series_options:
-        smoothed = apply_temporal_transform(response_series, option.smoother)
+        smoothed_full = apply_temporal_transform(transformed_full, option.smoother)
+        smoothed = smoothed_full.loc[response_index]
         output_series_list.append(
             Series(
                 options=option,
-                time_range=TimeRange(
-                    gte=response_series.index[0], lte=response_series.index[-1]
-                ),
+                time_range=TimeRange(gte=response_index[0], lte=response_index[-1]),
                 timesteps=list(smoothed.index),
                 values=smoothed.replace({np.nan: None}).to_list(),
             )

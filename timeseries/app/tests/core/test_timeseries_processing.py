@@ -258,6 +258,64 @@ def test_execute_analyze_request_zscore_and_smoother_combined():
     assert len(result.series) == 1
 
 
+def test_execute_analyze_request_smooths_before_slicing():
+    payload = _make_request(
+        time_range=TimeRange(gte="0103", lte="0105"),
+        requested_series_options=[
+            SeriesOptions(
+                name="smoothed",
+                smoother=MovingAverageSmoother(method="trailing", width=3),
+            )
+        ],
+    )
+    result = execute_analyze_request(
+        payload, _make_base_payload(), _make_extraction_metadata()
+    )
+    # Means at 0101-0105 are 2-6; the window at 0103 reaches 0101 and 0102.
+    assert result.series[0].values == [3.0, 4.0, 5.0]
+
+
+def test_execute_analyze_request_value_does_not_depend_on_the_range():
+    options = [
+        SeriesOptions(
+            name="smoothed",
+            smoother=MovingAverageSmoother(method="centered", width=3),
+        )
+    ]
+    transform = ZScoreMovingInterval(width=2)
+    base = _make_base_payload()
+    whole = execute_analyze_request(
+        _make_request(transform=transform, requested_series_options=options),
+        base,
+        _make_extraction_metadata(),
+    )
+    narrow = execute_analyze_request(
+        _make_request(
+            transform=transform,
+            requested_series_options=options,
+            time_range=TimeRange(gte="0104", lte="0106"),
+        ),
+        base,
+        _make_extraction_metadata(),
+    )
+    by_year = dict(zip(whole.series[0].timesteps, whole.series[0].values))
+    assert narrow.series[0].values[0] is not None
+    assert narrow.series[0].values == [by_year[t] for t in narrow.series[0].timesteps]
+
+
+def test_execute_analyze_request_fixed_interval_defaults_to_the_requested_range():
+    payload = _make_request(
+        transform=ZScoreFixedInterval(time_range=None),
+        time_range=TimeRange(gte="0103", lte="0106"),
+    )
+    result = execute_analyze_request(
+        payload, _make_base_payload(), _make_extraction_metadata()
+    )
+    # Means 4-7: reference mean 5.5, population stdev sqrt(1.25).
+    expected = (np.array([4.0, 5.0, 6.0, 7.0]) - 5.5) / np.sqrt(1.25)
+    assert result.series[0].values == pytest.approx(list(expected))
+
+
 def test_execute_analyze_request_all_nan_summary_stats():
     # ZScoreMovingInterval(width=11) on a 10-element series → all NaN (window > series length)
     payload = _make_request(transform=ZScoreMovingInterval(width=11))

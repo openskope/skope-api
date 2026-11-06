@@ -301,8 +301,97 @@ def test_analyze_with_zscore_transform_returns_valid_response(pipeline_client):
     assert all(v is not None for v in values)
 
 
+@pytest.mark.integration
+def test_extract_stores_the_whole_axis_for_any_range(pipeline_client):
+    job_id = _do_extract(pipeline_client, "test_annual", "0002", "0004")
+    assert _get_status(pipeline_client, job_id)["status"] == "SUCCESS"
+
+    resp = pipeline_client.post(ANALYZE_URL, json=_analyze_payload(job_id))
+
+    assert resp.status_code == 200
+    assert resp.json()["series"][0]["values"] == [1.0, 2.0, 3.0, 4.0, 5.0]
+
+
+@pytest.mark.integration
+def test_extract_smooths_with_the_years_before_its_range(pipeline_client):
+    job_id = _do_extract(
+        pipeline_client,
+        "test_annual",
+        "0003",
+        "0005",
+        requested_series_options=[
+            {
+                "name": "smoothed",
+                "smoother": {
+                    "type": "MovingAverageSmoother",
+                    "method": "trailing",
+                    "width": 3,
+                },
+            }
+        ],
+    )
+
+    series = _get_status(pipeline_client, job_id)["result"]["series"][0]
+    assert series["values"] == [2.0, 3.0, 4.0]
+    assert series["timesteps"] == ["0003", "0004", "0005"]
+
+
+@pytest.mark.integration
+def test_extract_reference_interval_can_lie_outside_its_range(pipeline_client):
+    job_id = _do_extract(
+        pipeline_client,
+        "test_annual",
+        "0004",
+        "0005",
+        transform={
+            "type": "ZScoreFixedInterval",
+            "time_range": {"gte": "0001", "lte": "0002"},
+        },
+    )
+
+    job = _get_status(pipeline_client, job_id)
+    assert job["status"] == "SUCCESS", job
+    # Reference mean 1.5, population stdev 0.5.
+    assert job["result"]["series"][0]["values"] == [5.0, 7.0]
+
+
 # ---------------------------------------------------------------------------
 # Analyze pipeline — error cases (no raster I/O needed)
+
+
+@pytest.mark.integration
+async def test_analyze_rejects_a_range_the_extraction_does_not_cover(
+    pipeline_client, job_store
+):
+    await job_store.update_job(
+        "short-job",
+        {
+            "status": "SUCCESS",
+            "result": {
+                "dataset_id": "test_annual",
+                "variable_id": "ppt",
+                "area": 1.0,
+                "n_cells": 1,
+            },
+            "base_series": {
+                "timesteps": ["0002", "0003", "0004"],
+                "mean": [2.0, 3.0, 4.0],
+                "median": [2.0, 3.0, 4.0],
+            },
+        },
+    )
+
+    covered = pipeline_client.post(
+        ANALYZE_URL,
+        json=_analyze_payload("short-job", time_range={"gte": "0002", "lte": "0003"}),
+    )
+    uncovered = pipeline_client.post(
+        ANALYZE_URL,
+        json=_analyze_payload("short-job", time_range={"gte": "0001", "lte": "0005"}),
+    )
+
+    assert covered.status_code == 200
+    assert uncovered.status_code == 422
 
 
 @pytest.mark.integration

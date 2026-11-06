@@ -11,7 +11,7 @@ from fastapi import (
 from fastapi.responses import StreamingResponse
 
 from app.config import get_settings
-from app.registry.compose import normalize_key
+from app.registry.compose import ServedRelease, normalize_key
 from app.registry.metadata import MetadataResponse
 from app.schemas.timeseries import (
     JobStatus,
@@ -21,7 +21,7 @@ from app.schemas.timeseries import (
     TimeseriesRequest,
     ZScoreFixedInterval,
 )
-from app.vendor.timeaxis import MalformedTimestep, UnknownTimestep
+from app.vendor.timeaxis import MalformedTimestep, UnknownTimestep, parse_key
 from app.store.jobs import JobStore, get_job_store
 from app.core.validation import (
     validate_dataset_and_variable,
@@ -52,6 +52,33 @@ def _normalized(time_range: TimeRange | None, precision: str) -> TimeRange | Non
         )
     except MalformedTimestep as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+def _covers(
+    stored: list[str],
+    time_range: TimeRange | None,
+    release: ServedRelease,
+    precision: str,
+) -> bool:
+    """Whether a stored series holds every axis timestep in the range.
+
+    A stored series is a contiguous run of the axis, so its ends decide. A
+    stored series from a release at another precision covers nothing.
+    """
+    if release.axis.precision != precision:
+        return False
+    keys = release.axis.keys()
+    lo, hi = parse_key(keys[0], precision), parse_key(keys[-1], precision)
+    if time_range is not None:
+        lo = max(lo, parse_key(time_range.gte, precision))
+        hi = min(hi, parse_key(time_range.lte, precision))
+    if lo > hi:
+        # No axis timestep in the range: nothing to cover, and the analysis
+        # reports the empty range.
+        return True
+    return (
+        parse_key(stored[0], precision) <= lo and parse_key(stored[-1], precision) >= hi
+    )
 
 
 def _with_normalized_ranges(payload, precision: str):
@@ -158,19 +185,23 @@ async def create_timeseries_job(
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
-    # Select the timesteps now, so a range that selects nothing is a 422
-    # (PROTO-009) rather than a failed job. No range means the whole axis.
+    # Check the range now, so a range that selects nothing is a 422 (PROTO-009)
+    # rather than a failed job. No range means the whole axis.
     payload = _with_normalized_ranges(payload, release.axis.precision)
     keys = release.axis.keys()
     time_range = payload.time_range or TimeRange(gte=keys[0], lte=keys[-1])
-    file_mapping, timestep_list = release.select(
+    _, requested_timesteps = release.select(
         payload.variable_id, time_range.gte, time_range.lte
     )
-    if not timestep_list:
+    if not requested_timesteps:
         raise HTTPException(
             status_code=422,
             detail=f"The time range [{time_range.gte}, {time_range.lte}] selects no timesteps.",
         )
+    # Read the whole axis whatever the range: the stored base series then serves
+    # any later range through /analyze, and windows and reference periods reach
+    # past the requested range.
+    file_mapping, timestep_list = release.select(payload.variable_id, keys[0], keys[-1])
 
     if not job_controller.try_acquire():
         raise HTTPException(
@@ -203,6 +234,7 @@ async def create_timeseries_job(
 # 4. Synchronous analysis — applies transform/smoother to a stored base series, no S3 reads
 @router.post("/timeseries/analyze")
 async def analyze_timeseries(
+    request: Request,
     payload: TimeseriesAnalyzeRequest,
     store: JobStore = Depends(get_job_store),
 ):
@@ -226,11 +258,23 @@ async def analyze_timeseries(
     precision = _PRECISION_BY_LENGTH[len(base_data["timesteps"][0])]
     payload = _with_normalized_ranges(payload, precision)
 
+    # Slicing a stored series that doesn't cover the range would silently drop
+    # timesteps. 422, so the client extracts again.
+    metadata = extraction.get("result", {})
+    release = request.app.state.registry.get(metadata.get("dataset_id"))
+    if release is None or not _covers(
+        base_data["timesteps"], payload.time_range, release, precision
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="The extraction doesn't cover the time range. Re-submit /extract.",
+        )
+
     try:
         return execute_analyze_request(
             payload=payload,
             base_series_payload=base_data,
-            extraction_metadata=extraction.get("result", {}),
+            extraction_metadata=metadata,
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))

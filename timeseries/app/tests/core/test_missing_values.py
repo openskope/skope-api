@@ -196,7 +196,6 @@ async def _extract(path, timesteps):
         timestep_list=timesteps,
         dataset_crs="EPSG:4326",
         dataset_transform_array=[1.0, 0.0, -110.0, 0.0, -1.0, 40.0],
-        resolved_time_range=(timesteps[0], timesteps[-1]),
     )
 
 
