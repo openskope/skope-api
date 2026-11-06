@@ -1,7 +1,7 @@
 # The release set this environment serves (release consumption spec PIN-001).
 # release_root is resolved against the repository root, then to its physical
 # path; it is mounted read-only at /releases in the API and TiTiler.
-# Promote with `make verify-releases ENVIRONMENT=dev` before deploying.
+# `make deploy-dev` verifies every pinned release in full before starting the services.
 release_root: timeseries/ingest/output/releases
 releases:
   # Prototype: 2 of the 12 variables, provisional encoding. Not for production.

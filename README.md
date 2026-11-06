@@ -50,8 +50,8 @@ resumable jobs.
 
 See the [deployment runbook](docs/deployment.md) for preflight checks,
 verification, rollback, and routine operations for all environments.
-See the [dataset preparation runbook](docs/data-preparation.md) when adding or
-rebuilding the contents mounted at `/data`.
+See the [release workflow](docs/draft-release-workflow.md) when building,
+pinning, or replacing the dataset releases mounted at `/releases`.
 
 The application hosts are provisioned by `comses/infrastructure`. Both environments
 use `/srv/apps/skope-api` for this checkout, `/srv/datasets` for dataset storage,
