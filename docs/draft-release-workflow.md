@@ -261,7 +261,7 @@ If any step fails, no manifest is written and nothing becomes selectable.
   declaration digest, every source with its checksum, and an inventory of every
   file in the release.
 - **The pin values:** a successful build prints each release's ID, declaration
-  digest, and manifest SHA-256. Copy them into the pin (4.1).
+  digest, and manifest SHA-256. `make release-pin` writes them for you (4.1).
 
 ### 3.3 Publish
 
@@ -342,6 +342,29 @@ releases:
   in hex (for example, `sha256sum <release_root>/<release_id>/release-manifest.json`).
   This digest pins the published bytes, because the manifest records the
   checksum of every other file. The declaration digest pins only the inputs.
+
+`make release-pin` makes these edits from the release's manifest, so nothing is
+copied by hand. Run it where the release is, or anywhere with a copy of its
+`release-manifest.json`:
+
+```bash
+make release-pin MANIFEST=<release_root>/<release_id>/release-manifest.json PIN_ENV=staging
+```
+
+It changes nothing; it prints, as a diff, the three edits it would make:
+
+- the ledger entry in `datasets/<dataset>/releases.yml`;
+- the dataset's entry in `deploy/releases/<PIN_ENV>.yml`, replaced or added,
+  leaving every other entry and comment alone (delete a comment that no longer
+  applies, such as one describing the old release);
+- a `checksum` under the `uri` of each source declared without one, as the
+  build measured it. This leaves the declaration digest unchanged.
+
+It refuses, and edits nothing, if the ledger records that release ID with a
+different digest, if a declared checksum differs from the measured one, or if
+the source manifest no longer lists the release's variables. Read the diff, then
+run the same command with `WRITE=1` to apply it, and review `git diff` before
+committing.
 
 Rules:
 
@@ -551,7 +574,8 @@ clearly. Remove this section when the draft becomes the README.
 6. **Resolved, provisionally (spec §20.3):** never pinned; the ledger marks it
    `withdrawn`.
 7. **Resolved (VAL-002):** reports go to standard output, and a successful build
-   prints the release ID, declaration digest, and manifest SHA-256 for the pin.
+   prints the release ID, declaration digest, and manifest SHA-256 for the pin;
+   `make release-pin` writes them (4.1).
 8. **Resolved, provisionally (spec §20.3):** on demand, and in CI against a
    synthetic fixture.
 

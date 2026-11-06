@@ -20,7 +20,7 @@ TEST_COMPOSE = SKOPE_RELEASE_ROOT=$(CURDIR)/timeseries/app/tests/registry/data \
 	-f deploy/compose/dev.yml
 
 .PHONY: help check-environment check-release-pin verify-releases prepare config build deploy \
-	deploy-dev deploy-staging deploy-production down restart logs ps ingest release release-fetch \
+	deploy-dev deploy-staging deploy-production down restart logs ps ingest release release-fetch release-pin \
 	preflight-legacy-data migrate-legacy-data test test-api test-ingest
 
 # Make 'help' the default target if someone just types `make`
@@ -98,6 +98,19 @@ release-fetch: prepare ##- Copy declared sources into the source mirror, e.g. ma
 	@$(COMPOSE) --profile ingest build release
 	$(COMPOSE) --profile ingest run --rm -v "$(abspath $(RELEASE_SOURCE_MIRROR))":/mirror \
 		-e SKOPE_RELEASE_SOURCE_MIRROR=/mirror release fetch $(ARGS)
+
+# The ledgers and pin files are mounted writable only here, and the command runs
+# as the calling user so the files it writes stay theirs.
+release-pin: prepare ##- Show the edits that pin a release, e.g. make release-pin MANIFEST=path/to/release-manifest.json PIN_ENV=staging; add WRITE=1 to apply them
+	@test -n "$(MANIFEST)" || { echo "set MANIFEST to a release's release-manifest.json (or a copy of it)" 1>&2; exit 2; }
+	@test -n "$(PIN_ENV)" || { echo "set PIN_ENV to the environment to pin it in (dev, staging, or prod)" 1>&2; exit 2; }
+	@$(COMPOSE) --profile ingest build release
+	$(COMPOSE) --profile ingest run --rm --user "$$(id -u):$$(id -g)" \
+		-v "$(abspath timeseries/ingest/datasets)":/pin/datasets \
+		-v "$(abspath deploy/releases)":/pin/releases \
+		-v "$(abspath $(MANIFEST))":/pin/release-manifest.json:ro \
+		release --datasets /pin/datasets pin /pin/release-manifest.json \
+		--env $(PIN_ENV) --pins /pin/releases $(if $(WRITE),--write)
 
 preflight-legacy-data: ##- Validate all legacy migration inputs without creating output
 	MIGRATION_PREFLIGHT_ONLY=true ./scripts/migrate-legacy-datasets.sh \
