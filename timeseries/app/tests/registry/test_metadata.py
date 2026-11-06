@@ -84,7 +84,7 @@ def test_dataset_fields_come_from_the_overview_and_the_display_files():
     shown = preferences.datasets["paleocar_v3"]
 
     # From the overview's grid and time axis.
-    assert dataset.resolution_label == "30 arc-second (~830 m)"
+    assert dataset.resolution_label == "30 arc-second (~800 m)"
     assert (dataset.time.origin, dataset.time.end, dataset.time.count) == (
         "0103",
         "2000",
@@ -149,13 +149,13 @@ def test_datasets_and_variables_sort_by_order_then_id(tmp_path):
             "EPSG:4269",
             (0.008333333333, 0, -115, 0, -0.008333333333, 43),
             (-115, 31, -102, 43),
-            "30 arc-second (~830 m)",
+            "30 arc-second (~800 m)",
         ),
         (
             "EPSG:4326",
             (0.25, 0, -180, 0, -0.25, 90),
             (-10, -10, 10, 10),
-            "900 arc-second (~28 km)",
+            "900 arc-second (~30 km)",
         ),
         ("EPSG:32612", (250.0, 0, 0, 0, -250.0, 0), (0, 0, 1, 1), "250 m"),
         ("EPSG:32612", (1000.0, 0, 0, 0, -1000.0, 0), (0, 0, 1, 1), "1 km"),

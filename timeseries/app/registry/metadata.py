@@ -117,28 +117,30 @@ class MetadataResponse(Out):
 # Resolution label (PROTO-004)
 
 
-def _distance(metres: float) -> str:
+def _distance(metres: float, digits: int = 2) -> str:
+    """A length to `digits` significant figures, in m or km."""
     if metres >= 1000:
-        return f"{float(f'{metres / 1000:.2g}'):g} km"
-    return f"{float(f'{metres:.2g}'):g} m"
+        return f"{float(f'{metres / 1000:.{digits}g}'):g} km"
+    return f"{float(f'{metres:.{digits}g}'):g} m"
 
 
 def resolution_label(
     grid: OverviewGrid, bbox: tuple[float, float, float, float]
 ) -> str:
-    """A readable pixel size computed from the grid, e.g. "30 arc-second (~830 m)"."""
+    """A readable pixel size computed from the grid, e.g. "30 arc-second (~800 m)"."""
     width, height = abs(grid.transform[0]), abs(grid.transform[4])
     crs = CRS.from_user_input(grid.code)
     if crs.is_geographic:
         x, y = f"{width * 3600:.4g}", f"{height * 3600:.4g}"
         angle = x if x == y else f"{x} × {y}"
         # Ground size at the middle of the extent: the geometric mean of the
-        # pixel's east-west and north-south lengths.
+        # pixel's east-west and north-south lengths. It changes with latitude,
+        # so one significant figure is as precise as it gets.
         latitude = (bbox[1] + bbox[3]) / 2
         geod = Geod(ellps="WGS84")
         east = geod.inv(0, latitude, width, latitude)[2]
         north = geod.inv(0, latitude, 0, latitude + height)[2]
-        return f"{angle} arc-second (~{_distance(math.sqrt(east * north))})"
+        return f"{angle} arc-second (~{_distance(math.sqrt(east * north), 1)})"
     unit = crs.axis_info[0].unit_name if crs.axis_info else ""
     if unit in {"metre", "meter"}:
         if width == height:
