@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 import math
 import multiprocessing
+import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
@@ -33,6 +34,8 @@ from .plan import (
 
 log = logging.getLogger(__name__)
 
+# Each inspection worker holds one COG in memory; current COGs are under 1 GB.
+IN_MEMORY_LIMIT = 1 << 30
 STAT_RELATIVE_TOLERANCE = 1e-10  # GDAL serializes ~13 significant digits (Section 20.3)
 VALID_PERCENT_TOLERANCE = 0.005
 LOSSLESS = {"ZSTD", "DEFLATE", "LZW"}
@@ -65,22 +68,56 @@ def inspect_asset(
     expected_names: list[str],
     report: Report,
 ) -> AssetObservation | None:
+    """Inspect one written COG from an in-memory copy of its bytes.
+
+    The validator and the statistics read each band's blocks in turn, which on a
+    tile-interleaved COG means scattered reads across the whole file. Reading the
+    file once, in order, into memory makes those reads cheap, and the checksum is
+    then of exactly the bytes validated. A file above IN_MEMORY_LIMIT is read in
+    place.
+    """
+    if path.stat().st_size > IN_MEMORY_LIMIT:
+        return _inspect(str(path), path, rel_path, plan=plan, variable=variable, chunk=chunk,
+                        expected_names=expected_names, report=report)
+    copy = f"/vsimem/inspect-{os.getpid()}-{rel_path.replace('/', '_')}"
+    if gdal.CopyFile(str(path), copy) != 0:
+        raise OSError(f"cannot copy {path} into memory")
+    try:
+        return _inspect(copy, path, rel_path, plan=plan, variable=variable, chunk=chunk,
+                        expected_names=expected_names, report=report)
+    finally:
+        gdal.Unlink(copy)
+
+
+def _inspect(
+    source: str,
+    path: Path,
+    rel_path: str,
+    *,
+    plan: ValidatedBuildPlan,
+    variable: PlannedVariable,
+    chunk: int | None,
+    expected_names: list[str],
+    report: Report,
+) -> AssetObservation | None:
+    """Inspect the COG bytes at `source`, a copy of `path` or `path` itself."""
     ctx = {"dataset": plan.dataset_id, "variable": variable.id, "path": rel_path}
     if chunk is not None:
         ctx["chunk"] = plan.layout.item_id(chunk)
     start = len(report.errors)
 
-    errors, warnings, _ = validate_cog(str(path), full_check=True)
+    errors, warnings, _ = validate_cog(source, full_check=True)
     for message in errors:
         report.add("COG-001", message, **ctx)
     for message in warnings:
         report.warn("COG-001", message, **ctx)
+    # A sidecar next to the file to be published fails COG-005; it never sits next to the copy.
     for sidecar in (path.with_suffix(path.suffix + ".aux.xml"), path.with_suffix(path.suffix + ".ovr")):
         if sidecar.exists():
             report.add("COG-005", f"sidecar {sidecar.name} must not exist", **ctx)
 
     enc = variable.encoding
-    with gdal.Open(str(path)) as ds:
+    with gdal.Open(source) as ds:
         structure = ds.GetMetadata("IMAGE_STRUCTURE")
         compression = structure.get("COMPRESSION", "NONE")
         if compression not in LOSSLESS:
@@ -182,7 +219,7 @@ def inspect_asset(
         chunk=chunk,
         path=rel_path,
         size=path.stat().st_size,
-        checksum=gdalio.sha256_multihash(path),
+        checksum=gdalio.sha256_multihash(source),
         data_type=data_type,
         nodata=enc.nodata,
         scale=enc.scale,
