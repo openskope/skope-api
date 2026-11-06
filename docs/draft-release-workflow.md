@@ -430,21 +430,23 @@ rebuilds the TiTiler image, and both images must be built from the same commit.
 | When | Checks | Needs release data? |
 | --- | --- | --- |
 | **CI**, on every change to the display files | Referenced palettes exist; `kind` matches a stated `type`; `palette[i]` indexes in range; ranges finite with lower < upper; explicit ticks within range; numeric `order`; `map_view` keys and ranges; no unknown fields | No |
-| **Promotion**, for each newly pinned release | Every file's size and checksum against its manifest (full byte verification) | Yes |
+| **Promotion**, in every `make deploy-<env>`, for every pinned release | Every file's size and checksum against its manifest (full byte verification) | Yes |
 | **API startup**, for every pinned release | Manifest SHA-256 matches the pin; `overview.yml` checksum matches its manifest entry; the overview's release ID and declaration digest match the pin; every inventoried file exists with its recorded size; no dataset pinned twice; every pinned dataset and variable has a display entry; `type` agrees with curated categories; `default_variable` exists; `set` palettes have enough colours | Yes, overviews and manifests only |
 
 ### 4.4 Promote and start
 
-Promotion, for each newly pinned release:
+`make deploy-<env>` builds the images, then promotes. Promotion, for every
+pinned release, including a rollback or a redeploy of the same releases (the
+spec requires it only for newly pinned ones):
 
 1. resolves `<release_root>/<release_id>` (local) or
    `<release_root>/<release_id>/` (object storage); a symlink or other mutable
    pointer is never used;
-2. fully verifies it (4.3);
-3. records the release ID, declaration digest, manifest digest, resolved path,
-   and verification result in deployment state, together with the commit of the
-   palettes file the images were built from;
-4. recreates both the API and TiTiler containers. Locally, both mount the same
+2. fully verifies it (4.3), logging its progress. For a 60 GB release this takes
+   about an hour;
+3. recreates both the API and TiTiler containers and waits for them to be
+   healthy;
+4. records the deploy in the deployment log (4.7). Locally, both mount the same
    release root read-only. With object storage, both read releases directly from
    their prefixes without copying them.
 
@@ -468,6 +470,29 @@ The first deployment under this workflow is also the switch to the new
 staging acceptance suite together, deploy as one recorded change, and roll back
 together if either fails. After the cutover, updating a dataset is an ordinary
 pin change.
+
+### 4.7 The deployment log
+
+Each successful `make deploy-<env>` appends one JSON line to
+`deploy-state/<env>.jsonl` in the checkout: when, where, and by whom it was
+deployed, the commit the images (and so the palettes file) were built from,
+marked `-dirty` if the checkout had uncommitted changes, the ID of each running
+image, and every pinned release with its digests, path, and verification
+result. This is the deployment state TXN-011 and DISP-011 ask for: what an
+environment served, from when, and verified how. The pin's git history shows
+what was meant to be deployed; the log shows what went live.
+
+```json
+{"deployed_at": "2026-11-05T14:02:11Z", "environment": "staging", "deployed_by": "…",
+ "commit": "8fbfa9a…", "images": {"redis": "sha256:…", "server": "sha256:…", "titiler": "sha256:…"},
+ "releases": [{"dataset": "paleocar_v3", "release_id": "paleocar_v3-r-2026.11.04",
+               "declaration_digest": "ebb5…", "manifest_sha256": "899b…",
+               "path": "/releases/paleocar_v3-r-2026.11.04", "verification": "full", "result": "passed"}]}
+```
+
+A deploy that fails verification or startup adds no line; its output says why.
+The log is ignored by git, so `git clean -x` or a fresh clone loses it. Where
+that matters, keep it elsewhere with `DEPLOY_LOG=<path>` on every deploy.
 
 ## 5. Changing things later
 
@@ -583,15 +608,17 @@ clearly. Remove this section when the draft becomes the README.
 
 9. **Resolved (PIN-004, DISP-013):** one structured log error per failed check,
    then a failure exit.
-10. **What "deployment state" is.** TXN-011 records release IDs, digests, paths,
-    and verification results in it, and DISP-011 adds the palettes commit, but
-    neither spec says where it lives, what format it has, or who reads it.
-11. **What runs promotion.** TXN-011 defines what promotion does, but neither
-    spec ties it to a command: part of `make deploy-<env>`, a separate step
-    before it, or CI.
-12. **Whether rollback re-verifies.** TXN-011 fully verifies each *newly* pinned
-    release. When rollback re-pins a release that was verified before, does it
-    get full verification again or only the startup checks?
+10. **Resolved:** deployment state is the deployment log (4.7), one JSON line per
+    successful deploy in `deploy-state/<env>.jsonl`, read by people checking
+    what an environment served.
+11. **Resolved:** `make deploy-<env>` promotes, after building the images and
+    before recreating the containers. `make verify-releases` runs the same
+    verification on its own.
+12. **Resolved:** yes. Every deploy fully verifies every pinned release,
+    including a rollback or a redeploy of the same releases. Skipping a release
+    that already passed (for example, the same manifest digest and path verified
+    within the last 30 days, as the deployment log would show) could be
+    considered in a later revision of the specification.
 13. **Resolved (PIN-001):** the API and TiTiler mounts are derived from the pin's
     `release_root`.
 14. **Resolved:** TXN-011 now refers to PIN-004.

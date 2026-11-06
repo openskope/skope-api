@@ -22,7 +22,7 @@ def _setup(tmp_path, monkeypatch):
 def test_prints_a_record_per_verified_release(tmp_path, monkeypatch, capsys):
     path = _setup(tmp_path, monkeypatch)
 
-    assert verify.main() == 0
+    assert verify.main([]) == 0
 
     record = json.loads(capsys.readouterr().out)
     assert record["release_id"] == "annual-r-2026.01.01"
@@ -34,7 +34,7 @@ def test_logs_progress_per_file(tmp_path, monkeypatch, caplog):
     _setup(tmp_path, monkeypatch)
     caplog.set_level(logging.INFO, logger="app.registry.compose")
 
-    assert verify.main() == 0
+    assert verify.main([]) == 0
 
     messages = [r.getMessage() for r in caplog.records]
     progress = [m for m in messages if "files checked" in m]
@@ -51,5 +51,18 @@ def test_fails_on_changed_bytes(tmp_path, monkeypatch, capsys):
     data[-1] ^= 0xFF
     cog.write_bytes(bytes(data))
 
-    assert verify.main() == 1
+    assert verify.main(["--record", str(tmp_path / "pending.json")]) == 1
     assert "verification failed: 1 check(s)" in capsys.readouterr().out
+    assert not (tmp_path / "pending.json").exists()
+
+
+def test_records_the_verified_releases(tmp_path, monkeypatch):
+    path = _setup(tmp_path, monkeypatch)
+    pending = tmp_path / "pending.json"
+
+    assert verify.main(["--record", str(pending)]) == 0
+
+    (release,) = json.loads(pending.read_text())["releases"]
+    assert release["release_id"] == "annual-r-2026.01.01"
+    assert release["path"] == str(path)
+    assert (release["verification"], release["result"]) == ("full", "passed")

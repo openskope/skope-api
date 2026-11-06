@@ -53,8 +53,24 @@ build: prepare ##- Build the selected environment's images
 verify-releases: check-release-pin ##- Fully verify the pinned releases' bytes (promotion, TXN-011)
 	$(COMPOSE) run --rm --no-deps server python -m app.registry.verify
 
-deploy: check-release-pin build verify-releases ##- Deploy ENVIRONMENT (defaults to dev) and wait for healthy services
+# Deployment state (TXN-011, DISP-011): one JSON line per successful deploy,
+# outside git. `git clean -x` deletes it, so point DEPLOY_LOG elsewhere where
+# that matters. The API image runs as the calling user, so the files stay theirs.
+DEPLOY_LOG ?= deploy-state/$(ENVIRONMENT).jsonl
+DEPLOY_LOG_DIR = $(abspath $(dir $(DEPLOY_LOG)))
+DEPLOY_PENDING = /deploy-state/.pending-$(ENVIRONMENT).json
+DEPLOY_RUN = $(COMPOSE) run --rm --no-deps --user "$$(id -u):$$(id -g)" \
+	-v "$(DEPLOY_LOG_DIR)":/deploy-state server
+
+deploy: check-release-pin build ##- Deploy ENVIRONMENT (defaults to dev): verify, start, wait for healthy services, and log the deploy
+	@mkdir -p "$(DEPLOY_LOG_DIR)"
+	$(DEPLOY_RUN) python -m app.registry.verify --record $(DEPLOY_PENDING)
 	$(COMPOSE) up -d --remove-orphans --force-recreate --wait --wait-timeout 120
+	$(DEPLOY_RUN) python -m app.registry.deployment $(DEPLOY_PENDING) /deploy-state/$(notdir $(DEPLOY_LOG)) \
+		--environment $(ENVIRONMENT) \
+		--commit "$$(git rev-parse HEAD)$$(test -z "$$(git status --porcelain)" || echo -dirty)" \
+		--deployed-by "$$(id -un)" \
+		$$(docker inspect --format '--image {{index .Config.Labels "com.docker.compose.service"}}={{.Image}}' $$($(COMPOSE) ps -q))
 
 deploy-dev: override ENVIRONMENT=dev
 deploy-dev: deploy ##- Build and deploy the local development environment
