@@ -15,7 +15,7 @@ datasets:
     order: 10
     map_view:
       center: { lon: -108.5, lat: 37.0 }
-      zoom: 4
+      zoom: 4.25
     default_variable: ppt_annual
     variables:
       ppt_annual:
