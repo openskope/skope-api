@@ -2116,6 +2116,14 @@ Operations:
   directories (TXN-003).
 - Object-storage verification reads each uploaded object back and compares its
   SHA-256, because multipart ETags are not content checksums (OBS-011).
+- Deployment state (TXN-011, and release consumption DISP-011) is a deployment
+  log: each successful deploy appends one JSON line to a per-environment file
+  outside version control and outside the release root, recording the deploy
+  time, environment, operator, the commit the images were built from, the
+  running image IDs, and each pinned release's ID, declaration digest, manifest
+  digest, resolved path, and verification result. Every deploy verifies every
+  pinned release in full, so the log is a record and never a reason to skip
+  verification.
 - The operational audit store (TXN-017) is a directory of JSON records outside
   the release root. A cleanup authorization is a JSON record naming the
   operator, time, mechanism, reason, and a grace period of at least 24 hours.
