@@ -49,16 +49,15 @@ def resolve_spatial_window(
         transform_geometry(transformer.transform, shape) for shape in shapes
     ]
     bounds = unary_union(projected_shapes).bounds
-    window = (
-        rasterio.windows.from_bounds(*bounds, transform=dataset_transform)
-        .round_lengths()
-        .round_offsets()
-    )
+    exact = rasterio.windows.from_bounds(*bounds, transform=dataset_transform)
+    # Every cell the bounds reach: floor the start and ceil the end, so no cell
+    # whose center is inside the area falls outside the window.
+    col_off, row_off = math.floor(exact.col_off), math.floor(exact.row_off)
     window = Window(
-        window.col_off,
-        window.row_off,
-        max(1, window.width),
-        max(1, window.height),
+        col_off,
+        row_off,
+        max(1, math.ceil(exact.col_off + exact.width) - col_off),
+        max(1, math.ceil(exact.row_off + exact.height) - row_off),
     )
     return projected_shapes, dataset_transform, window
 

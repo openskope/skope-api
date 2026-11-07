@@ -132,7 +132,11 @@ def extract_summarystat_timeseries(
                     # response carries as null. numpy warns about each one.
                     with warnings.catch_warnings():
                         warnings.simplefilter("ignore", RuntimeWarning)
-                        mean_results.extend(np.nanmean(data, axis=(1, 2)))
+                        # Sum in float64: float32 sums over many cells lose
+                        # about 7 digits, which z-scores then amplify.
+                        mean_results.extend(
+                            np.nanmean(data, axis=(1, 2), dtype=np.float64)
+                        )
                         median_results.extend(np.nanmedian(data, axis=(1, 2)))
 
         return (file_uri, np.array(mean_results), np.array(median_results))
@@ -174,8 +178,14 @@ def apply_zscore_transform(
                     "Ensure the reference interval falls within the extraction time range."
                 )
         std = ref.std(ddof=0)
-        if std == 0 or np.isnan(std):
-            return pd.Series(0.0, index=base_series.index)
+        if np.isnan(std):
+            # The reference period has no values (the empty years, say): there
+            # is nothing to compare with, so no timestep has a z-score.
+            return pd.Series(np.nan, index=base_series.index)
+        if std == 0:
+            # Every value equals the reference mean. A timestep without a
+            # value stays without one.
+            return pd.Series(0.0, index=base_series.index).where(base_series.notna())
         return (base_series - ref.mean()) / std
 
     return base_series
