@@ -128,11 +128,11 @@ def test_zscore_fixed_interval_non_overlapping_range_raises(base_series):
         apply_zscore_transform(base_series, transform)
 
 
-def test_zscore_fixed_interval_std_zero_returns_zero_series(constant_series):
+def test_zscore_fixed_interval_std_zero_returns_null_series(constant_series):
     result = apply_zscore_transform(
         constant_series, ZScoreFixedInterval(time_range=None)
     )
-    assert (result == 0.0).all()
+    assert result.isna().all()
     assert list(result.index) == list(constant_series.index)
 
 
@@ -153,17 +153,16 @@ def test_temporal_transform_no_smoother_passthrough(base_series):
 def test_temporal_transform_trailing_moving_average(base_series):
     smoother = MovingAverageSmoother(method="trailing", width=3)
     result = apply_temporal_transform(base_series, smoother)
-    # min_periods=1 means: idx 0 = mean([1]) = 1.0, idx 2 = mean([1,2,3]) = 2.0
-    assert np.isclose(result.iloc[0], 1.0)
-    assert np.isclose(result.iloc[1], 1.5)
+    # The first full window ends at idx 2: [1,2,3] → 2.0
+    assert result.iloc[:2].isna().all()
     assert np.isclose(result.iloc[2], 2.0)
 
 
 def test_temporal_transform_centered_moving_average(base_series):
     smoother = MovingAverageSmoother(method="centered", width=3)
     result = apply_temporal_transform(base_series, smoother)
-    # center=True, min_periods=1: idx 0 sees [1,2] → 1.5; idx 1 sees [1,2,3] → 2.0
-    assert np.isclose(result.iloc[0], 1.5)
+    # idx 0 has no predecessor; idx 1 sees [1,2,3] → 2.0
+    assert np.isnan(result.iloc[0])
     assert np.isclose(result.iloc[1], 2.0)
     assert np.isclose(result.iloc[4], 5.0)  # [4,5,6] → 5.0
 

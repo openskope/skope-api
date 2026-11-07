@@ -204,11 +204,10 @@ def _expected_moving_zscore(values, width):
 
 def _expected_average(values, before, after):
     expected = []
-    for t, value in enumerate(values):
-        window = [
-            v for v in values[max(0, t - before) : t + after + 1] if v is not None
-        ]
-        expected.append(None if value is None else sum(window) / len(window))
+    for t in range(len(values)):
+        window = values[t - before : t + after + 1] if t >= before else []
+        complete = len(window) == before + after + 1 and None not in window
+        expected.append(sum(window) / len(window) if complete else None)
     return expected
 
 
@@ -240,12 +239,12 @@ def test_fixed_zscore_matches_its_definition():
     _assert_same(_as_list(actual), expected)
 
 
-def test_fixed_zscore_of_a_constant_reference_keeps_missing_timesteps_null():
+def test_fixed_zscore_of_a_constant_reference_is_null():
     series = pd.Series([2.0, np.nan, 2.0, 2.0], index=["0001", "0002", "0003", "0004"])
 
     actual = apply_zscore_transform(series, ZScoreFixedInterval(time_range=None))
 
-    assert _as_list(actual) == [0.0, None, 0.0, 0.0]
+    assert actual.isna().all()
 
 
 def test_fixed_zscore_without_reference_values_is_null():

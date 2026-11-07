@@ -13,16 +13,15 @@ Definitions, for a series x over the dataset's axis and a requested range R:
   null when no cell has one.
 - Z-score, fixed interval with reference period P (R when not given):
   (x_t - mean(x over P)) / std(x over P), population std, skipping nulls;
-  0 where x_t has a value when that std is 0; null everywhere when P has no
-  values.
+  null everywhere when P has no values or that std is 0.
 - Z-score, moving window w: x_t against x_{t-w} .. x_{t-1}, population std;
   null when x_t or any of those is null, when t has fewer than w predecessors,
   or when their std is 0.
-- Trailing average w: mean of the values among x_{t-w+1} .. x_t; centered
-  average w (odd): x_{t-(w-1)/2} .. x_{t+(w-1)/2}. Null when x_t is null. The
-  window is clipped at the axis ends.
+- Trailing average w: mean of x_{t-w+1} .. x_t; centered average w (odd):
+  x_{t-(w-1)/2} .. x_{t+(w-1)/2}. Null when any of those is null or falls
+  outside the axis.
 - Transform and smoother apply to the whole axis; the response is then cut to R.
-- Summary statistics: mean, median and sample std (n - 1) of the cut's values.
+- Summary statistics: mean, median and population std of the cut's values.
 
 Usage (inside the API image, which has every dependency):
 
@@ -226,11 +225,9 @@ def zscore(series: list, years: list, transform: dict, requested) -> list:
         reference = [
             v for y, v in zip(years, series) if lo <= y <= hi and v is not None
         ]
-        if not reference:
+        if not reference or _population_std(reference) == 0:
             return [None] * len(series)
         std = _population_std(reference)
-        if std == 0:
-            return [None if v is None else 0.0 for v in series]
         m = _mean(reference)
         return [None if v is None else (v - m) / std for v in series]
     width = transform["width"]
@@ -254,11 +251,10 @@ def smooth(series: list, smoother: dict) -> list:
     else:
         before = after = (width - 1) // 2
     result = []
-    for t, value in enumerate(series):
-        window = [
-            v for v in series[max(0, t - before) : t + after + 1] if v is not None
-        ]
-        result.append(None if value is None or not window else _mean(window))
+    for t in range(len(series)):
+        window = series[t - before : t + after + 1] if t >= before else []
+        complete = len(window) == before + after + 1 and None not in window
+        result.append(_mean(window) if complete else None)
     return result
 
 
@@ -267,11 +263,7 @@ def summary(values: list) -> dict:
     if not present:
         return {"mean": None, "median": None, "stdev": None}
     m = _mean(present)
-    stdev = (
-        math.sqrt(sum((v - m) ** 2 for v in present) / (len(present) - 1))
-        if len(present) > 1
-        else None
-    )
+    stdev = math.sqrt(sum((v - m) ** 2 for v in present) / len(present))
     return {"mean": m, "median": float(np.median(present)), "stdev": stdev}
 
 

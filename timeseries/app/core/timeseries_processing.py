@@ -178,14 +178,11 @@ def apply_zscore_transform(
                     "Ensure the reference interval falls within the extraction time range."
                 )
         std = ref.std(ddof=0)
-        if np.isnan(std):
-            # The reference period has no values (the empty years, say): there
-            # is nothing to compare with, so no timestep has a z-score.
+        if np.isnan(std) or std == 0:
+            # A reference period without values (the empty years, say) or
+            # without spread gives nothing to divide by, so no timestep has a
+            # z-score, as in a moving window.
             return pd.Series(np.nan, index=base_series.index)
-        if std == 0:
-            # Every value equals the reference mean. A timestep without a
-            # value stays without one.
-            return pd.Series(0.0, index=base_series.index).where(base_series.notna())
         return (base_series - ref.mean()) / std
 
     return base_series
@@ -194,12 +191,14 @@ def apply_zscore_transform(
 def apply_temporal_transform(timeseries_data: pd.Series, smoother_config) -> pd.Series:
     if isinstance(smoother_config, MovingAverageSmoother):
         center = smoother_config.method == "centered"
-        smoothed = timeseries_data.rolling(
-            window=smoother_config.width, center=center, min_periods=1
+        # A timestep has a smoothed value only when every timestep in its
+        # window has a value: the axis ends and the empty years widen by the
+        # window instead of averaging fewer values.
+        return timeseries_data.rolling(
+            window=smoother_config.width,
+            center=center,
+            min_periods=smoother_config.width,
         ).mean()
-        # Smoothing averages over the values a window has, but never fills in a
-        # timestep that has no value of its own.
-        return smoothed.where(timeseries_data.notna())
     return timeseries_data
 
 
@@ -210,16 +209,16 @@ def _finite_or_none(value: float) -> float | None:
 def summarize_series(name: str, series: pd.Series) -> SummaryStat:
     """Summary statistics over the timesteps that have a value.
 
-    Timesteps without a value are skipped. A statistic that can't be computed
-    (no values at all, or the standard deviation of a single value) is None,
-    never NaN, which is not valid JSON.
+    Timesteps without a value are skipped. The standard deviation is the
+    population one, as in the z-scores. A statistic that can't be computed (no
+    values at all) is None, never NaN, which is not valid JSON.
     """
     clean = series.dropna()
     return SummaryStat(
         name=name,
         mean=_finite_or_none(clean.mean()),
         median=_finite_or_none(clean.median()),
-        stdev=_finite_or_none(clean.std()),
+        stdev=_finite_or_none(clean.std(ddof=0)),
     )
 
 

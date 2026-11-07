@@ -120,8 +120,14 @@ def test_extract_annual_full_range_succeeds(pipeline_client):
 
 @pytest.mark.integration
 def test_status_keeps_null_statistics_and_lists_only_set_fields(pipeline_client):
-    # One timestep has no standard deviation.
-    job_id = _do_extract(pipeline_client, "test_annual", "0001", "0001")
+    # 0001 has no predecessors, so it has no moving z-score and no statistics.
+    job_id = _do_extract(
+        pipeline_client,
+        "test_annual",
+        "0001",
+        "0001",
+        transform={"type": "ZScoreMovingInterval", "width": 2},
+    )
     job = _get_status(pipeline_client, job_id)
 
     assert set(job) == {"status", "result"}

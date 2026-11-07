@@ -38,12 +38,12 @@ TIMESTEPS = ["0001", "0002", "0003", "0004", "0005"]
 # Summary statistics
 
 
-def test_single_value_has_no_stdev():
+def test_single_value_has_zero_stdev():
     stat = summarize_series("raw", pd.Series([4.0], index=["0001"]))
 
     assert stat.mean == 4.0
     assert stat.median == 4.0
-    assert stat.stdev is None
+    assert stat.stdev == 0.0
 
 
 def test_statistics_skip_missing_values():
@@ -53,7 +53,7 @@ def test_statistics_skip_missing_values():
 
     assert stat.mean == 2.0
     assert stat.median == 2.0
-    assert stat.stdev == pytest.approx(np.std([1.0, 3.0], ddof=1))
+    assert stat.stdev == pytest.approx(np.std([1.0, 3.0], ddof=0))
 
 
 def test_statistics_of_no_values_are_null():
@@ -66,16 +66,25 @@ def test_statistics_of_no_values_are_null():
 # Smoothing
 
 
-@pytest.mark.parametrize("method", ["centered", "trailing"])
-def test_smoothing_never_fills_a_missing_timestep(method):
-    series = pd.Series([1.0, 2.0, np.nan, 4.0, 5.0], index=TIMESTEPS)
+@pytest.mark.parametrize(
+    "method, null_positions",
+    [
+        # Trailing: the first 2 lack a full window, and the gap at 4 reaches
+        # the 2 timesteps after it.
+        ("trailing", [0, 1, 4, 5, 6]),
+        # Centered: 1 at each end, and the gap reaches 1 on either side.
+        ("centered", [0, 3, 4, 5, 8]),
+    ],
+)
+def test_smoothing_needs_a_full_window(method, null_positions):
+    values = [1.0, 2.0, 3.0, 4.0, np.nan, 6.0, 7.0, 8.0, 9.0]
+    series = pd.Series(values, index=[f"{year:04d}" for year in range(1, 10)])
 
     smoothed = apply_temporal_transform(
         series, MovingAverageSmoother(method=method, width=3)
     )
 
-    assert np.isnan(smoothed["0003"])
-    assert smoothed.drop("0003").notna().all()
+    assert list(np.flatnonzero(smoothed.isna())) == null_positions
 
 
 # ---------------------------------------------------------------------------
