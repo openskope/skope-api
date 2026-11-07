@@ -177,11 +177,18 @@ def apply_zscore_transform(
                     f"[{base_series.index[0]}, {base_series.index[-1]}]. "
                     "Ensure the reference interval falls within the extraction time range."
                 )
+        n_values = int(ref.notna().sum())
+        if n_values < 2:
+            # The empty years, say. The client shows this to the user.
+            raise ValueError(
+                f"The z-score's reference period [{ref.index[0]}, {ref.index[-1]}] "
+                f"has {n_values} time step{'' if n_values == 1 else 's'} with "
+                "values; it needs at least 2. Choose other years."
+            )
         std = ref.std(ddof=0)
-        if np.isnan(std) or std == 0:
-            # A reference period without values (the empty years, say) or
-            # without spread gives nothing to divide by, so no timestep has a
-            # z-score, as in a moving window.
+        if std == 0:
+            # No spread to divide by, so no timestep has a z-score, as in a
+            # moving window.
             return pd.Series(np.nan, index=base_series.index)
         return (base_series - ref.mean()) / std
 

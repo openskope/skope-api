@@ -69,9 +69,11 @@ class MovingAverageSmoother(BaseModel):
     method: WindowType
     width: int = Field(
         ...,
-        description="Number of time steps from current time to use in the moving window",
+        description=(
+            "Number of time steps from current time to use in the moving window;"
+            " at most the dataset's number of time steps"
+        ),
         ge=1,
-        le=200,
     )
 
     @field_validator("width")
@@ -107,9 +109,11 @@ class ZScoreMovingInterval(BaseModel):
     type: Literal["ZScoreMovingInterval"] = "ZScoreMovingInterval"
     width: int = Field(
         ...,
-        description="Number of prior time steps to use in the moving window",
-        ge=1,
-        le=200,
+        description=(
+            "Number of prior time steps to use in the moving window: at least 2,"
+            " so the window has a spread, and fewer than the dataset's time steps"
+        ),
+        ge=2,
     )
     model_config = ConfigDict(
         json_schema_extra={"example": {"type": "ZScoreMovingInterval", "width": 5}}

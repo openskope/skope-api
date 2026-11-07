@@ -13,7 +13,8 @@ Definitions, for a series x over the dataset's axis and a requested range R:
   null when no cell has one.
 - Z-score, fixed interval with reference period P (R when not given):
   (x_t - mean(x over P)) / std(x over P), population std, skipping nulls;
-  null everywhere when P has no values or that std is 0.
+  null everywhere when that std is 0; refused (422) when P has fewer than 2
+  values.
 - Z-score, moving window w: x_t against x_{t-w} .. x_{t-1}, population std;
   null when x_t or any of those is null, when t has fewer than w predecessors,
   or when their std is 0.
@@ -216,6 +217,14 @@ def _reference_period(years: list, transform: dict, requested) -> tuple:
     return requested or (years[0], years[-1])
 
 
+def _computable(series: list, years: list, transform: dict, requested) -> bool:
+    """A fixed z-score needs at least 2 values in its reference period."""
+    if transform["type"] != "ZScoreFixedInterval":
+        return True
+    lo, hi = _reference_period(years, transform, requested)
+    return sum(1 for y, v in zip(years, series) if lo <= y <= hi and v is not None) >= 2
+
+
 def zscore(series: list, years: list, transform: dict, requested) -> list:
     kind = transform["type"]
     if kind == "NoTransform":
@@ -225,9 +234,9 @@ def zscore(series: list, years: list, transform: dict, requested) -> list:
         reference = [
             v for y, v in zip(years, series) if lo <= y <= hi and v is not None
         ]
-        if not reference or _population_std(reference) == 0:
-            return [None] * len(series)
         std = _population_std(reference)
+        if std == 0:
+            return [None] * len(series)
         m = _mean(reference)
         return [None if v is None else (v - m) / std for v in series]
     width = transform["width"]
@@ -325,6 +334,14 @@ def check_case(
         "range": list(requested) if requested else "all",
         "status": status,
     }
+    if not _computable(
+        reference[statistic], years, TRANSFORMS[transform_name], requested
+    ):
+        # The API must refuse it and say why.
+        case["ok"] = status == 422 and "needs at least 2" in str(response)
+        if not case["ok"]:
+            case["error"] = response
+        return case
     if status != 200:
         case.update(ok=False, error=response)
         return case

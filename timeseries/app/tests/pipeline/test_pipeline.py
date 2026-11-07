@@ -397,7 +397,67 @@ async def test_analyze_rejects_a_range_the_extraction_does_not_cover(
     )
 
     assert covered.status_code == 200
-    assert uncovered.status_code == 422
+    # 410, not 422: the client extracts again rather than showing an error.
+    assert uncovered.status_code == 410
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "overrides, message",
+    [
+        # test_annual has 5 timesteps: 4 can precede the last one.
+        ({"transform": {"type": "ZScoreMovingInterval", "width": 5}}, "z-score window"),
+        (
+            {
+                "requested_series_options": [
+                    {
+                        "name": "raw",
+                        "smoother": {
+                            "type": "MovingAverageSmoother",
+                            "method": "trailing",
+                            "width": 6,
+                        },
+                    }
+                ]
+            },
+            "smoothing window",
+        ),
+        (
+            {
+                "transform": {
+                    "type": "ZScoreFixedInterval",
+                    "time_range": {"gte": "0003", "lte": "0003"},
+                }
+            },
+            "needs at least 2",
+        ),
+    ],
+)
+def test_analyze_explains_a_request_it_cannot_compute(
+    pipeline_client, overrides, message
+):
+    job_id = _do_extract(pipeline_client, "test_annual", "0001", "0005")
+    assert _get_status(pipeline_client, job_id)["status"] == "SUCCESS"
+
+    resp = pipeline_client.post(ANALYZE_URL, json=_analyze_payload(job_id, **overrides))
+
+    assert resp.status_code == 422
+    assert message in resp.json()["detail"]
+
+
+@pytest.mark.integration
+def test_extract_refuses_a_window_longer_than_the_dataset(pipeline_client):
+    resp = pipeline_client.post(
+        EXTRACT_URL,
+        json=_extract_payload(
+            "test_annual",
+            "0001",
+            "0005",
+            transform={"type": "ZScoreMovingInterval", "width": 5},
+        ),
+    )
+
+    assert resp.status_code == 422
 
 
 @pytest.mark.integration

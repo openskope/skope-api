@@ -5,6 +5,7 @@ from app.schemas.timeseries import (
     TimeRange,
     MovingAverageSmoother,
     TimeseriesRequest,
+    ZScoreMovingInterval,
 )
 
 # ---------------------------------------------------------------------------
@@ -62,14 +63,10 @@ def test_moving_average_smoother_width_1_centered_valid():
     assert s.width == 1
 
 
-def test_moving_average_smoother_width_200_valid():
-    s = MovingAverageSmoother(method="trailing", width=200)
-    assert s.width == 200
-
-
-def test_moving_average_smoother_width_201_raises():
-    with pytest.raises(ValidationError):
-        MovingAverageSmoother(method="trailing", width=201)
+def test_moving_average_smoother_width_has_no_fixed_maximum():
+    # The dataset's axis bounds it, checked by the API per request.
+    s = MovingAverageSmoother(method="trailing", width=1000)
+    assert s.width == 1000
 
 
 def test_moving_average_smoother_width_0_raises():
@@ -186,3 +183,9 @@ def test_series_needs_one_timestep_per_value():
             timesteps=["0001"],
             values=[1.0, 2.0],
         )
+
+
+def test_moving_zscore_width_1_raises():
+    # One value has no spread to divide by.
+    with pytest.raises(ValidationError):
+        ZScoreMovingInterval(width=1)

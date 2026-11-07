@@ -218,7 +218,7 @@ def _assert_same(actual, expected):
             assert a == pytest.approx(e, rel=1e-12)
 
 
-@pytest.mark.parametrize("width", [1, 3, 10])
+@pytest.mark.parametrize("width", [2, 3, 10])
 def test_moving_zscore_matches_its_definition(width):
     series = _series_with_gaps()
 
@@ -247,13 +247,12 @@ def test_fixed_zscore_of_a_constant_reference_is_null():
     assert actual.isna().all()
 
 
-def test_fixed_zscore_without_reference_values_is_null():
+def test_fixed_zscore_needs_two_reference_values():
     series = _series_with_gaps()
     transform = ZScoreFixedInterval(time_range=TimeRange(gte="0013", lte="0019"))
 
-    actual = apply_zscore_transform(series, transform)
-
-    assert actual.isna().all()
+    with pytest.raises(ValueError, match="needs at least 2"):
+        apply_zscore_transform(series, transform)
 
 
 @pytest.mark.parametrize(

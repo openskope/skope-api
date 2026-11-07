@@ -18,8 +18,10 @@ from app.schemas.timeseries import (
     JobStatusResponse,
     TimeRange,
     TimeseriesAnalyzeRequest,
+    MovingAverageSmoother,
     TimeseriesRequest,
     ZScoreFixedInterval,
+    ZScoreMovingInterval,
 )
 from app.vendor.timeaxis import MalformedTimestep, UnknownTimestep, parse_key
 from app.store.jobs import JobStore, get_job_store
@@ -89,6 +91,31 @@ def _with_normalized_ranges(payload, precision: str):
             update={"time_range": _normalized(payload.transform.time_range, precision)}
         )
     return payload.model_copy(update=update)
+
+
+def _check_windows(payload, release: ServedRelease) -> None:
+    """422 when a moving window can't fit in the dataset's axis."""
+    count = len(release.axis.keys())
+    if isinstance(payload.transform, ZScoreMovingInterval):
+        # Only the axis's last timestep has count - 1 before it.
+        if payload.transform.width >= count:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"The z-score window ({payload.transform.width} time steps) "
+                    f"must be shorter than the dataset ({count} time steps)."
+                ),
+            )
+    for options in payload.requested_series_options:
+        smoother = options.smoother
+        if isinstance(smoother, MovingAverageSmoother) and smoother.width > count:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"The smoothing window ({smoother.width} time steps) is "
+                    f"longer than the dataset ({count} time steps)."
+                ),
+            )
 
 
 # Metadata
@@ -173,6 +200,8 @@ async def create_timeseries_job(
         logger.warning(f"Invalid request attempt: {e}")
         raise HTTPException(status_code=404, detail=str(e))
 
+    _check_windows(payload, release)
+
     # Pre-flight geometry size check on the dataset's grid
     grid = release.overview.dataset.grid
     try:
@@ -249,26 +278,29 @@ async def analyze_timeseries(
             detail=f"Extraction not complete: {extraction.get('status')}",
         )
 
+    # 410 when the stored extraction can't serve the request, so the client
+    # extracts again; 422 always means the request itself needs changing.
     base_data = extraction.get("base_series")
     if not base_data:
         raise HTTPException(
-            status_code=422, detail="No base series found. Re-submit /extract."
+            status_code=410, detail="No base series found. Re-submit /extract."
         )
     # Compare keys at the extraction's own precision, never as raw strings.
     precision = _PRECISION_BY_LENGTH[len(base_data["timesteps"][0])]
     payload = _with_normalized_ranges(payload, precision)
 
     # Slicing a stored series that doesn't cover the range would silently drop
-    # timesteps. 422, so the client extracts again.
+    # timesteps.
     metadata = extraction.get("result", {})
     release = request.app.state.registry.get(metadata.get("dataset_id"))
     if release is None or not _covers(
         base_data["timesteps"], payload.time_range, release, precision
     ):
         raise HTTPException(
-            status_code=422,
+            status_code=410,
             detail="The extraction doesn't cover the time range. Re-submit /extract.",
         )
+    _check_windows(payload, release)
 
     try:
         return execute_analyze_request(

@@ -1,6 +1,7 @@
 # Backend math validation
 
-Checks the API's time series against an independent computation from the source GeoTIFF.
+Checks the API's time series against an independent computation from the source GeoTIFF. The findings are in the
+[validation report](../../docs/experiments/backend-math-validation.md).
 
 ## Files
 
