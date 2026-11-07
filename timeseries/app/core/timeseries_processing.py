@@ -114,18 +114,26 @@ def extract_summarystat_timeseries(
     extraction, so a passed deadline stops it within one chunk read."""
     mean_results: List[float] = []
     median_results: List[float] = []
+    n_inside = int(precomputed_mask.sum())
     try:
         with rasterio.Env(**RASTERIO_ENV_KWARGS):
             with rasterio.open(file_uri) as src:
                 for band_chunk in generate_band_chunks(band_indices, chunk_size):
                     if check_cancelled is not None:
                         check_cancelled()
-                    data = src.read(band_chunk, window=window).astype(np.float32)
+                    raw = src.read(band_chunk, window=window)
 
-                    if src.nodata is not None:
-                        data[data == src.nodata] = np.nan
-
-                    data[:, ~precomputed_mask] = np.nan
+                    # Only the cells inside the area, one band at a time: the
+                    # statistics never sift through the cells outside it.
+                    # Nodata is compared in the file's own type, where it's
+                    # exact.
+                    cells = np.empty((len(band_chunk), n_inside), dtype=np.float32)
+                    for i, band in enumerate(raw):
+                        inside = band[precomputed_mask]
+                        cells[i] = inside
+                        if src.nodata is not None:
+                            cells[i, inside == src.nodata] = np.nan
+                    del raw
 
                     # A timestep with no valid cell in the area (for example,
                     # a year the dataset has no data for) yields NaN, which the
@@ -134,10 +142,8 @@ def extract_summarystat_timeseries(
                         warnings.simplefilter("ignore", RuntimeWarning)
                         # Sum in float64: float32 sums over many cells lose
                         # about 7 digits, which z-scores then amplify.
-                        mean_results.extend(
-                            np.nanmean(data, axis=(1, 2), dtype=np.float64)
-                        )
-                        median_results.extend(np.nanmedian(data, axis=(1, 2)))
+                        mean_results.extend(np.nanmean(cells, axis=1, dtype=np.float64))
+                        median_results.extend(np.nanmedian(cells, axis=1))
 
         return (file_uri, np.array(mean_results), np.array(median_results))
     except Exception as e:

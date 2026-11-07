@@ -156,6 +156,19 @@ def test_zonal_statistics_per_timestep_in_order(tmp_path, chunk_size):
     np.testing.assert_array_equal(medians, expected_medians)
 
 
+def test_a_value_next_to_nodata_is_not_nodata(tmp_path):
+    # In float32, NODATA - 1 rounds onto NODATA; the file's own type tells
+    # them apart.
+    bands = np.full((1, 3, 3), NODATA - 1, dtype=np.uint32)
+    path = _write_cube(tmp_path / "near.tif", bands)
+    mask = np.ones((3, 3), dtype=bool)
+    window = rasterio.windows.Window(0, 0, 3, 3)
+
+    _, means, medians = extract_summarystat_timeseries(path, [1], window, mask, 1)
+
+    assert not np.isnan(means[0]) and not np.isnan(medians[0])
+
+
 def test_zonal_mean_keeps_float64_precision(tmp_path):
     # Float32 sums over this many cells drift by about 1e-7 of the mean.
     rng = np.random.default_rng(11)
