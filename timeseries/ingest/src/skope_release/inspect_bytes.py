@@ -303,5 +303,6 @@ def observe(plan: object, staging: Path, report: Report) -> FinalObservation | N
         axis=plan.axis,
         layout=plan.layout,
         assets=tuple(assets),
+        prepare_scripts=plan.prepare_scripts,
         _issuer=_OBSERVATION_ISSUER,
     )

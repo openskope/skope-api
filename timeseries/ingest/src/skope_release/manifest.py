@@ -47,6 +47,22 @@ def release_files(root: Path) -> list[str]:
     return sorted(files)
 
 
+def _source_record(variable, prepare_scripts: dict[str, str]) -> dict:
+    """A source's href and checksum, or for a prepared source its script and inputs (MAN-002)."""
+    source = variable.source
+    if source.prepare is None:
+        return {"id": variable.id, "href": source.uri, "checksum": source.checksum}
+    return {
+        "id": variable.id,
+        "checksum": source.checksum,
+        "prepare": {
+            "script": source.prepare.script,
+            "script_sha256": prepare_scripts[variable.id],
+            "inputs": [{"href": i.uri, "checksum": i.checksum} for i in source.prepare.inputs],
+        },
+    }
+
+
 def build_manifest(observation: object, root: Path, report: Report) -> dict | None:
     """Inventory and checksum every file, then assemble the manifest (MAN-002 to MAN-006)."""
     obs = require_observation(observation)
@@ -86,10 +102,7 @@ def build_manifest(observation: object, root: Path, report: Report) -> dict | No
         "dataset": {"id": obs.dataset_id, "version": obs.curated.version, "stac_entrypoint": "collection.json"},
         "producer": {"name": obs.producer.name, "version": obs.producer.version, "revision": obs.producer.revision},
         "declaration": {"identity_profile": IDENTITY_PROFILE, "digest_algorithm": "sha256", "digest": obs.declaration_digest},
-        "sources": [
-            {"id": v.id, "href": v.source.uri, "checksum": v.source.checksum}
-            for v in sorted(obs.resolved_manifest.variables, key=lambda v: v.id)
-        ],
+        "sources": [_source_record(v, obs.prepare_scripts) for v in sorted(obs.resolved_manifest.variables, key=lambda v: v.id)],
         "files": files,
     }
     from .documents import validate

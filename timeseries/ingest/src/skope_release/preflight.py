@@ -15,7 +15,7 @@ from pathlib import Path
 import numpy as np
 from osgeo import gdal
 
-from . import gdalio
+from . import gdalio, prepare
 from .documents import load_document
 from .findings import Report
 from .identity import check_release_id, declaration_digest, declaration_projection, load_ledger
@@ -219,6 +219,34 @@ def _runs(indices: list[int], keys: tuple[str, ...]) -> str:
     return ", ".join(keys[a] if a == b else f"{keys[a]}..{keys[b]}" for a, b in runs)
 
 
+def _prepared_source(dataset_id: str, var, *, mirror: Path | None, scripts_root: Path, tools: dict,
+                     report: Report, ctx) -> tuple[str, dict, str] | None:
+    """Where a prepared source is, its fetch record, and its script's SHA-256 (OBS-016).
+
+    A prepared source exists only in the mirror, so there is no remote copy to
+    fall back on; a missing or stale record means fetch has to run first.
+    """
+    spec = var.source.prepare
+    if mirror is None:
+        report.add("OBS-016", "a prepared source is read only from the source mirror; pass one", **ctx)
+        return None
+    output = prepare.output_path(mirror, dataset_id, var.id)
+    record = prepare.read_record(output) if output.is_file() else None
+    if record is None:
+        report.add("OBS-016", f"no prepared output with a record at {output}; run fetch on this host", **ctx)
+        return None
+    script = prepare.script_path(spec, scripts_root)
+    if not script.is_file():
+        report.add("META-013", f"prepare script {spec.script} does not exist", **ctx)
+        return None
+    script_sha256 = prepare.sha256_hex(script)
+    reason = prepare.stale_reason(record, spec, script_sha256, tools)
+    if reason is not None:
+        report.add("OBS-016", f"the prepared output is stale ({reason} since fetch); rerun fetch", **ctx)
+        return None
+    return str(output), record, script_sha256
+
+
 def preflight_dataset(
     files: DatasetFiles,
     *,
@@ -226,6 +254,8 @@ def preflight_dataset(
     mirror: Path | None,
     producer: Producer,
     report: Report,
+    scripts_root: Path = prepare.INGEST_ROOT,
+    toolchain: dict | None = None,
 ) -> ValidatedBuildPlan | None:
     ds = files.dataset_id
     ctx = {"dataset": ds}
@@ -267,9 +297,13 @@ def preflight_dataset(
     curated_by_id = {v.id: v for v in curated.variables}
     facts: dict[str, _SourceFacts] = {}
     checksums: dict[str, str] = {}
+    records: dict[str, dict] = {}  # fetch records of prepared sources
+    scripts: dict[str, str] = {}
+    tools = toolchain if toolchain is not None else prepare.toolchain()
     for var in sorted(manifest.variables, key=lambda v: v.id):
         vctx = {**ctx, "variable": var.id}
         enc, src = var.encoding, var.source
+        label = src.uri or src.prepare.script
         if temporal and src.bands != "descriptions":
             report.add("META-008", "a temporal source maps bands to the axis by description (`bands: descriptions`)", **vctx)
         if not temporal and src.band is None:
@@ -293,11 +327,17 @@ def preflight_dataset(
         if enc.predictor not in (1, expected_predictor):
             report.add("COG-013", f"predictor {enc.predictor} does not suit {enc.data_type}", **vctx)
 
+        if src.prepare is not None:
+            found = _prepared_source(ds, var, mirror=mirror, scripts_root=scripts_root, tools=tools, report=report, ctx=vctx)
+            if found is None:
+                continue
+            path, records[var.id], scripts[var.id] = found
         try:
-            path = gdalio.read_path(src.uri, mirror)
+            if src.prepare is None:
+                path = gdalio.read_path(src.uri, mirror)
             fact = _inspect_source(path)
         except Exception as exc:  # noqa: BLE001 - every source failure becomes a finding (OBS-002)
-            report.add("OBS-002", f"cannot inspect source {src.uri}: {exc}", **vctx)
+            report.add("OBS-002", f"cannot inspect source {label}: {exc}", **vctx)
             continue
         facts[var.id] = fact
 
@@ -345,7 +385,7 @@ def preflight_dataset(
                 if not _bands_with_data(path, fact.nodata, src.band)[0]:
                     report.add("OBS-007", f"band {src.band} has no valid pixels", **vctx)
         except RuntimeError as exc:  # GDAL read failure
-            report.add("OBS-002", f"cannot read source {src.uri}: {exc}", **vctx)
+            report.add("OBS-002", f"cannot read source {label}: {exc}", **vctx)
             continue
 
         # OBS-011 / META-004: checksum every source.
@@ -356,6 +396,8 @@ def preflight_dataset(
             continue
         if src.checksum is not None and src.checksum != measured:
             report.add("OBS-011", f"declared checksum {src.checksum} does not match the source bytes ({measured})", **vctx)
+        if var.id in records and records[var.id]["output_checksum"] != measured:
+            report.add("OBS-016", "the prepared output changed since fetch recorded it; rerun fetch", **vctx)
         checksums[var.id] = measured
 
     # OBS-003: one canonical grid, the first variable's in identifier order.
@@ -387,13 +429,17 @@ def preflight_dataset(
         return None
 
     # The resolved manifest carries every checksum (META-004); it is frozen from here.
+    # A prepared source's input checksums come from its fetch record (OBS-016).
+    def resolve(source, variable_id):
+        update = {"checksum": checksums[variable_id]}
+        if source.prepare is not None:
+            inputs = [i.model_copy(update={"checksum": made["checksum"]})
+                      for i, made in zip(source.prepare.inputs, records[variable_id]["inputs"])]
+            update["prepare"] = source.prepare.model_copy(update={"inputs": inputs})
+        return source.model_copy(update=update)
+
     resolved = manifest.model_copy(
-        update={
-            "variables": [
-                v.model_copy(update={"source": v.source.model_copy(update={"checksum": checksums[v.id]})})
-                for v in manifest.variables
-            ]
-        }
+        update={"variables": [v.model_copy(update={"source": resolve(v.source, v.id)}) for v in manifest.variables]}
     )
     digest = declaration_digest(declaration_projection(curated, resolved))
 
@@ -431,6 +477,7 @@ def preflight_dataset(
         variables=planned,
         producer=producer,
         empty_timesteps=empty,
+        prepare_scripts=scripts,
         _issuer=_PLAN_ISSUER,
     )
 

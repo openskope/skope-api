@@ -55,7 +55,7 @@ class PlannedVariable:
     id: str
     curated: CuratedVariable
     encoding: Encoding
-    source_uri: str
+    source_uri: str | None  # None for a prepared source (META-013)
     source_read_path: str  # where GDAL reads it; never part of the declaration
     source_checksum: str
     source_band: int | None  # static datasets
@@ -75,6 +75,7 @@ class ValidatedBuildPlan:
     variables: tuple[PlannedVariable, ...]
     producer: Producer
     empty_timesteps: frozenset[str]  # declared, and verified against every source (OBS-007)
+    prepare_scripts: dict[str, str]  # variable ID -> SHA-256 of its prepare script (MAN-002)
     _issuer: object
 
     def __post_init__(self):
@@ -157,6 +158,7 @@ class FinalObservation:
     axis: Axis | None
     layout: ChunkLayout | None
     assets: tuple[AssetObservation, ...]
+    prepare_scripts: dict[str, str]  # variable ID -> SHA-256 of its prepare script (MAN-002)
     _issuer: object
 
     def __post_init__(self):
