@@ -1,12 +1,14 @@
-"""Prepared sources from fetch through the release manifest (AT-037; META-013, OBS-016, MAN-002)."""
+"""Prepared sources from fetch through the release manifest and pin (AT-037; META-013, OBS-016, MAN-002)."""
 
 import json
 from urllib.parse import urlparse
 
 import pytest
+import yaml
 
 from skope_release import gdalio, prepare
 from skope_release.build import build_and_publish
+from skope_release.cli import main
 from skope_release.fetch import fetch_dataset
 from skope_release.findings import Report
 from skope_release.preflight import DatasetFiles, preflight_dataset
@@ -138,3 +140,27 @@ def test_a_script_edit_that_keeps_the_bytes_keeps_the_digest(setup, tmp_path):
     assert after is not None, report.to_text()
     assert after.declaration_digest == before.declaration_digest
     assert after.prepare_scripts != before.prepare_scripts
+
+
+def test_pin_declares_the_input_and_output_checksums(setup, tmp_path):
+    """META-004, META-013: pinning declares what the build measured and leaves the digest unchanged."""
+    files, mirror, root, upstream = setup
+    fetch(files, mirror, root, tmp_path)
+    plan, _ = preflight(files, mirror, root)
+    (tmp_path / "releases").mkdir()
+    published, _ = build_and_publish(plan, tmp_path / "releases")
+    pins = tmp_path / "pins"
+    pins.mkdir()
+    (pins / "staging.yml").write_text(
+        "release_root: /srv/datasets/releases\nreleases:\n  - dataset: other\n    release_id: other-r-2026.01.01\n"
+        f"    declaration_digest: {'1' * 64}\n    manifest_sha256: {'2' * 64}\n"
+    )
+    argv = ["--datasets", str(tmp_path / "datasets"), "pin", str(published.path), "--env", "staging", "--pins", str(pins), "--write"]
+    assert main(argv) == 0
+    source = yaml.safe_load(files.source_manifest.read_text())["variables"][0]["source"]
+    assert source["checksum"] == gdalio.sha256_multihash(upstream)
+    assert source["prepare"]["inputs"] == [{"uri": UPSTREAM, "checksum": gdalio.sha256_multihash(upstream)}]
+    again, report = preflight(files, mirror, root)
+    assert again is not None, report.to_text()
+    assert again.declaration_digest == published.declaration_digest
+

@@ -4,7 +4,8 @@ Pinning a release means three edits, all with values its release manifest holds:
   1. the ledger entry in `datasets/<dataset>/releases.yml` (REL-006);
   2. the dataset's entry in `deploy/releases/<environment>.yml` (PIN-001);
   3. a `checksum` for every source the source manifest declares without one
-     (META-004), as the build measured it.
+     (META-004), and for every input of a prepared source (META-013), as the
+     build measured it.
 
 `plan_pin` works out each file's new text and changes nothing, so the caller can
 show the edits before `write_pin` applies them. Edits are made line by line, so
@@ -144,7 +145,7 @@ def _checksum_edit(path: Path, label: str, manifest: ReleaseManifest, report: Re
         return None
     before = path.read_text("utf-8")
     doc = _load(before) or {}
-    measured = {source.id: source.checksum for source in manifest.sources}
+    measured = {source.id: source for source in manifest.sources}
     variables = doc.get("variables") or []
     if sorted(v.get("id") for v in variables) != sorted(measured):
         report.add("META-004", "the source manifest's variables differ from the release's sources; "
@@ -153,31 +154,55 @@ def _checksum_edit(path: Path, label: str, manifest: ReleaseManifest, report: Re
     lines = before.splitlines(keepends=True)
     expected = yaml.safe_load(before)
     for variable, wanted in zip(variables, expected["variables"]):
-        declared = variable["source"].get("checksum")
-        checksum = measured[variable["id"]]
-        if declared is not None:
-            if declared != checksum:
-                report.add("META-004", f"declared checksum {declared} differs from the measured {checksum}",
-                           path=label, variable=variable["id"])
+        vid, source, release_source = variable["id"], variable["source"], measured[variable["id"]]
+        ctx = {"path": label, "variable": vid}
+        prepared = source.get("prepare")
+        if (prepared is None) != (release_source.prepare is None):
+            report.add("META-004", "the source manifest and the release disagree on whether this source is prepared", **ctx)
             continue
-        start = _find(lines, rf"(\s*)- id:\s*[\"']?{re.escape(variable['id'])}[\"']?\s*(#.*)?")
-        uri = None
-        if start is not None:
-            at, indent = start
-            found = _find(lines[at:_block_end(lines, at, len(indent))], r"(\s*)uri:.*")
-            if found is not None:
-                uri = (at + found[0], found[1])
-        if uri is None:
-            report.add("META-004", "cannot find the source's uri line; add the checksum by hand",
-                       path=label, variable=variable["id"])
-            continue
-        lines.insert(uri[0] + 1, f'{uri[1]}checksum: "{checksum}"\n')
-        wanted["source"]["checksum"] = checksum
+        # A prepared source's inputs first: their lines come after the `source:` line.
+        for i, item in enumerate((prepared or {}).get("inputs") or []):
+            checksum = release_source.prepare.inputs[i].checksum
+            if _declare(lines, vid, item.get("checksum"), checksum, r"(\s*)- uri:.*", nth=i, child_indent="  ",
+                        what=f"input {i + 1}", report=report, ctx=ctx):
+                wanted["source"]["prepare"]["inputs"][i]["checksum"] = checksum
+        anchor = r"(\s*)uri:.*" if prepared is None else r"(\s*)source:\s*(#.*)?"
+        if _declare(lines, vid, source.get("checksum"), release_source.checksum, anchor,
+                    child_indent=None if prepared is None else "  ", what="source", report=report, ctx=ctx):
+            wanted["source"]["checksum"] = release_source.checksum
     after = "".join(lines)
     if after == before:
         return None
     _check(after, lambda new: new == expected, label, report)
     return FileEdit(path, label, before, after)
+
+
+def _declare(lines: list[str], variable_id: str, declared: str | None, checksum: str, anchor: str, *,
+             nth: int = 0, child_indent: str | None, what: str, report: Report, ctx) -> bool:
+    """Insert `checksum:` after the variable's `nth` line matching `anchor`; True when inserted.
+
+    The new line takes the anchor's indent, plus `child_indent` when it is a
+    key under the anchor rather than beside it. A declared checksum is only
+    compared.
+    """
+    if declared is not None:
+        if declared != checksum:
+            report.add("META-004", f"declared {what} checksum {declared} differs from the measured {checksum}", **ctx)
+        return False
+    start = _find(lines, rf"(\s*)- id:\s*[\"']?{re.escape(variable_id)}[\"']?\s*(#.*)?")
+    if start is not None:
+        at, indent = start
+        seen = 0
+        for i in range(at, _block_end(lines, at, len(indent))):
+            match = re.fullmatch(anchor, lines[i].rstrip("\n"))
+            if match is None:
+                continue
+            if seen == nth:
+                lines.insert(i + 1, f'{match.group(1)}{child_indent or ""}checksum: "{checksum}"\n')
+                return True
+            seen += 1
+    report.add("META-004", f"cannot find where the {what} checksum goes; add it by hand", **ctx)
+    return False
 
 
 def _find(lines: list[str], pattern: str) -> tuple[int, str] | None:
