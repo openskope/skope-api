@@ -2,8 +2,7 @@
 
 > **Draft.** This is the README the release workflow will have once it is
 > implemented, written ahead of time to test whether the specs describe a
-> workable procedure. Nothing here exists yet. Commands are not named; each step
-> says what the tooling does, not how to invoke it.
+> workable procedure.
 >
 > Written from [ADR 0006](../.agents/decisions/0006-stac-authoritative-dataset-releases.md),
 > the [dataset release specification](specs/dataset-release-v1.md) (v0.4), and
@@ -63,7 +62,8 @@ disagree, the build fails rather than picking one.
             │                                │
             └──────────────┬─────────────────┘
                            ▼
-                  fetch (optional): copy the sources into the local mirror
+                  fetch: copy the sources into the local mirror and run
+                  any prepare step (optional unless a source is prepared)
                            ▼
                   preflight: validate both, inspect and checksum every
                   source, freeze the declaration
@@ -164,7 +164,10 @@ carries no descriptive or scientific meaning; that belongs in `curated.yml`.
   none duplicated.
 - [ ] Each variable maps to the right source URI. Source folder names are
   mappings, not identifiers (e.g. S3's `maysept` maps to `may_sept`).
-- [ ] Each source has a checksum, or will get one computed at preflight.
+- [ ] A source the build cannot read as published declares a prepare step
+  instead of a URI (2.5.1), and the curated lineage says what the step did.
+- [ ] Each source has a checksum, or will get one computed at preflight. A
+  prepared source's inputs get theirs computed at fetch.
 - [ ] Source bands map correctly onto the reviewed time axis (temporal) or
   band model (static).
 - [ ] Per-variable output encoding is set. By default it preserves the source's
@@ -209,6 +212,132 @@ skips a source the mirror already holds, after checking it. For a source with no
 declared checksum it prints the computed one, for you to commit to the source
 manifest. Pass the same `RELEASE_SOURCE_MIRROR` to the preflight and the build.
 
+#### 2.5.1 Prepared sources
+
+Some upstream files cannot be read by the build as published: for example, a
+NetCDF file with no CRS, rows running south to north, and NaN for missing
+cells, or a raster published as many zipped tiles. For such a source, the
+source manifest names the upstream files and a script that turns them into the
+one GeoTIFF the build reads:
+
+```yaml
+variables:
+  - id: "<variable-id>"
+    source:
+      checksum: "1220…"            # the prepared GeoTIFF: the bytes the build reads
+      bands: "descriptions"
+      prepare:
+        script: "scripts/prepare_<dataset-id>.py"
+        inputs:
+          - uri: "https://<host>/<path>"
+            checksum: "1220…"      # the upstream file
+```
+
+A source declares either `uri` or `prepare`, never both. A source assembled from
+many files, such as a set of tiles, lists one `inputs` entry per file. Files
+the publisher does not provide, such as tiles that would hold only ocean, are
+listed in a comment above `inputs`, so a reviewer can check each one.
+
+**What a prepare step may do.** Change how the data is stored, never its
+values: file format, mosaicking, orientation, CRS assignment, nodata encoding,
+band descriptions, and leaving out whole timesteps. The curated lineage
+describes the step in plain words. Before it exits, the script reads its output
+back and checks that every valid value equals the input value it came from.
+Review of the script and that check keep the values unchanged; the checksums
+only keep the reviewed bytes from changing afterwards.
+
+**The script.** One file in `timeseries/ingest/scripts/`, importing only the
+standard library and the packages installed in the ingest image (GDAL, numpy,
+SciPy). It cannot import other files from the repository, so its hash covers all
+the logic that ran, and the toolchain covers the rest. Fetch runs it in the
+ingest image as `<script> <variable-id> <output> <input>…`, with the inputs in
+declared order.
+
+**One output per variable.**
+
+- Many inputs, one output: a set of tiles becomes one mosaic.
+- One input, several variables: each variable declares the same input. Fetch
+  downloads it once, since its mirror path comes from its URI, and runs the
+  script once per variable; the variable ID tells the script which to write.
+- A temporal variable's output is still one file: the build splits it into
+  `chunk_size` COGs, as for any source.
+
+**Where each checksum lives.** The inputs' and the output's checksums are part
+of the declaration, so they enter the declaration digest (1.5); the script's
+hash does not.
+
+| Where | What | Changes when |
+| --- | --- | --- |
+| Source manifest (committed) | Each input's checksum, the script path, the output's checksum | A reviewed edit; changing a declared value makes a new release |
+| Source mirror (on the build host, not committed) | The inputs, the output, and a note beside the output | Fetch writes them |
+| Release manifest's `sources` (published) | The inputs and their checksums, the script path and hash, the output checksum | Never; the release is immutable |
+
+The mirror holds:
+
+```text
+<mirror>/<host>/<path>                                        # each input
+<mirror>/prepared/<dataset-id>/<variable-id>.tif                # output
+<mirror>/prepared/<dataset-id>/<variable-id>.tif.prepared.json  # note
+```
+
+The note records how the output was made:
+
+```json
+{ "script": "scripts/prepare_<dataset-id>.py", "script_sha256": "…",
+  "toolchain": { "gdal_image": "ghcr.io/osgeo/gdal:…@sha256:…", "python_lock_sha256": "…" },
+  "inputs": [{ "uri": "https://<host>/<path>", "checksum": "1220…" }],
+  "output_checksum": "1220…" }
+```
+
+The toolchain is what else can change the script's output: the GDAL base image,
+pinned by digest, and the SHA-256 of the locked Python dependencies. Rebuilding
+the ingest image for an unrelated code change leaves it unchanged.
+
+**What fetch does with each input.** It never asks the upstream server whether
+the file changed. The declared checksum is the only test, and it is computed
+from the local copy, with no download:
+
+| Mirror holds | Fetch |
+| --- | --- |
+| A copy matching the declared checksum | Keeps it; nothing is downloaded |
+| No copy | Downloads it and checks it |
+| A copy with a different checksum | Fails |
+| A copy, and no checksum is declared yet | Keeps it and prints the computed checksum |
+
+**When fetch reruns the script.** When any of these holds:
+
+- there is no output or no note;
+- the note's `script_sha256` differs from the script's current hash;
+- the note's `toolchain` differs from the current one;
+- the note's inputs differ from the declared inputs;
+- the output's hash differs from the note's `output_checksum`.
+
+It then checks the new output against `source.checksum`. On a match it writes
+the note; on a mismatch it deletes the output and fails, printing the measured
+checksum; with nothing declared yet it keeps the output and prints the
+checksum. An edited script that writes the same bytes therefore changes nothing
+but the note, and one that writes different bytes cannot reach a build until
+someone declares the new checksum, which makes a new release. A new toolchain
+is treated the same way. Leaving the script's hash out of the
+declaration digest is what keeps the first case from needing a new release: the
+output's checksum already pins the bytes, and the release manifest records the
+script.
+
+**Preflight and build** read the output from the mirror and check it against
+`source.checksum`, as for any source. They refuse a prepared source when:
+
+- the mirror has no output: unlike an `s3://` source, there is nowhere else to
+  read it from, so run fetch on this host first;
+- its note is stale (the script or the toolchain changed since fetch): rerun
+  fetch.
+
+**When the upstream file changes.** SKOPE notices only when it downloads the
+file again, on a new host or after the mirror is cleared: the checksum fails,
+and fetch stops, so the new bytes are never used by accident. Adopting them is
+a new release. SKOPE keeps no durable copy of upstream inputs, so if a
+publisher removes a file, a release built from it cannot be rebuilt from a clean
+host; its published bytes are unaffected.
+
 ### 2.6 Run the preflight
 
 The preflight validates without writing anything. For each requested dataset it:
@@ -219,6 +348,9 @@ The preflight validates without writing anything. For each requested dataset it:
 3. checksums every source, compares it with the declared checksum, and
    computes any checksum the manifest omits;
 4. freezes the resolved declaration and computes its digest.
+
+For a prepared source, steps 2 and 3 read the prepared output in the mirror
+(2.5.1).
 
 Read the report. Every finding names a requirement ID, a severity, the file, and
 the dataset, variable, chunk, or band involved. Fix every error before building.
@@ -358,7 +490,8 @@ It changes nothing; it prints, as a diff, the three edits it would make:
   leaving every other entry and comment alone (delete a comment that no longer
   applies, such as one describing the old release);
 - a `checksum` under the `uri` of each source declared without one, as the
-  build measured it. This leaves the declaration digest unchanged.
+  build measured it, and for a prepared source under each input and the
+  output. This leaves the declaration digest unchanged.
 
 It refuses, and edits nothing, if the ledger records that release ID with a
 different digest, if a declared checksum differs from the measured one, or if
@@ -498,10 +631,12 @@ that matters, keep it elsewhere with `DEPLOY_LOG=<path>` on every deploy.
 
 | Change | New release? | Notes |
 | --- | --- | --- |
-| Source data (new or corrected source file) | Yes | May also need a new dataset version if the science changed |
+| Source data (new or corrected source file) | Yes | May also need a new dataset version if the science changed. A prepared source's replaced upstream file is noticed on its next download (2.5.1) |
 | Any curated text, including a typo in a description | Yes | `curated.yml` is part of the declaration |
 | Units, category meanings, temporal semantics | Yes | Ask whether the dataset version changes too |
 | Source mapping or per-variable encoding | Yes | |
+| A prepare script edited, same output bytes | No | Fetch reruns it and confirms the output (2.5.1) |
+| A prepare script or toolchain change that alters the output bytes | Yes | Fetch fails until the new output checksum is declared |
 | `chunk_size` or COG options | Yes | Same dataset version: a repackaging |
 | Which uncertainty product is paired with an estimate | Yes | Needs a dataset-version review if semantics change |
 | Colours, palettes, visualization ranges, ticks, labels | No | Display files; a palette edit rebuilds the TiTiler image |
@@ -530,11 +665,15 @@ version's Collection with `predecessor-version`.
 | Curated validation | Missing or unknown required field | A field left blank or marked unknown | META-002, VAL-003 |
 | Curated validation | Observed or presentation field rejected | `crs`, `nodata`, `colormap`, ranges for display, etc. in `curated.yml` | META-002, META-003 |
 | Curated validation | Temporal value has the wrong type | Unquoted `0103` parsed as a number | META-005 |
+| Fetch (SRTM) | Indexed tile missing | An official CGIAR tile could not be retrieved | MIG-005 |
+| Fetch | Prepare input checksum mismatch | The publisher replaced the file, or the download is corrupt | OBS-011 |
+| Fetch | Prepared output checksum mismatch | The prepare script or the toolchain changed the output bytes | OBS-015 |
 | Source preflight | Variable sets differ | `curated.yml` and source manifest list different variables | OBS-001 |
 | Source preflight | Grid mismatch | Sources differ beyond the declared tolerance | OBS-003 |
 | Source preflight | Band count or description mismatch | Source bands do not match the reviewed time axis | OBS-005, OBS-006 |
 | Source preflight | Checksum mismatch | Source bytes changed since the manifest was written | META-004, OBS-011 |
-| Source preflight (SRTM) | Indexed tile missing | An official CGIAR tile could not be retrieved | MIG-005 |
+| Source preflight | Prepared source missing from the mirror | Fetch has not run on this host | OBS-016 |
+| Source preflight | Prepared source stale | The script or the toolchain changed since fetch | OBS-016 |
 | COG validation | Encoding rejected | Overflow, truncation, or nodata colliding with a valid value | OBS-008, COG-014 |
 | COG validation | Band with no valid pixels | All-nodata band without a declared policy | OBS-007 |
 | Cross-artifact | Time-to-band rule disagrees with bytes | Band names or counts differ from the axis and `chunk_size` | API-002, VAL-007 |
@@ -558,9 +697,9 @@ Release spec:
 | Authority model | §4 (AUTH-001–003) |
 | Dataset profiles, Items, identifiers | §5 (ORG-001–010) |
 | Release layout and release ID | §6 (REL-001–011) |
-| `curated.yml` and source manifest | §7 (META-001–012) |
+| `curated.yml` and source manifest | §7 (META-001–013) |
 | STAC requirements | §9 (STAC-001–012), §10 (SKOPE-001–009) |
-| Fetch, preflight, and build-state invariants | §11 (OBS-001–014) |
+| Fetch, preflight, and build-state invariants | §11 (OBS-001–016) |
 | COG profile and encoding | §12 (COG-001–016) |
 | Manifest and declaration digest | §13 (MAN-001–011) |
 | Publication, recovery, promotion, mounts | §14 (TXN-001–018) |
@@ -622,3 +761,8 @@ clearly. Remove this section when the draft becomes the README.
 13. **Resolved (PIN-001):** the API and TiTiler mounts are derived from the pin's
     `release_root`.
 14. **Resolved:** TXN-011 now refers to PIN-004.
+
+### Sources (release spec)
+
+15. **Resolved (META-013, OBS-015, OBS-016, MAN-002):** a source the build
+    cannot read as published is a prepared source (2.5.1).

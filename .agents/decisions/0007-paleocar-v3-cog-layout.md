@@ -43,8 +43,11 @@ All other COG creation options stay as the specification sets them.
 - Map views framed on a study area stay within 0.08 s per step of the fastest
   layout. The whole-region view at the initial zoom is slower: 1.6 s per step
   against 1.1 s with 512-pixel blocks.
-- A 12-variable release is 96 files and about 45 GB in `UInt16`; `UInt32` is
-  about 13% larger and 9% slower to extract.
+- A 12-variable release is 96 COGs and 60.9 GB in `UInt16` as built
+  (`paleocar_v3-r-2026.11.04`). The experiment's estimate, 45 GB, multiplied
+  `ppt_annual` by twelve; the growing degree day variables compress less well
+  (5.3–5.9 GB each against 3.1–3.8 GB). `UInt32` is about 13% larger and 9%
+  slower to extract.
 - Peak memory for a large-area extraction is about 1.3 GB, so 4 concurrent ones
   fit on the host beside the other services.
 - An extraction of a few hundred years is up to 3.5 times slower than with

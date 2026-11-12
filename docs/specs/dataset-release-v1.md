@@ -135,6 +135,11 @@ their variables do not currently demonstrate aligned temporal coverage.
   of every publicly listed release. It is a discovery index for external
   clients. It is not a release artifact and not an input to the application.
 
+**Prepared source**
+: A source the build reads as a GeoTIFF that a committed script made from
+  upstream files the build cannot read as published (META-013). The release
+  records the upstream files, the script, and the prepared bytes.
+
 **Release declaration graph**
 : A dataset's authoring `curated.yml`, its resolved source manifest, and the
   checksummed canonical inputs they reference. It is the authoritative
@@ -436,9 +441,10 @@ records why they are not combined into a single aggregate artifact.
 - **META-003:** Curated files MUST NOT contain observed CRS, transform, shape,
   spatial extent, nodata, datatype, pixel statistics, checksums, or byte sizes.
 - **META-004:** Before transformation, a resolved source manifest MUST identify
-  the dataset, exact variable-to-URI mapping, cryptographic checksum for every
-  source, source-band mapping to the reviewed temporal or spatial axis, and
-  per-variable output encoding policy. It MUST also carry a `release` block of
+  the dataset, exact mapping of each variable to its source URI or prepared
+  source (META-013), cryptographic checksum for every source, source-band
+  mapping to the reviewed temporal or spatial axis, and per-variable output
+  encoding policy. It MUST also carry a `release` block of
   release-scoped build inputs: the explicit `created` timestamp (REL-006), the
   dataset's temporal `chunk_size`, and the COG creation options (Section 12).
   If an author-supplied manifest omits a
@@ -449,6 +455,29 @@ records why they are not combined into a single aggregate artifact.
 - **META-005:** Curated fields and source-manifest fields MUST be validated before
   any source raster is transformed. Temporal values such as `0103` MUST be
   strings in both documents; parsers MUST NOT coerce them to numbers.
+- **META-013:** A source MUST declare exactly one of a `uri` or a `prepare`
+  block. A `prepare` block names a script and its ordered `inputs`, each with
+  a `uri` and a checksum; the source's own `checksum` is then that of the
+  prepared GeoTIFF. A prepared source:
+
+  - MUST change only how values are stored, never the values: file format,
+    mosaicking, orientation, CRS assignment, nodata encoding, band
+    descriptions, and leaving out whole timesteps. Resampling, reprojection,
+    unit conversion, and any other arithmetic on values are not preparation;
+  - SHOULD verify, before its script exits, that every valid output value
+    equals the input value it came from. Review of the script and this check
+    keep the values unchanged; the checksums only keep the reviewed bytes from
+    changing afterwards;
+  - MUST be described in the curated lineage;
+  - MUST name one script file in `timeseries/ingest/scripts/` that imports only
+    the standard library and the packages of the ingest image, so the script's
+    SHA-256 and the toolchain (the GDAL base image and the locked Python
+    dependencies) identify everything that ran;
+  - produces one GeoTIFF for one variable; variables MAY share inputs.
+
+  The script's SHA-256 is recorded in the release manifest (MAN-002) and is not
+  part of the declaration (MAN-010): the prepared checksum already pins the
+  bytes the build reads.
 
 ### 7.2 Authoring format decision
 
@@ -844,11 +873,29 @@ serialized files and their measured sizes and checksums.
   planned output facts. Manifest generation MUST consume the `FinalObservation`
   and a measured exhaustive file inventory.
 - **OBS-014:** Sources MAY be read from a local mirror holding `<bucket>/<key>`
-  copies of object-store sources. Only a fetch step writes to the mirror. It
+  copies of object-store sources and `<host>/<path>` copies of HTTPS prepare
+  inputs. Only a fetch step writes to the mirror. It
   completes each copy under a temporary name and gives it its final name only
   when it matches the source manifest's checksum, when one is declared.
   Preflight and build MUST NOT write to the mirror; they verify every source,
   mirror copies included, against its checksum (OBS-011).
+- **OBS-015:** Fetch MUST be the only step that runs a prepare script (META-013).
+  It runs the script in the ingest image with the variable identifier, the
+  output path, and the downloaded inputs in declared order, and writes the
+  output to `prepared/<dataset-id>/<variable-id>.tif` in the mirror with a
+  record beside it of the script's SHA-256, the toolchain, the inputs and
+  their checksums, and the output checksum. Fetch MUST rerun the script when
+  there is no output or no record, or when the script, the toolchain, or the
+  declared inputs differ from the record, or the output's checksum differs from
+  it. It MUST then compare the new output with the declared prepared checksum
+  and, on a mismatch, delete the output and fail. Fetch MUST NOT ask an upstream
+  server whether a file changed: an input whose mirror copy matches its declared
+  checksum is not downloaded again.
+- **OBS-016:** A prepared source exists only in the mirror, so preflight and
+  build MUST read it from there; unlike a `uri` source (OBS-014), it has no
+  remote copy to stream. They MUST fail when its output or record is missing, or when the
+  record no longer matches the script, the toolchain, or the declared inputs. An
+  input checksum the source manifest omits is taken from the record.
 
 The tolerance in OBS-003 is for deciding whether source grids represent the
 same intended grid, not for hiding output disagreement. The legacy PaleoCAR v2
@@ -1035,7 +1082,21 @@ declaration digest is plain hexadecimal with its algorithm named beside it.
 - **MAN-001:** The manifest MUST validate against a versioned JSON Schema and
   MUST reject unknown fields by default.
 - **MAN-002:** The manifest MUST record the release's dataset ID and version, its
-  STAC entrypoint path, and its source references with checksums.
+  STAC entrypoint path, and its source references with checksums. A prepared
+  source (META-013) has no `href`; it records its inputs with their checksums
+  and its script's path and SHA-256:
+
+  ```json
+  {
+    "id": "pmdi",
+    "checksum": "1220…",
+    "prepare": {
+      "script": "scripts/prepare_lbda_v2.py",
+      "script_sha256": "…",
+      "inputs": [{ "href": "https://example.invalid/pmdi.nc", "checksum": "1220…" }]
+    }
+  }
+  ```
 - **MAN-003:** The manifest MUST identify the release, creation time, `complete`
   status, producer identity and version, declaration identity profile, digest
   algorithm and full digest, and one exhaustive `files` inventory containing the
@@ -1618,6 +1679,7 @@ test.
 | AT-034 | Compile each dataset `curated.yml` fixture into a frozen plan; validate RFC 8785 declaration-graph serialization, identity profile, full SHA-256 digest and its exclusions, deterministic bytes, agreement between the manifest's release and declaration fields and the resolved declaration, and publication order. Reject generated-output digest inputs, reuse of a release ID for a different digest, and conflation of the assigned release ID with the computed declaration digest. Run a batch invocation of four datasets in which one fails, and prove the other three publish as complete, independently valid releases and that the batch itself has no identifier, digest, manifest, or rollback. Prove each release contains exactly one dataset and that a build writes nothing outside its own staging and release paths, including the published catalog. | REL-010, REL-011, MAN-003, MAN-006, MAN-008, MAN-010, MAN-011, ORCH-008, TXN-001, TXN-004 |
 | AT-035 | Execute the same fixture through a direct runner and a durable-workflow test harness; require identical release identity and outputs, a compact digest-verified request, stable request identity across retry and continuation, side effects only through idempotent operations, each release's manifest written last, and a provider-neutral completion record. Reject large workflow payloads, run-ID-derived paths, hidden output-affecting request parameters, event-history copies in the release, and any orchestration reference that acts as a commit marker. | MAN-009, ORCH-001 through ORCH-007, ORCH-009, TXN-001 through TXN-018 |
 | AT-036 | Create failed local, completed-object, and incomplete-multipart fixtures; generate repeatable cleanup reports and digests without mutation; require separately recorded authorization bound to exact scope and a 24-hour grace period; then execute and retry cleanup idempotently with complete provenance. Reject execution after any object, manifest, lease, workflow, selection, report, or scope change; reject generic confirmation or force flags; and prove that no valid published release or unauthorized object can be deleted. | TXN-008, TXN-009, TXN-013 through TXN-017 |
+| AT-037 | Declare a prepared source with one input and another with several; fetch them, prove a rerun with an edited script that writes the same bytes changes only the record, and that a script edit or toolchain change that writes different bytes, or an input whose bytes differ from its checksum, fails with no output left in the mirror; prove an unchanged input is not downloaded again; prove preflight and build fail on a missing or stale record and read nothing from upstream; and require the release manifest to record the inputs, their checksums, the script path and SHA-256, while the declaration digest is unchanged by a script edit that leaves the output bytes unchanged. | META-004, META-013, OBS-014 through OBS-016, MAN-002, MAN-010 |
 
 ## 18. Migration plan
 
@@ -2059,6 +2121,12 @@ Identity and reproducibility:
   The resolved manifest is not written back; its checksums are recorded in the
   release manifest's `sources`, so the committed source manifest and the
   release manifest together reproduce it. Authors SHOULD commit checksums.
+  A prepared source's omitted input checksums come from fetch's record
+  (OBS-016).
+- Prepared sources (META-013, OBS-015): inputs are downloaded over HTTPS
+  without credentials; SKOPE keeps no copy of upstream inputs outside the
+  mirror, so a release whose upstream file is removed cannot be rebuilt from a
+  clean host; the fetch record is `<output>.prepared.json`.
 - Release identifiers are recorded in a version-controlled ledger beside each
   dataset's authoring files, `releases.yml`, mapping each assigned release ID to
   its declaration digest. A build receives the release ID as an argument and
