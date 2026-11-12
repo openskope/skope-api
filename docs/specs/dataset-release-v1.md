@@ -2172,8 +2172,9 @@ Content:
   a geographic source grid's edges follow parallels and meridians, so the
   corners suffice.
 - STAC band statistics copy the embedded COG statistics. Recomputed statistics
-  MUST match minimum and maximum exactly, mean and standard deviation to a
-  relative 1e-10, and valid percent to 0.005, the precision GDAL serializes.
+  MUST match minimum and maximum exactly in the band's data type, mean and
+  standard deviation to a relative 1e-10, and valid percent to 0.005, the
+  precision GDAL serializes.
 - The PaleoCAR v3 prototype release contains two of the twelve MIG-009
   variables and is not a production release. MIG-009 governs the Phase 9
   migration.

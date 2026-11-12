@@ -16,6 +16,7 @@ from osgeo import gdal, osr
 gdal.UseExceptions()
 
 UINT32_NODATA = 4294967295
+FLOAT32_NODATA = -9999.0
 GT = (-115.0, 0.01, 0.0, 43.0, 0.0, -0.01)
 CREATED = "2026-10-07T12:00:00Z"
 
@@ -34,6 +35,8 @@ def write_source(path: Path, keys: list[str], *, width=40, height=30, dtype=gdal
     for i, key in enumerate(keys, start=1):
         if categories:
             data = rng.choice(list(categories), size=(height, width)).astype(np.uint8)
+        elif dtype == gdal.GDT_Float32:
+            data = rng.normal(0, 2, size=(height, width)).astype(np.float32)
         else:
             data = rng.integers(0, 4000, size=(height, width)).astype(np.uint32)
         if nodata is not None:
@@ -92,7 +95,7 @@ def curated_doc(dataset_id: str, variables: list[str], *, profile="TemporalCubeD
 
 
 def manifest_doc(dataset_id: str, sources: dict[str, str], *, chunk_size=2, data_type="uint32", nodata=UINT32_NODATA,
-                 static=False, resampling="AVERAGE", **overrides) -> dict:
+                 static=False, resampling="AVERAGE", predictor=2, **overrides) -> dict:
     doc = {
         "schema_version": "0.1.0",
         "dataset": dataset_id,
@@ -109,7 +112,7 @@ def manifest_doc(dataset_id: str, sources: dict[str, str], *, chunk_size=2, data
                     "nodata": nodata,
                     "scale": 1.0,
                     "offset": 0.0,
-                    "predictor": 2,
+                    "predictor": predictor,
                     "overview_resampling": resampling,
                 },
             }

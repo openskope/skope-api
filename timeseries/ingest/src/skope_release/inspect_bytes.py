@@ -16,7 +16,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
 import numpy as np
-from osgeo import gdal
+from osgeo import gdal, gdal_array
 from osgeo_utils.samples.validate_cloud_optimized_geotiff import validate as validate_cog
 
 from . import gdalio
@@ -203,7 +203,11 @@ def _inspect(
                 continue
             emin, emax, emean, estd, evalid = embedded
             mmin, mmax, mmean, mstd, mvalid = measured
-            if emin != mmin or emax != mmax:
+            # GDAL writes the extremes as ~14-digit text. Read back as float64, a float32
+            # extreme is off in the digits the text dropped; in the band's own type the
+            # two are the same number.
+            as_band = np.dtype(gdal_array.GDALTypeCodeToNumericTypeCode(band.DataType)).type
+            if as_band(emin) != as_band(mmin) or as_band(emax) != as_band(mmax):
                 report.add("COG-004", f"embedded min/max ({emin}, {emax}) differ from measured ({mmin}, {mmax})", **bctx)
             if not _close(emean, mmean, STAT_RELATIVE_TOLERANCE) or not _close(estd, mstd, STAT_RELATIVE_TOLERANCE):
                 report.add("COG-004", f"embedded mean/stddev ({emean}, {estd}) differ from measured ({mmean}, {mstd})", **bctx)

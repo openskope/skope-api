@@ -16,7 +16,7 @@ from skope_release.plan import Producer
 from skope_release.preflight import DatasetFiles, preflight_dataset
 from skope_release.stac_serializer import write_stac
 
-from release_fixtures import CREATED
+from release_fixtures import CREATED, FLOAT32_NODATA
 from stage_helpers import plan_for
 
 
@@ -55,6 +55,21 @@ def test_statistics_match_the_pixels(staged, tmp_path):
         assert band.mean == pytest.approx(values.mean(), rel=1e-10)
         assert band.stddev == pytest.approx(values.std(), rel=1e-10)
         assert band.valid_percent == pytest.approx(100 * values.size / (30 * 40), abs=0.005)
+
+
+def test_float_statistics_match_in_the_band_type(temporal_dataset, tmp_path):
+    """COG-004: a float32 band's embedded extremes, written as text, match its pixels."""
+    floats = {"dtype": gdal.GDT_Float32, "nodata": FLOAT32_NODATA}
+    directory = temporal_dataset(source_kwargs={"alpha": floats, "beta": floats},
+                                 manifest={"data_type": "float32", "nodata": FLOAT32_NODATA, "predictor": 3})
+    report = Report()
+    plan = preflight_dataset(DatasetFiles(directory), release_id="synth-r-2026.10.07", mirror=None,
+                             producer=Producer("p", "0", "abc"), report=report)
+    assert plan is not None, report.to_text()
+    staging = tmp_path / "staging"
+    write_cogs(plan, staging, tmp_path / "scratch")
+    report = Report()
+    assert observe(plan, staging, report) is not None, report.to_text()
 
 
 def _staged_with(temporal_dataset, tmp_path, name, interleave):
