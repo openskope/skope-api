@@ -37,6 +37,7 @@ MULTIHASH_SHA256_PATTERN = r"^1220[0-9a-f]{64}$"  # STAC-009, File Info 2.1.0
 SHA256_HEX_PATTERN = r"^[0-9a-f]{64}$"
 DOI_PATTERN = r"^10\.\d{4,9}/\S+$"
 RELEASE_ID_PATTERN = r"^[a-z][a-z0-9_]*-r-\d{4}\.\d{2}\.\d{2}(-([2-9]|[1-9]\d+))?$"  # REL-006
+PREPARE_SCRIPT_PATTERN = r"^scripts/[a-z][a-z0-9_]*\.py$"  # META-013: one file in scripts/
 
 Identifier = Annotated[str, StringConstraints(pattern=IDENTIFIER_PATTERN)]
 TimestepKey = Annotated[str, StringConstraints(pattern=TIMESTEP_PATTERN)]
@@ -46,6 +47,7 @@ Sha256Hex = Annotated[str, StringConstraints(pattern=SHA256_HEX_PATTERN)]
 Doi = Annotated[str, StringConstraints(pattern=DOI_PATTERN)]
 ReleaseId = Annotated[str, StringConstraints(pattern=RELEASE_ID_PATTERN)]
 NonEmpty = Annotated[str, StringConstraints(min_length=1)]
+PrepareScript = Annotated[str, StringConstraints(pattern=PREPARE_SCRIPT_PATTERN)]
 
 
 def _https(value: str) -> str:
@@ -273,13 +275,32 @@ class Encoding(Strict):
     narrowing: Narrowing | None = None
 
 
-class Source(Strict):
+class PrepareInput(Strict):
     uri: NonEmpty
     checksum: Multihash | None = None
+
+
+class Prepare(Strict):
+    """A script that makes the source from upstream files the build cannot read (META-013)."""
+
+    script: PrepareScript
+    inputs: list[PrepareInput] = Field(min_length=1)
+
+
+class Source(Strict):
+    uri: NonEmpty | None = None
+    prepare: Prepare | None = None
+    checksum: Multihash | None = None  # of the prepared GeoTIFF for a prepared source
     # Temporal: band i carries the axis timestep equal to its description (OBS-006).
     # Static: the single band `band` carries the variable.
     bands: Literal["descriptions"] | None = None
     band: int | None = Field(default=None, ge=1)
+
+    @model_validator(mode="after")
+    def _one_origin(self):
+        if (self.uri is None) == (self.prepare is None):
+            raise ValueError("declare exactly one of `uri` or `prepare` (META-013)")
+        return self
 
     @model_validator(mode="after")
     def _band_mapping(self):
@@ -346,10 +367,28 @@ class ManifestDeclaration(Strict):
     digest: Sha256Hex
 
 
-class ManifestSource(Strict):
-    id: Identifier
+class ManifestInput(Strict):
     href: NonEmpty
     checksum: Multihash
+
+
+class ManifestPrepare(Strict):
+    script: PrepareScript
+    script_sha256: Sha256Hex
+    inputs: list[ManifestInput] = Field(min_length=1)
+
+
+class ManifestSource(Strict):
+    id: Identifier
+    href: NonEmpty | None = None
+    prepare: ManifestPrepare | None = None
+    checksum: Multihash
+
+    @model_validator(mode="after")
+    def _one_origin(self):
+        if (self.href is None) == (self.prepare is None):
+            raise ValueError("a source records exactly one of `href` or `prepare` (MAN-002)")
+        return self
 
 
 class ManifestFile(Strict):

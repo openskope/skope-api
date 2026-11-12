@@ -1,4 +1,4 @@
-"""Authoring and document models (AT-001, AT-003, AT-022; META-001 to META-005, META-010, VAL-003)."""
+"""Authoring and document models (AT-001, AT-003, AT-022; META-001 to META-005, META-010, META-013, VAL-003)."""
 
 import json
 
@@ -147,6 +147,23 @@ def test_source_manifest_rules():
     semantics = manifest_doc("synth", {"alpha": "/a.tif"})
     semantics["calendar"] = "proleptic_gregorian"
     assert check(SourceManifest, semantics)[0] is None  # META-004: no temporal semantics
+
+
+def test_a_source_is_a_uri_or_prepared():
+    """META-013: exactly one of `uri` and `prepare`; the script is one file in scripts/."""
+    prepared = {"script": "scripts/prepare_synth.py", "inputs": [{"uri": "https://example.org/a.nc"}]}
+
+    def with_source(**source):
+        doc = manifest_doc("synth", {"alpha": "/a.tif"})
+        doc["variables"][0]["source"] = {"bands": "descriptions", **source}
+        return check(SourceManifest, doc)[0]
+
+    assert with_source(prepare=prepared) is not None
+    assert with_source() is None
+    assert with_source(uri="/a.tif", prepare=prepared) is None
+    assert with_source(prepare={**prepared, "inputs": []}) is None
+    for script in ("prepare_synth.py", "scripts/sub/prepare_synth.py", "scripts/../prepare_synth.py", "scripts/prepare.sh"):
+        assert with_source(prepare={**prepared, "script": script}) is None, script
 
 
 def test_ledger_shape():

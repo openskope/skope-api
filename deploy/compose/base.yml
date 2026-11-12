@@ -93,7 +93,9 @@ services:
     entrypoint: ["skope-release"]
     environment:
       AWS_NO_SIGN_REQUEST: YES
-      CPL_VSIL_CURL_ALLOWED_EXTENSIONS: .tif,.tiff
+      # GDAL assumes remote files with other extensions don't exist, so it never
+      # probes for sidecars. Each prepare input format needs its extension here.
+      CPL_VSIL_CURL_ALLOWED_EXTENSIONS: .tif,.tiff,.nc
       GDAL_DISABLE_READDIR_ON_OPEN: EMPTY_DIR
       PRODUCER_REVISION: ${PRODUCER_REVISION:-unknown}
       SKOPE_RELEASE_DATASETS: /ingest/datasets

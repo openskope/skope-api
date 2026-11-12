@@ -62,17 +62,17 @@ def gdal_version() -> str:
 
 
 def read_path(uri: str, mirror: Path | None) -> str:
-    """Where GDAL reads a source URI. A mirror holds `<bucket>/<key>` copies.
+    """Where GDAL reads a source URI: its mirror copy when there is one (OBS-014).
 
     The read path is operational and never part of the declaration; the
     source checksum proves the mirror copy is the declared object.
     """
     parsed = urlparse(uri)
+    if mirror is not None and parsed.scheme in {"s3", "https"}:
+        local = mirror_path(uri, mirror)
+        if local.is_file():
+            return str(local)
     if parsed.scheme == "s3":
-        if mirror is not None:
-            local = mirror_path(uri, mirror)
-            if local.is_file():
-                return str(local)
         return f"/vsis3/{parsed.netloc}{parsed.path}"
     if parsed.scheme in {"http", "https"}:
         return f"/vsicurl/{uri}"
@@ -82,9 +82,12 @@ def read_path(uri: str, mirror: Path | None) -> str:
 
 
 def mirror_path(uri: str, mirror: Path) -> Path | None:
-    """Where a mirror holds a source URI's copy, or None for a URI it cannot hold."""
+    """Where a mirror holds a URI's copy: `<bucket>/<key>` or `<host>/<path>` (OBS-014).
+
+    None for a URI it cannot hold.
+    """
     parsed = urlparse(uri)
-    if parsed.scheme == "s3":
+    if parsed.scheme in {"s3", "https"}:
         return mirror / parsed.netloc / parsed.path.lstrip("/")
     return None
 

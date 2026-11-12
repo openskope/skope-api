@@ -1,10 +1,12 @@
-"""Fetching sources into the mirror (OBS-011, OBS-014)."""
+"""Fetching sources into the mirror (OBS-011, OBS-014, OBS-015; AT-037)."""
 
+import hashlib
+import json
 from urllib.parse import urlparse
 
 import pytest
 
-from skope_release import gdalio
+from skope_release import gdalio, prepare
 from skope_release.cli import main
 from skope_release.fetch import fetch_dataset
 from skope_release.findings import Report
@@ -135,3 +137,149 @@ def test_cli_needs_a_mirror(tmp_path, monkeypatch):
     dataset(tmp_path, {"alpha": "s3://bucket/alpha/source.tif"})
     with pytest.raises(SystemExit, match="OBS-014"):
         main(["--datasets", str(tmp_path / "datasets"), "fetch", "synth"])
+
+
+# Prepared sources (META-013, OBS-015). The stand-in script writes the variable
+# ID followed by its inputs' bytes, so its output is easy to predict.
+
+SCRIPT = """import sys
+_, variable, output, *inputs = sys.argv
+with open(output, "wb") as out:
+    out.write(variable.encode())
+    for path in inputs:
+        out.write(open(path, "rb").read())
+"""
+TOOLS = {"gdal_image": "gdal@sha256:1", "python_lock_sha256": "a" * 64}
+NC = "https://example.org/data/a.nc"
+
+
+@pytest.fixture
+def scripts(tmp_path):
+    root = tmp_path / "ingest"
+    (root / "scripts").mkdir(parents=True)
+
+    def write(text=SCRIPT, name="prepare_synth.py"):
+        (root / "scripts" / name).write_text(text)
+        return root
+
+    write()
+    return write
+
+
+def prepared_dataset(tmp_path, inputs, *, variables=("alpha",), checksum=None, input_checksums=None):
+    manifest = manifest_doc("synth", {v: "unused" for v in variables})
+    declared = [{"uri": u, **({"checksum": input_checksums[u]} if input_checksums and u in input_checksums else {})} for u in inputs]
+    for var in manifest["variables"]:
+        var["source"] = {"bands": "descriptions", "prepare": {"script": "scripts/prepare_synth.py", "inputs": declared}}
+        if checksum:
+            var["source"]["checksum"] = checksum
+    return DatasetFiles(write_dataset(tmp_path, "synth", curated_doc("synth", list(variables)), manifest))
+
+
+def fetch_prepared(files, mirror, remote, root, tools=TOOLS):
+    report = Report()
+    outcomes = dict(fetch_dataset(files, mirror=mirror, report=report, remote=remote.read, scripts_root=root, toolchain=tools))
+    return outcomes, report
+
+
+def multihash(data):
+    return "1220" + hashlib.sha256(data).hexdigest()
+
+
+def test_prepares_a_source_and_records_how(tmp_path, remote, scripts):
+    remote(NC, b"-nc")
+    mirror = tmp_path / "mirror"
+    outcomes, report = fetch_prepared(prepared_dataset(tmp_path, [NC]), mirror, remote, scripts())
+    assert outcomes == {"alpha": "prepared"} and report.ok
+    output = mirror / "prepared" / "synth" / "alpha.tif"
+    assert output.read_bytes() == b"alpha-nc"
+    assert (mirror / "example.org" / "data" / "a.nc").read_bytes() == b"-nc"
+    record = json.loads(prepare.record_path(output).read_text())
+    assert record == {
+        "script": "scripts/prepare_synth.py",
+        "script_sha256": prepare.sha256_hex(scripts() / "scripts" / "prepare_synth.py"),
+        "toolchain": TOOLS,
+        "inputs": [{"uri": NC, "checksum": multihash(b"-nc")}],
+        "output_checksum": multihash(b"alpha-nc"),
+    }
+    # Nothing declared yet: the checksums are printed for the author to commit.
+    assert multihash(b"alpha-nc") in " ".join(f.message for f in report.findings)
+
+
+def test_an_unchanged_preparation_is_not_redone(tmp_path, remote, scripts):
+    remote(NC, b"-nc")
+    files, mirror = prepared_dataset(tmp_path, [NC], checksum=multihash(b"alpha-nc"), input_checksums={NC: multihash(b"-nc")}), tmp_path / "mirror"
+    fetch_prepared(files, mirror, remote, scripts())
+    remote(NC, b"-changed upstream")
+    outcomes, report = fetch_prepared(files, mirror, remote, scripts())
+    assert outcomes == {"alpha": "present"} and not report.findings
+    assert (mirror / "prepared" / "synth" / "alpha.tif").read_bytes() == b"alpha-nc"
+
+
+def test_a_script_edit_that_writes_the_same_bytes_changes_only_the_record(tmp_path, remote, scripts):
+    remote(NC, b"-nc")
+    files, mirror = prepared_dataset(tmp_path, [NC], checksum=multihash(b"alpha-nc"), input_checksums={NC: multihash(b"-nc")}), tmp_path / "mirror"
+    fetch_prepared(files, mirror, remote, scripts())
+    root = scripts("# reworded\n" + SCRIPT)
+    outcomes, report = fetch_prepared(files, mirror, remote, root)
+    assert outcomes == {"alpha": "prepared"} and not report.findings
+    record = prepare.read_record(mirror / "prepared" / "synth" / "alpha.tif")
+    assert record["script_sha256"] == prepare.sha256_hex(root / "scripts" / "prepare_synth.py")
+
+
+def test_a_script_edit_that_writes_different_bytes_fails_and_leaves_nothing(tmp_path, remote, scripts):
+    remote(NC, b"-nc")
+    files, mirror = prepared_dataset(tmp_path, [NC], checksum=multihash(b"alpha-nc"), input_checksums={NC: multihash(b"-nc")}), tmp_path / "mirror"
+    fetch_prepared(files, mirror, remote, scripts())
+    outcomes, report = fetch_prepared(files, mirror, remote, scripts(SCRIPT + "    out.write(b'!')\n"))
+    assert outcomes == {"alpha": "mismatch"} and [f.requirement for f in report.errors] == ["OBS-015"]
+    assert not list((mirror / "prepared").rglob("*.*"))
+
+
+def test_a_new_toolchain_reruns_the_script(tmp_path, remote, scripts):
+    remote(NC, b"-nc")
+    files, mirror = prepared_dataset(tmp_path, [NC], checksum=multihash(b"alpha-nc"), input_checksums={NC: multihash(b"-nc")}), tmp_path / "mirror"
+    fetch_prepared(files, mirror, remote, scripts())
+    tools = {**TOOLS, "python_lock_sha256": "b" * 64}
+    outcomes, report = fetch_prepared(files, mirror, remote, scripts(), tools)
+    assert outcomes == {"alpha": "prepared"} and not report.findings
+    assert prepare.read_record(mirror / "prepared" / "synth" / "alpha.tif")["toolchain"] == tools
+
+
+def test_an_input_that_does_not_match_its_checksum_is_not_prepared(tmp_path, remote, scripts):
+    remote(NC, b"-nc")
+    files = prepared_dataset(tmp_path, [NC], input_checksums={NC: "1220" + "0" * 64})
+    mirror = tmp_path / "mirror"
+    outcomes, report = fetch_prepared(files, mirror, remote, scripts())
+    assert outcomes == {"alpha": "mismatch"} and [f.requirement for f in report.errors] == ["OBS-011"]
+    assert not (mirror / "prepared").exists()
+
+
+def test_a_failing_script_is_reported_with_its_output(tmp_path, remote, scripts):
+    remote(NC, b"-nc")
+    root = scripts("import sys\nprint('cannot read the grid', file=sys.stderr)\nsys.exit(3)\n")
+    mirror = tmp_path / "mirror"
+    outcomes, report = fetch_prepared(prepared_dataset(tmp_path, [NC]), mirror, remote, root)
+    assert outcomes == {"alpha": "failed"} and [f.requirement for f in report.errors] == ["OBS-015"]
+    assert "exit 3" in report.errors[0].message and "cannot read the grid" in report.errors[0].message
+    assert not list((mirror / "prepared").rglob("*.*"))
+
+
+def test_variables_share_an_input_and_each_gets_its_own_output(tmp_path, remote, scripts):
+    other = "s3://bucket/b.tif"
+    remote(NC, b"-nc")
+    remote(other, b"-b")
+    mirror = tmp_path / "mirror"
+    outcomes, report = fetch_prepared(prepared_dataset(tmp_path, [NC, other], variables=("alpha", "beta")), mirror, remote, scripts())
+    assert outcomes == {"alpha": "prepared", "beta": "prepared"} and report.ok
+    assert (mirror / "prepared" / "synth" / "alpha.tif").read_bytes() == b"alpha-nc-b"
+    assert (mirror / "prepared" / "synth" / "beta.tif").read_bytes() == b"beta-nc-b"
+
+
+def test_a_missing_script_is_an_error(tmp_path, remote, scripts):
+    remote(NC, b"-nc")
+    root = scripts()
+    (root / "scripts" / "prepare_synth.py").unlink()
+    outcomes, report = fetch_prepared(prepared_dataset(tmp_path, [NC]), tmp_path / "mirror", remote, root)
+    assert outcomes == {"alpha": "failed"} and [f.requirement for f in report.errors] == ["META-013"]
+

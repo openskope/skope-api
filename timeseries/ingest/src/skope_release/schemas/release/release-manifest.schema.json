@@ -97,6 +97,57 @@
       "title": "ManifestFile",
       "type": "object"
     },
+    "ManifestInput": {
+      "additionalProperties": false,
+      "properties": {
+        "checksum": {
+          "pattern": "^1220[0-9a-f]{64}$",
+          "title": "Checksum",
+          "type": "string"
+        },
+        "href": {
+          "minLength": 1,
+          "title": "Href",
+          "type": "string"
+        }
+      },
+      "required": [
+        "href",
+        "checksum"
+      ],
+      "title": "ManifestInput",
+      "type": "object"
+    },
+    "ManifestPrepare": {
+      "additionalProperties": false,
+      "properties": {
+        "inputs": {
+          "items": {
+            "$ref": "#/$defs/ManifestInput"
+          },
+          "minItems": 1,
+          "title": "Inputs",
+          "type": "array"
+        },
+        "script": {
+          "pattern": "^scripts/[a-z][a-z0-9_]*\\.py$",
+          "title": "Script",
+          "type": "string"
+        },
+        "script_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Script Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "script",
+        "script_sha256",
+        "inputs"
+      ],
+      "title": "ManifestPrepare",
+      "type": "object"
+    },
     "ManifestProducer": {
       "additionalProperties": false,
       "properties": {
@@ -133,19 +184,37 @@
           "type": "string"
         },
         "href": {
-          "minLength": 1,
-          "title": "Href",
-          "type": "string"
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Href"
         },
         "id": {
           "pattern": "^[a-z][a-z0-9_]*$",
           "title": "Id",
           "type": "string"
+        },
+        "prepare": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ManifestPrepare"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
         "id",
-        "href",
         "checksum"
       ],
       "title": "ManifestSource",

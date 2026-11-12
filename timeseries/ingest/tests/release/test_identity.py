@@ -123,6 +123,29 @@ def test_every_declared_input_changes_the_digest(change):
     assert digest_of(cur, man) != digest_of(cur, changed)
 
 
+def test_the_digest_of_a_fixed_declaration_is_stable():
+    """REL-006: a model change that alters every declaration's digest would orphan the ledgers' release IDs."""
+    assert digest_of(*resolved()) == "65c20065ab0f604844b5e3af328fadd930687ab1bae65beef66664937328c43c"
+
+
+def test_a_prepared_source_projects_its_inputs_not_a_uri():
+    """META-013, MAN-010: input checksums are part of the declaration; a source projects only its origin."""
+    cur, man = resolved()
+    data = man.model_dump(mode="json", exclude_none=True)
+    data["variables"][0]["source"] = {
+        "bands": "descriptions", "checksum": "1220" + "0" * 64,
+        "prepare": {"script": "scripts/prepare_synth.py", "inputs": [{"uri": "https://example.org/a.nc", "checksum": "1220" + "2" * 64}]},
+    }
+    report = Report()
+    prepared = validate(SourceManifest, data, requirement="T", path="m", report=report)
+    source = declaration_projection(cur, prepared)["source_manifest"]["variables"]["alpha"]["source"]
+    assert "uri" not in source and "prepare" in source
+    assert "prepare" not in declaration_projection(cur, man)["source_manifest"]["variables"]["alpha"]["source"]
+    data["variables"][0]["source"]["prepare"]["inputs"][0]["checksum"] = "1220" + "3" * 64
+    changed = validate(SourceManifest, data, requirement="T", path="m", report=report)
+    assert digest_of(cur, prepared) != digest_of(cur, changed)
+
+
 def test_curated_text_changes_the_digest():
     cur, man = resolved()
     edited = cur.model_copy(update={"description": "A typo fixed."})

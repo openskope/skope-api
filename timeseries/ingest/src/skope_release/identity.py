@@ -117,6 +117,11 @@ def declaration_projection(curated: Curated, resolved: SourceManifest) -> dict[s
     curated_doc["variables"] = {v.pop("id"): v for v in curated_doc["variables"]}
     manifest_doc = resolved.model_dump(mode="json")
     manifest_doc["variables"] = {v.pop("id"): v for v in manifest_doc["variables"]}
+    # A source has a `uri` or a `prepare` block (META-013); it projects only the one it has.
+    for v in manifest_doc["variables"].values():
+        for origin in ("uri", "prepare"):
+            if v["source"][origin] is None:
+                del v["source"][origin]
     return {"identity_profile": IDENTITY_PROFILE, "curated": curated_doc, "source_manifest": manifest_doc}
 
 
