@@ -95,6 +95,42 @@ def test_approved_narrowing_is_scanned(temporal_dataset, tmp_path):
     assert "COG-014" in requirements(run(directory)[1])
 
 
+@pytest.mark.parametrize(
+    "source_type,value,representable",
+    [
+        (gdal.GDT_Float64, 1.00000001, False),
+        (gdal.GDT_Float64, 1e40, False),
+        (gdal.GDT_Float64, 1e-50, False),
+        (gdal.GDT_UInt32, 16777217, False),
+        (gdal.GDT_Float64, 1.5, True),
+        (gdal.GDT_UInt32, 16777216, True),
+    ],
+)
+def test_float_narrowing_requires_exact_values(temporal_dataset, source_type, value, representable):
+    directory = temporal_dataset(
+        variables=("alpha",),
+        source_kwargs={"alpha": {"dtype": source_type}},
+    )
+    edit(directory, "source-manifest.yml", lambda d: d["variables"][0]["encoding"].update(
+        data_type="float32", nodata=-9999, predictor=3,
+        narrowing={"approved_by": "review", "evidence": "representability scan"},
+    ))
+    source = yaml.safe_load((directory / "source-manifest.yml").read_text())["variables"][0]["source"]["uri"]
+    with gdal.Open(source, gdal.GA_Update) as ds:
+        band = ds.GetRasterBand(1)
+        data = band.ReadAsArray()
+        data[10, 10] = value
+        band.WriteArray(data)
+
+    plan, report = run(directory)
+
+    if representable:
+        assert plan is not None, report.to_text()
+    else:
+        assert plan is None
+        assert messages(report, "COG-014") == ["band 1 has values not exactly representable as float32"]
+
+
 def test_grids_must_align(temporal_dataset, tmp_path):
     """OBS-003 with the Section 20.3 tolerance."""
     keys = years(100, 5)

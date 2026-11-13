@@ -144,6 +144,16 @@ def _scan_narrowing(read_path: str, band_count: int, source_nodata, target: str,
                 vmin, vmax = valid.min(), valid.max()
                 if vmin < lo or vmax > hi:
                     return f"band {b} value range [{vmin}, {vmax}] overflows {target}"
+                if target.startswith("float"):
+                    # All supported integer source types are exact in float64.
+                    # Compare there so numpy cannot round the source down to
+                    # the target precision while checking equality.
+                    with np.errstate(over="ignore", invalid="ignore"):
+                        converted = valid.astype(target)
+                    if not np.all(np.isfinite(converted)) or not np.array_equal(
+                        converted.astype(np.float64), valid.astype(np.float64)
+                    ):
+                        return f"band {b} has values not exactly representable as {target}"
                 if target_nodata is not None and np.any(valid == target_nodata):
                     return f"band {b} has valid values equal to the target nodata {target_nodata}"
     return None
