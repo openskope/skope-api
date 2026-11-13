@@ -1,15 +1,19 @@
 """Startup composition: every pinned release is checked, and any failure
 refuses the whole registry (PIN-004, PIN-005; APP-AT-004)."""
 
+import hashlib
 import json
 import logging
+from pathlib import Path
 
 import numpy as np
 import pytest
+import yaml
 
 from app.registry.compose import (
     ReleaseRefused,
     log_refusals,
+    multihash,
     normalize_key,
     verify_releases,
 )
@@ -148,7 +152,10 @@ def test_wrong_manifest_digest_is_refused(root, annual):
 def test_wrong_declaration_digest_is_refused(root, annual):
     pinned = annual.model_copy(update={"declaration_digest": "e" * 64})
 
-    assert [r.check for r in _refusals(root, pinned)] == ["overview declaration digest"]
+    assert [r.check for r in _refusals(root, pinned)] == [
+        "manifest declaration digest",
+        "overview declaration digest",
+    ]
 
 
 def test_edited_overview_is_refused(root, annual):
@@ -232,9 +239,10 @@ def test_refusals_are_logged_one_structured_error_each(root, annual, caplog):
         log_refusals(refusals)
 
     records = [json.loads(r.getMessage().split(": ", 1)[1]) for r in caplog.records]
-    assert len(records) == 2
+    assert len(records) == 3
     assert {r["check"] for r in records} == {
         "manifest digest",
+        "manifest declaration digest",
         "overview declaration digest",
     }
     for record in records:
@@ -248,12 +256,50 @@ def test_refusals_are_logged_one_structured_error_each(root, annual, caplog):
         }
 
 
+@pytest.mark.parametrize(
+    "case",
+    json.loads(Path("tests/contracts/release-identity.json").read_text()),
+    ids=lambda case: case["name"],
+)
+def test_shared_release_identity_contract(root, annual, case):
+    path = root / annual.release_id
+    overview_path = path / "overview.yml"
+    manifest_path = path / "release-manifest.json"
+    documents = {
+        "manifest": json.loads(manifest_path.read_text()),
+        "overview": yaml.safe_load(overview_path.read_text()),
+    }
+    if case["document"]:
+        target = documents[case["document"]]
+        for key in case["path"][:-1]:
+            target = target[key]
+        target[case["path"][-1]] = case["value"]
+    overview_path.write_text(yaml.safe_dump(documents["overview"]))
+    for entry in documents["manifest"]["files"]:
+        if entry["path"] == "overview.yml":
+            entry.update(
+                size=overview_path.stat().st_size, checksum=multihash(overview_path)
+            )
+    manifest_path.write_text(json.dumps(documents["manifest"]))
+    pinned = annual.model_copy(
+        update={
+            "manifest_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+        }
+    )
+
+    if case["valid"]:
+        assert verify_releases(_pin(root, pinned), root).get(annual.dataset)
+    else:
+        checks = [r.check for r in _refusals(root, pinned)]
+        assert any(
+            "dataset" in check or "digest" in check or "release ID" in check
+            for check in checks
+        )
+        assert "overview checksum" not in checks
+
+
 def test_rule_names_the_real_release_cogs():
     """The paleocar_v3 prototype's overview and manifest agree on every COG path."""
-    from pathlib import Path
-
-    import yaml
-
     from app.registry.compose import _layout
     from app.registry.models import Overview, ReleaseManifest
 

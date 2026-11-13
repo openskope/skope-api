@@ -11,7 +11,7 @@ from . import gdalio
 from .documents import dumps_json, load_document
 from .findings import Report
 from .identity import IDENTITY_PROFILE
-from .models import ReleaseManifest
+from .models import Overview, ReleaseManifest
 from .plan import FinalObservation, require_observation
 
 log = logging.getLogger(__name__)
@@ -118,6 +118,16 @@ def verify_release(root: Path, report: Report, *, full: bool = True) -> ReleaseM
     ctx = {"dataset": manifest.dataset.id}
     if root.name != manifest.release_id:
         report.add("TXN-011", f"directory {root.name} does not match release {manifest.release_id}", **ctx)
+    overview = load_document(Overview, root / "overview.yml", requirement="API-010", report=report, **ctx)
+    if overview is not None:
+        for field, expected, actual in (
+            ("release ID", manifest.release_id, overview.release_id),
+            ("declaration digest", manifest.declaration.digest, overview.declaration_digest),
+            ("dataset", manifest.dataset.id, overview.dataset.id),
+            ("dataset version", manifest.dataset.version, overview.dataset.version),
+        ):
+            if expected != actual:
+                report.add("AUTH-002", f"overview {field} is {actual!r}, not the manifest's {expected!r}", **ctx)
     listed = {f.path: f for f in manifest.files}
     for rel in release_files(root):
         if rel not in listed:

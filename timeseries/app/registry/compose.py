@@ -229,6 +229,12 @@ def _check_release(
         return None, c.refusals
     c.same("PIN-004", "manifest release ID", pinned.release_id, manifest.release_id)
     c.same("PIN-004", "manifest dataset", pinned.dataset, manifest.dataset.id)
+    c.same(
+        "PIN-004",
+        "manifest declaration digest",
+        pinned.declaration_digest,
+        manifest.declaration.digest,
+    )
 
     # Every inventoried file exists with its recorded size; promotion also
     # compares every checksum (TXN-011), logging progress since it reads
@@ -295,6 +301,12 @@ def _check_release(
         overview.declaration_digest,
     )
     c.same("PIN-004", "overview dataset", pinned.dataset, overview.dataset.id)
+    c.same(
+        "PIN-004",
+        "overview dataset version",
+        manifest.dataset.version,
+        overview.dataset.version,
+    )
 
     # Not supported yet; serving these without them would be wrong.
     if overview.dataset.profile != "TemporalCubeDataset":

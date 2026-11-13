@@ -155,7 +155,7 @@ test-api: prepare ##- Build the development image and run the API tests
 	@$(TEST_COMPOSE) config --quiet
 	$(TEST_COMPOSE) build server titiler
 	@trap '$(TEST_COMPOSE) down --remove-orphans' EXIT INT TERM; \
-		$(TEST_COMPOSE) run --rm server sh -c \
+		$(TEST_COMPOSE) run --rm -v "$(CURDIR)/tests/contracts:/code/tests/contracts:ro" server sh -c \
 		'black --check --extend-exclude "app/vendor/" app && pytest -c app/pytest.ini app/tests'
 
 test-ingest: override ENVIRONMENT=dev

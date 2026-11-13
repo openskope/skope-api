@@ -1,10 +1,13 @@
 """The release manifest and verification (AT-015; MAN-001 to MAN-008, REL-001, TXN-011)."""
 
 import json
+from pathlib import Path
 
 import pytest
+import yaml
 
 from skope_release.findings import Report
+from skope_release.gdalio import sha256_multihash
 from skope_release.manifest import build_manifest, roles_for, verify_release, write_manifest
 from skope_release.overview import write_overview
 from skope_release.stac_serializer import write_stac
@@ -62,6 +65,35 @@ def test_verification(release):
     root, _ = release
     report = Report()
     assert verify_release(root, report) is not None, report.to_text()
+
+
+@pytest.mark.parametrize(
+    "case", json.loads(Path("tests/contracts/release-identity.json").read_text()),
+    ids=lambda case: case["name"],
+)
+def test_shared_release_identity_contract(release, case):
+    root, _ = release
+    overview_path = root / "overview.yml"
+    manifest_path = root / "release-manifest.json"
+    documents = {
+        "manifest": json.loads(manifest_path.read_text()),
+        "overview": yaml.safe_load(overview_path.read_text()),
+    }
+    if case["document"]:
+        target = documents[case["document"]]
+        for key in case["path"][:-1]:
+            target = target[key]
+        target[case["path"][-1]] = case["value"]
+    overview_path.write_text(yaml.safe_dump(documents["overview"]))
+    for entry in documents["manifest"]["files"]:
+        if entry["path"] == "overview.yml":
+            entry.update(size=overview_path.stat().st_size, checksum=sha256_multihash(overview_path))
+    manifest_path.write_text(json.dumps(documents["manifest"]))
+    report = Report()
+
+    assert (verify_release(root, report) is not None) == case["valid"], report.to_text()
+    if not case["valid"]:
+        assert {finding.requirement for finding in report.errors} == {"AUTH-002"}
 
 
 def test_verification_detects_tampering(release):

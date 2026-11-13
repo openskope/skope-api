@@ -30,5 +30,6 @@ RUN uv export --format requirements.txt --only-group dev --no-emit-project --loc
     uv pip install --system --break-system-packages --no-cache -r requirements-dev.lock
 
 COPY timeseries/ingest/tests ./tests
+COPY tests/contracts ./tests/contracts
 
 CMD ["pytest", "tests"]
