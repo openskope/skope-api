@@ -549,6 +549,40 @@ def test_extract_malformed_range_is_rejected(pipeline_client):
 
 
 @pytest.mark.integration
+@pytest.mark.parametrize("endpoint", ["extract", "analyze"])
+@pytest.mark.parametrize("reference", [False, True])
+@pytest.mark.parametrize(
+    "dataset_id,lower,upper",
+    [
+        ("test_annual", "0000", "0004"),
+        ("test_monthly", "0002-13", "0004-12"),
+        ("test_monthly", "0002-00-01", "0004-01-01"),
+    ],
+)
+def test_invalid_calendar_ranges_return_422(
+    pipeline_client, endpoint, reference, dataset_id, lower, upper
+):
+    invalid_range = {"gte": lower, "lte": upper}
+    overrides = (
+        {"transform": {"type": "ZScoreFixedInterval", "time_range": invalid_range}}
+        if reference
+        else {"time_range": invalid_range}
+    )
+    if endpoint == "extract":
+        payload = _extract_payload(dataset_id, "0001-01-01", "0004-01-01", **overrides)
+        url = EXTRACT_URL
+    else:
+        job_id = _do_extract(pipeline_client, dataset_id, "0001-01-01", "0004-01-01")
+        payload = _analyze_payload(job_id, **overrides)
+        url = ANALYZE_URL
+
+    response = pipeline_client.post(url, json=payload)
+
+    assert response.status_code == 422, response.text
+    assert "not a valid date" in response.json()["detail"]
+
+
+@pytest.mark.integration
 def test_extract_values_follow_the_axis_across_files(pipeline_client):
     job_id = _do_extract(pipeline_client, "test_monthly", "0001-11", "0002-02")
 

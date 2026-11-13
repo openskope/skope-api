@@ -25,7 +25,13 @@ from app.registry.models import (
     PinnedRelease,
     ReleaseManifest,
 )
-from app.vendor.timeaxis import Axis, AxisError, ChunkLayout, MalformedTimestep
+from app.vendor.timeaxis import (
+    Axis,
+    AxisError,
+    ChunkLayout,
+    MalformedTimestep,
+    parse_key,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -134,9 +140,10 @@ def normalize_key(key: str, precision: str) -> str:
     """
     length = _PRECISION_LENGTH[precision]
     if len(key) > length and key[length:] == _CANONICAL_START[length : len(key)]:
-        return key[:length]
+        key = key[:length]
     if len(key) != length:
         raise MalformedTimestep(f"{key!r} is not a {precision}-precision ISO timestep")
+    parse_key(key, precision)
     return key
 
 
