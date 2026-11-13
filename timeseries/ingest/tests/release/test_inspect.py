@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from osgeo import gdal
 
-from skope_release import gdalio, inspect_bytes
+from skope_release import gdalio
 from skope_release.cog_writer import _to_cog, write_cogs
 from skope_release.crosscheck import check_stac_against_bytes
 from skope_release.findings import Report
@@ -88,7 +88,7 @@ def _staged_with(temporal_dataset, tmp_path, name, interleave):
 
 @pytest.mark.parametrize("interleave", ["BAND", "TILE"])
 def test_inspects_band_and_tile_interleaved_cogs(temporal_dataset, tmp_path, interleave):
-    """The in-memory inspection reads either layout, and frees its copies."""
+    """Inspection reads either layout."""
     plan, staging = _staged_with(temporal_dataset, tmp_path, interleave.lower(), interleave)
     rel = plan.layout.cog_path("alpha", 0)
     report = Report()
@@ -97,23 +97,6 @@ def test_inspects_band_and_tile_interleaved_cogs(temporal_dataset, tmp_path, int
     assert asset is not None, report.to_text()
     assert asset.interleave == interleave and asset.blocksize == 128
     assert asset.checksum == gdalio.sha256_multihash(staging / rel)
-    assert not [p for p in gdal.ReadDir("/vsimem/") or [] if p.startswith("inspect-")]
-
-
-def test_in_memory_and_in_place_inspection_agree(staged, monkeypatch):
-    plan, staging = staged
-    rel = "cogs/alpha/synth--0100--0101.tif"
-
-    def inspect():
-        report = Report()
-        asset = inspect_asset(staging / rel, rel, plan=plan, variable=plan.variables[0], chunk=0,
-                              expected_names=["0100", "0101"], report=report)
-        assert asset is not None, report.to_text()
-        return asset
-
-    in_memory = inspect()
-    monkeypatch.setattr(inspect_bytes, "IN_MEMORY_LIMIT", 0)
-    assert inspect() == in_memory
 
 
 def reinspect(plan, staging, rel):

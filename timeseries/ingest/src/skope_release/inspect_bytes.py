@@ -11,7 +11,6 @@ from __future__ import annotations
 import logging
 import math
 import multiprocessing
-import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
@@ -34,8 +33,9 @@ from .plan import (
 
 log = logging.getLogger(__name__)
 
-# Each inspection worker holds one COG in memory; current COGs are under 1 GB.
-IN_MEMORY_LIMIT = 1 << 30
+# Inspection reads each block once, so a small block cache is enough; the
+# build's 512 MB per process would multiply by the number of workers.
+INSPECT_CACHEMAX_MB = 64
 STAT_RELATIVE_TOLERANCE = 1e-10  # GDAL serializes ~13 significant digits (Section 20.3)
 VALID_PERCENT_TOLERANCE = 0.005
 LOSSLESS = {"ZSTD", "DEFLATE", "LZW"}
@@ -68,25 +68,24 @@ def inspect_asset(
     expected_names: list[str],
     report: Report,
 ) -> AssetObservation | None:
-    """Inspect one written COG from an in-memory copy of its bytes.
+    """Inspect one written COG in place, after reading it once in order.
 
     The validator and the statistics read each band's blocks in turn, which on a
     tile-interleaved COG means scattered reads across the whole file. Reading the
-    file once, in order, into memory makes those reads cheap, and the checksum is
-    then of exactly the bytes validated. A file above IN_MEMORY_LIMIT is read in
-    place.
+    file once, in order, first puts it in the operating system's page cache, so
+    those reads are cheap. Page cache is not process memory: under memory
+    pressure the kernel drops it and the scattered reads go back to disk, which
+    is slower but never runs the host out of memory.
     """
-    if path.stat().st_size > IN_MEMORY_LIMIT:
-        return _inspect(str(path), path, rel_path, plan=plan, variable=variable, chunk=chunk,
-                        expected_names=expected_names, report=report)
-    copy = f"/vsimem/inspect-{os.getpid()}-{rel_path.replace('/', '_')}"
-    if gdal.CopyFile(str(path), copy) != 0:
-        raise OSError(f"cannot copy {path} into memory")
-    try:
-        return _inspect(copy, path, rel_path, plan=plan, variable=variable, chunk=chunk,
-                        expected_names=expected_names, report=report)
-    finally:
-        gdal.Unlink(copy)
+    _read_through(path)
+    return _inspect(str(path), path, rel_path, plan=plan, variable=variable, chunk=chunk,
+                    expected_names=expected_names, report=report)
+
+
+def _read_through(path: Path, chunk: int = 8 << 20) -> None:
+    with open(path, "rb") as f:
+        while f.read(chunk):
+            pass
 
 
 def _inspect(
@@ -244,6 +243,7 @@ def _inspect(
 def _inspect_job(args) -> tuple[AssetObservation | None, list]:
     plan, staging, variable_id, chunk, rel, names = args
     gdalio.configure()
+    gdal.SetConfigOption("GDAL_CACHEMAX", str(INSPECT_CACHEMAX_MB))
     report = Report()
     variable = next(v for v in plan.variables if v.id == variable_id)
     asset = inspect_asset(Path(staging) / rel, rel, plan=plan, variable=variable, chunk=chunk, expected_names=names, report=report)

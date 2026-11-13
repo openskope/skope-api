@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -33,20 +34,56 @@ INTEGER_RANGES = {
 }
 
 _CHUNK = 8 * 1024 * 1024
-SWATH_BUDGET_BYTES = 1536 * 1024 * 1024
+# The array one read of every band may fill. GDAL needs about as much again to
+# rearrange a pixel-interleaved source, so a read peaks near twice this.
+READ_BUDGET_BYTES = 256 * 1024 * 1024
 
 
-def swath_rows(width: int, bands: int, itemsize: int, block_height: int, height: int) -> int:
-    """Rows per full-width read of every band within SWATH_BUDGET_BYTES.
+@dataclass(frozen=True)
+class Windows:
+    """Block-aligned windows that read every band of a raster within READ_BUDGET_BYTES.
 
-    Reading all bands per swath decodes each tile of a pixel-interleaved
-    source once, rather than once per band.
+    Each window covers whole source blocks, so a pixel-interleaved source
+    decodes each tile once rather than once per band. A window is as wide as
+    the budget allows, then as tall; one block is the minimum.
     """
-    per_row = width * bands * itemsize
-    rows = max(1, SWATH_BUDGET_BYTES // per_row)
-    if rows >= block_height:
-        rows -= rows % block_height  # whole source blocks: each tile is decoded once
-    return min(rows, height)
+
+    width: int
+    height: int
+    window_width: int
+    window_height: int
+
+    def __iter__(self):
+        for y in range(0, self.height, self.window_height):
+            for x in range(0, self.width, self.window_width):
+                yield x, y, min(self.window_width, self.width - x), min(self.window_height, self.height - y)
+
+    @property
+    def full_width(self) -> bool:
+        return self.window_width == self.width
+
+
+def read_windows(width: int, height: int, bands: int, itemsize: int, block_width: int, block_height: int) -> Windows:
+    block_width, block_height = min(block_width, width), min(block_height, height)
+    per_block = block_width * block_height * bands * itemsize
+    across = max(1, READ_BUDGET_BYTES // per_block)
+    window_width = min(width, across * block_width)
+    window_height = block_height
+    if window_width == width:
+        down = max(1, READ_BUDGET_BYTES // (width * block_height * bands * itemsize))
+        window_height = min(height, down * block_height)
+    elif window_width % 16 or window_height % 16:
+        # A tiled scratch file needs tile sides in multiples of 16; read whole rows instead.
+        window_width = width
+    return Windows(width, height, window_width, window_height)
+
+
+def source_windows(ds, bands: list[int]) -> Windows:
+    """The read windows for reading `bands` of the open dataset `ds` together."""
+    first = ds.GetRasterBand(bands[0])
+    block_width, block_height = first.GetBlockSize()
+    itemsize = gdal.GetDataTypeSizeBytes(first.DataType)
+    return read_windows(ds.RasterXSize, ds.RasterYSize, len(bands), itemsize, block_width, block_height)
 
 
 def configure() -> None:
@@ -128,6 +165,24 @@ def copy_with_multihash(source: str | os.PathLike, target: Path) -> str:
             digest.update(block)
             out.write(block)
     return "1220" + digest.hexdigest()
+
+
+def geotiff_crs_wkt(wkt: str) -> str:
+    """The CRS a GeoTIFF records for `wkt`, as WKT (COG-006).
+
+    GeoTIFF keys cannot express every CRS that WKT can. OGC:CRS84, for example,
+    is WGS 84 with longitude first; a GeoTIFF records it as EPSG:4326 with the
+    same coordinates. The canonical grid uses the CRS the COGs will carry.
+    """
+    path = f"/vsimem/geotiff-crs-{os.getpid()}.tif"
+    ds = gdal.GetDriverByName("GTiff").Create(path, 1, 1)
+    ds.SetProjection(wkt)
+    ds.Close()
+    try:
+        with gdal.Open(path) as reread:
+            return reread.GetProjection()
+    finally:
+        gdal.Unlink(path)
 
 
 def crs_code(srs: osr.SpatialReference) -> str | None:

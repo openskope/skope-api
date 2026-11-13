@@ -144,6 +144,23 @@ def test_grids_must_align(temporal_dataset, tmp_path):
     assert "OBS-003" in requirements(run(directory)[1])
 
 
+def test_canonical_crs_is_the_one_the_cogs_carry(temporal_dataset, tmp_path):
+    """COG-006: a GeoTIFF records OGC:CRS84 as EPSG:4326, so the grid says EPSG:4326."""
+    directory = temporal_dataset()
+    for vid in ("alpha", "beta"):
+        source = tmp_path / "sources" / f"{vid}.tif"
+        gdal.Translate(str(source.with_suffix(".vrt")), str(source), format="VRT", outputSRS="OGC:CRS84")
+
+    def use_vrt(data):
+        for variable in data["variables"]:
+            variable["source"]["uri"] = variable["source"]["uri"].replace(".tif", ".vrt")
+
+    edit(directory, "source-manifest.yml", use_vrt)
+    plan, report = run(directory)
+    assert plan is not None, report.to_text()
+    assert plan.grid.crs_code == "EPSG:4326"
+
+
 def test_categorical_variables_need_category_preserving_overviews(temporal_dataset):
     categories = {0: "Outside", 1: "Inside"}
     directory = temporal_dataset(

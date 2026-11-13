@@ -1,7 +1,8 @@
 """Write COGs from a `ValidatedBuildPlan` (Section 12).
 
-Temporal sources are read once, in horizontal swaths covering every band, and
-distributed to one band-interleaved scratch GeoTIFF per chunk. Each scratch file
+Temporal sources are read once, in block-aligned windows covering every band
+(`gdalio.read_windows`), and distributed to one band-interleaved scratch GeoTIFF
+per chunk, whose blocks match the windows. Each scratch file
 is then converted to a COG. This reads a pixel-interleaved source once rather
 than once per chunk. Scratch files live beside the staging directory and are
 removed as soon as their COG is written.
@@ -27,8 +28,6 @@ from .plan import PlannedVariable, ValidatedBuildPlan, require_plan
 
 log = logging.getLogger(__name__)
 
-_ITEMSIZE = {"uint8": 1, "int8": 1, "uint16": 2, "int16": 2, "uint32": 4, "int32": 4, "float32": 4, "float64": 8}
-
 
 def cog_creation_options(plan: ValidatedBuildPlan, variable: PlannedVariable) -> list[str]:
     """Creation options are part of the declaration (META-004, Section 12.1)."""
@@ -50,8 +49,13 @@ def cog_creation_options(plan: ValidatedBuildPlan, variable: PlannedVariable) ->
     return options
 
 
-def _prepare_scratch(path: Path, plan: ValidatedBuildPlan, variable: PlannedVariable, bands: int, rows_per_strip: int, names: list[str]):
+def _prepare_scratch(path: Path, plan: ValidatedBuildPlan, variable: PlannedVariable, bands: int, windows: gdalio.Windows, names: list[str]):
+    """A scratch file whose blocks are the read windows, so every write fills whole blocks."""
     enc = variable.encoding
+    if windows.full_width:
+        layout = ["TILED=NO", f"BLOCKYSIZE={windows.window_height}"]
+    else:
+        layout = ["TILED=YES", f"BLOCKXSIZE={windows.window_width}", f"BLOCKYSIZE={windows.window_height}"]
     ds = gdal.GetDriverByName("GTiff").Create(
         str(path),
         plan.grid.width,
@@ -60,8 +64,7 @@ def _prepare_scratch(path: Path, plan: ValidatedBuildPlan, variable: PlannedVari
         gdalio.STAC_TO_GDAL_TYPE[enc.data_type],
         options=[
             "INTERLEAVE=BAND",
-            "TILED=NO",
-            f"BLOCKYSIZE={rows_per_strip}",
+            *layout,
             "COMPRESS=ZSTD",
             "ZSTD_LEVEL=1",
             f"PREDICTOR={enc.predictor}",
@@ -127,28 +130,26 @@ def _to_cog(scratch: Path, target: Path, options: list[str], threads: int) -> No
 def write_temporal_variable(plan: ValidatedBuildPlan, variable: PlannedVariable, staging: Path, scratch_dir: Path) -> list[Path]:
     layout = plan.layout
     keys = plan.axis.keys()
-    itemsize = _ITEMSIZE[variable.encoding.data_type]
     written: list[Path] = []
     with gdal.Open(variable.source_read_path) as src:
-        block_height = src.GetRasterBand(1).GetBlockSize()[1]
-        rows = gdalio.swath_rows(src.RasterXSize, src.RasterCount, itemsize, block_height, src.RasterYSize)
+        windows = gdalio.source_windows(src, list(range(1, src.RasterCount + 1)))
         scratch_paths, scratches = [], []
         for chunk in range(layout.chunk_count):
             first, last = layout.bounds(chunk)
             path = scratch_dir / f"{variable.id}--{chunk:05d}.tif"
             scratch_paths.append(path)
-            scratches.append(_prepare_scratch(path, plan, variable, last - first + 1, rows, list(keys[first : last + 1])))
-        log.info("%s: one pass over %d bands in swaths of %d rows", variable.id, src.RasterCount, rows)
-        for y in range(0, src.RasterYSize, rows):
-            height = min(rows, src.RasterYSize - y)
-            swath = src.ReadAsArray(0, y, src.RasterXSize, height)
-            if swath.ndim == 2:
-                swath = swath[None, ...]
+            scratches.append(_prepare_scratch(path, plan, variable, last - first + 1, windows, list(keys[first : last + 1])))
+        log.info("%s: one pass over %d bands in %d x %d windows",
+                 variable.id, src.RasterCount, windows.window_width, windows.window_height)
+        for x, y, w, h in windows:
+            window = src.ReadAsArray(x, y, w, h)
+            if window.ndim == 2:
+                window = window[None, ...]
             for chunk, scratch in enumerate(scratches):
                 first, last = layout.bounds(chunk)
                 for offset, index in enumerate(range(first, last + 1), start=1):
-                    scratch.GetRasterBand(offset).WriteArray(_encode(swath[index], variable), 0, y)
-            del swath
+                    scratch.GetRasterBand(offset).WriteArray(_encode(window[index], variable), x, y)
+            del window
         for scratch in scratches:
             scratch.Close()  # the COG step must read complete scratch files
         scratches.clear()
@@ -204,13 +205,11 @@ def _convert(scratch: str, target: str, options: list[str], threads: int) -> Non
 def write_static_variable(plan: ValidatedBuildPlan, variable: PlannedVariable, staging: Path, scratch_dir: Path) -> list[Path]:
     path = scratch_dir / f"{variable.id}.tif"
     with gdal.Open(variable.source_read_path) as src:
-        block_height = src.GetRasterBand(variable.source_band).GetBlockSize()[1]
-        rows = gdalio.swath_rows(src.RasterXSize, 1, _ITEMSIZE[variable.encoding.data_type], block_height, src.RasterYSize)
-        scratch = _prepare_scratch(path, plan, variable, 1, rows, [variable.id])
+        windows = gdalio.source_windows(src, [variable.source_band])
+        scratch = _prepare_scratch(path, plan, variable, 1, windows, [variable.id])
         band = src.GetRasterBand(variable.source_band)
-        for y in range(0, src.RasterYSize, rows):
-            height = min(rows, src.RasterYSize - y)
-            scratch.GetRasterBand(1).WriteArray(_encode(band.ReadAsArray(0, y, src.RasterXSize, height), variable), 0, y)
+        for x, y, w, h in windows:
+            scratch.GetRasterBand(1).WriteArray(_encode(band.ReadAsArray(x, y, w, h), variable), x, y)
         scratch.Close()
     target = staging / "cogs" / f"{variable.id}.tif"  # ORG-009
     _to_cog(path, target, cog_creation_options(plan, variable), _cpu_count())

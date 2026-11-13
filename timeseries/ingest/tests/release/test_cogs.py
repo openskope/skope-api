@@ -32,9 +32,17 @@ def test_writes_one_cog_per_variable_and_chunk(temporal_dataset, tmp_path):
     assert not (tmp_path / "scratch").exists()  # scratch is removed
 
 
-def test_cogs_preserve_the_source(temporal_dataset, tmp_path):
+@pytest.mark.parametrize("budget", [None, 1], ids=["whole-rows", "one-block-windows"])
+def test_cogs_preserve_the_source(temporal_dataset, tmp_path, monkeypatch, budget):
+    if budget:  # windows of one 16 x 16 source block, written to tiled scratch files
+        monkeypatch.setattr(gdalio, "READ_BUDGET_BYTES", budget)
     staging = tmp_path / "staging"
     write_cogs(plan_for(temporal_dataset()), staging, tmp_path / "scratch")
+    for chunk, first in (("0100--0101", 1), ("0102--0103", 3), ("0104--0104", 5)):
+        cog = gdal.Open(str(staging / f"cogs/alpha/synth--{chunk}.tif"))
+        source = gdal.Open(str(tmp_path / "sources" / "alpha.tif"))
+        for b in range(1, cog.RasterCount + 1):
+            assert np.array_equal(cog.GetRasterBand(b).ReadAsArray(), source.GetRasterBand(first + b - 1).ReadAsArray())
     cog = gdal.Open(str(staging / "cogs/beta/synth--0102--0103.tif"))
     source = gdal.Open(str(tmp_path / "sources" / "beta.tif"))
     band = cog.GetRasterBand(2)

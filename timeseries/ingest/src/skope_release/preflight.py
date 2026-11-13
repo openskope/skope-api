@@ -123,18 +123,16 @@ def _same_number(a, b) -> bool:
 def _scan_narrowing(read_path: str, band_count: int, source_nodata, target: str, target_nodata) -> str | None:
     """COG-014: every valid source value must be representable in the target type.
 
-    One pass of full-width swaths over every band, so a pixel-interleaved
-    source decodes each block once rather than once per band.
+    One pass of block-aligned windows over every band (`gdalio.read_windows`),
+    so a pixel-interleaved source decodes each block once rather than once per
+    band.
     """
     lo, hi = gdalio.INTEGER_RANGES.get(target, (-math.inf, math.inf))
     bands = list(range(1, band_count + 1))
     with gdal.Open(read_path) as ds:
-        first = ds.GetRasterBand(1)
-        itemsize = gdal.GetDataTypeSizeBytes(first.DataType)
-        rows = gdalio.swath_rows(ds.RasterXSize, band_count, itemsize, first.GetBlockSize()[1], ds.RasterYSize)
-        for y in range(0, ds.RasterYSize, rows):
-            swath = ds.ReadAsArray(0, y, ds.RasterXSize, min(rows, ds.RasterYSize - y), band_list=bands)
-            for b, block in enumerate(swath.reshape(band_count, -1), start=1):
+        for x, y, w, h in gdalio.source_windows(ds, bands):
+            window = ds.ReadAsArray(x, y, w, h, band_list=bands)
+            for b, block in enumerate(window.reshape(band_count, -1), start=1):
                 valid = block if source_nodata is None else block[block != source_nodata]
                 if valid.size == 0:
                     continue
@@ -162,24 +160,20 @@ def _scan_narrowing(read_path: str, band_count: int, source_nodata, target: str,
 def _bands_with_data(read_path: str, nodata, band: int | None = None) -> np.ndarray:
     """OBS-007: whether each band, or the one static `band`, has a valid pixel.
 
-    One pass of full-width swaths over every band; it stops early once every
-    band has shown a valid pixel.
+    One pass of block-aligned windows over every band; it stops early once
+    every band has shown a valid pixel.
     """
     with gdal.Open(read_path) as ds:
         bands = [band] if band is not None else list(range(1, ds.RasterCount + 1))
-        first = ds.GetRasterBand(bands[0])
-        itemsize = gdal.GetDataTypeSizeBytes(first.DataType)
-        rows = gdalio.swath_rows(ds.RasterXSize, len(bands), itemsize, first.GetBlockSize()[1], ds.RasterYSize)
         seen = np.zeros(len(bands), dtype=bool)
-        for y in range(0, ds.RasterYSize, rows):
-            swath = ds.ReadAsArray(0, y, ds.RasterXSize, min(rows, ds.RasterYSize - y), band_list=bands)
-            swath = swath.reshape(len(bands), -1)
+        for x, y, w, h in gdalio.source_windows(ds, bands):
+            window = ds.ReadAsArray(x, y, w, h, band_list=bands).reshape(len(bands), -1)
             if nodata is None or math.isnan(nodata):
-                valid = np.ones(swath.shape, dtype=bool)
+                valid = np.ones(window.shape, dtype=bool)
             else:
-                valid = swath != nodata
-            if np.issubdtype(swath.dtype, np.floating):
-                valid &= np.isfinite(swath)
+                valid = window != nodata
+            if np.issubdtype(window.dtype, np.floating):
+                valid &= np.isfinite(window)
             seen |= valid.any(axis=1)
             if seen.all():
                 break
@@ -411,13 +405,14 @@ def preflight_dataset(
                 report.add("OBS-003", f"{problem} relative to {canonical_id}", dataset=ds, variable=vid)
         from osgeo import osr
 
+        crs_wkt = gdalio.geotiff_crs_wkt(canonical.wkt)
         srs = osr.SpatialReference()
-        srs.ImportFromWkt(canonical.wkt)
+        srs.ImportFromWkt(crs_wkt)
         code = gdalio.crs_code(srs)
         if code is None:
             report.add("STAC-007", "the source CRS has no authority code for proj:code", **ctx)
         grid = Grid(
-            crs_wkt=canonical.wkt,
+            crs_wkt=crs_wkt,
             crs_code=code or "",
             width=canonical.width,
             height=canonical.height,
