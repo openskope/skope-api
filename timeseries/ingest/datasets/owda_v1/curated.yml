@@ -1,0 +1,78 @@
+# PROVISIONAL (2026-11-12). Written from NOAA NCEI study 19419 and its readme
+# before a science review (spec §20.1). The license, providers, and temporal
+# semantics are provisional.
+schema_version: "0.1.0"
+id: "owda_v1"
+version: "1"
+profile: "TemporalCubeDataset"
+title: "Old World Drought Atlas (OWDA) Version 1"
+description: >-
+  A tree-ring reconstruction of summer wetness and dryness over Europe and the
+  Mediterranean Basin during the Common Era, as the self-calibrating Palmer
+  Drought Severity Index (scPDSI) on a half-degree grid, 1–2012 CE.
+# REVIEW: NOAA publishes no license for this study, only a request to cite it.
+license: "other"
+license_href: "https://www.ncei.noaa.gov/access/paleo-search/study/19419"
+region_name: "Europe and the Mediterranean"
+providers:
+  # NOAA's readme lists the investigators as "Cook, E.R., et al."; the paper
+  # has 57 authors.
+  - name: "E. R. Cook and colleagues"
+    roles: ["producer"]
+  - name: "NOAA National Centers for Environmental Information"
+    roles: ["licensor", "host"]
+    url: "https://www.ncei.noaa.gov/products/paleoclimatology"
+  - name: "SKOPE project"
+    roles: ["processor", "host"]
+# NOAA asks for the publication and the online resource to be cited.
+citation: >-
+  Cook, E. R., R. Seager, Y. Kushnir, K. R. Briffa, U. Büntgen, D. Frank, P. J.
+  Krusic, W. Tegel, G. van der Schrier, L. Andreu-Hayles, et al. 2015. Old
+  World megadroughts and pluvials during the Common Era. Science Advances
+  1(10):e1500561. Data: NOAA NCEI paleoclimatology study 19419,
+  https://www.ncei.noaa.gov/access/paleo-search/study/19419.
+doi: "10.25921/rjm6-mq74"
+publications:
+  - citation: >-
+      Cook, E. R., R. Seager, Y. Kushnir, K. R. Briffa, U. Büntgen, D. Frank,
+      P. J. Krusic, W. Tegel, G. van der Schrier, L. Andreu-Hayles, et al.
+      2015. Old World megadroughts and pluvials during the Common Era. Science
+      Advances 1(10):e1500561.
+    doi: "10.1126/sciadv.1500561"
+lineage: >-
+  Gridded (0.5 x 0.5 degree) reconstruction of the Palmer Drought Severity
+  Index for Europe and the Mediterranean region over the past 2,000 years,
+  based on tree-ring data (Cook et al. 2015). SKOPE converted NOAA's NetCDF
+  file (owda.nc) to a GeoTIFF without changing any value: it dropped year 0,
+  stored the grid one band per year with rows running north to south,
+  assigned WGS 84, and recorded missing cells as -9999 instead of NaN.
+links:
+  - rel: "via"
+    href: "https://www.ncei.noaa.gov/access/paleo-search/study/19419"
+    title: "NOAA NCEI paleoclimatology study 19419"
+  - rel: "derived_from"
+    href: "https://www.ncei.noaa.gov/pub/data/paleo/treering/reconstructions/europe/owda.nc"
+    title: "OWDA NetCDF (owda.nc)"
+    type: "application/x-netcdf"
+temporal:
+  calendar: "proleptic_gregorian"
+  precision: "year"
+  origin: "0001"
+  end: "2012"
+  step: "P1Y"
+  endpoint_inclusion: "inclusive"
+  timestep_meaning: "aggregation_period"
+  # The season is from Cook et al. (2015), Results; NOAA's readme and NetCDF
+  # do not state it.
+  description: >-
+    Each timestep is one year CE; its value is that year's June–August scPDSI.
+    NOAA's file also holds year 0, which this release leaves out.
+variables:
+  - id: "pdsi"
+    title: "Self-calibrating Palmer Drought Severity Index"
+    description: >-
+      June–August self-calibrating Palmer Drought Severity Index (scPDSI).
+      Negative values indicate dry conditions and positive values wet ones; -4
+      or less is extreme drought and 4 or more extremely wet.
+    unit: "unitless"
+    category: "Drought"

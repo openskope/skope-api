@@ -1,0 +1,36 @@
+# Sources and build settings for owda_v1 (META-004). The source is NOAA's Old
+# World Drought Atlas NetCDF, prepared into a GeoTIFF with one band per year by
+# scripts/prepare_owda_v1.py (META-013; see the curated lineage).
+schema_version: "0.1.0"
+dataset: "owda_v1"
+release:
+  created: "2026-11-12T00:00:00Z"
+  # The PaleoCAR v3 layout (ADR 0007), reused without rerunning EXP-002 and
+  # EXP-003: the 114 x 88 grid fits in one 128-pixel block, so block size and
+  # interleave make no difference to how many blocks a read touches, and 250
+  # timesteps per file gives 9 small files for the 2,012 years.
+  chunk_size: 250
+  cog:
+    blocksize: 128
+    interleave: "TILE"
+    compress: "ZSTD"
+    level: 9
+    bigtiff: "IF_SAFER"
+variables:
+  - id: "pdsi"
+    source:
+      checksum: "12203d2506633f1bbcc58702f07a70bcb9c7f0893f93b616bdf5b803224cbe1d85b0"  # the prepared GeoTIFF
+      bands: "descriptions"
+      prepare:
+        script: "scripts/prepare_owda_v1.py"
+        inputs:
+          - uri: "https://www.ncei.noaa.gov/pub/data/paleo/treering/reconstructions/europe/owda.nc"
+            checksum: "1220c044aa52e9e81932841b642b6977fa6f84beb9fe73c3db502b90f4295b1d65bd"
+    encoding:
+      # float64, as NOAA publishes it: the values do not fit float32 exactly.
+      data_type: "float64"
+      nodata: -9999.0
+      scale: 1.0
+      offset: 0.0
+      predictor: 3
+      overview_resampling: "AVERAGE"

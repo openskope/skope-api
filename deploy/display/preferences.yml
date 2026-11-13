@@ -104,3 +104,24 @@ datasets:
         note: >-
           Provisional: half the largest band maximum in
           paleocar_v3-r-2026.11.04 (7744 °C GDD).
+  lbda_v2:
+    order: 20
+    variables:
+      pmdi:
+        order: 10
+        palette: skope-precip
+        range: [-6, 6]
+        note: >-
+          Provisional: the legacy registry's range, symmetric about zero, so
+          drought (negative) is brown and wetness (positive) teal; the PMDI
+          classes end at -4 and 4.
+  owda_v1:
+    order: 30
+    variables:
+      pdsi:
+        order: 10
+        palette: skope-precip
+        range: [-6, 6]
+        note: >-
+          Provisional: the same range as lbda_v2's PMDI, so the two drought
+          atlases read alike; the PDSI classes end at -4 and 4.
