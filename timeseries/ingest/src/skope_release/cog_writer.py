@@ -16,7 +16,6 @@ from __future__ import annotations
 import logging
 import multiprocessing
 import os
-import sys
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
@@ -42,7 +41,7 @@ def cog_creation_options(plan: ValidatedBuildPlan, variable: PlannedVariable) ->
         f"INTERLEAVE={cog.interleave}",
         "OVERVIEWS=IGNORE_EXISTING",
         f"OVERVIEW_RESAMPLING={enc.overview_resampling}",
-        "STATISTICS=YES",
+        "STATISTICS=AUTO",  # copies the exact statistics _embed_exact_statistics puts in the scratch file
         f"BIGTIFF={cog.bigtiff}",
         "SPARSE_OK=FALSE",
     ]
@@ -95,32 +94,34 @@ def _encode(block, variable: PlannedVariable):
     return out
 
 
-_GDAL_PREFIX = {gdal.CE_Debug: "", gdal.CE_Warning: "Warning", gdal.CE_Failure: "ERROR", gdal.CE_Fatal: "FATAL"}
+def _embed_exact_statistics(scratch: Path) -> None:
+    """Store every band's statistics in the scratch file, for the COG driver to copy (COG-004).
 
-
-def _hide_empty_band_messages(err_class: int, err_no: int, message: str) -> None:
-    """GDAL reports every band it finds no valid pixels in while computing statistics.
-
-    Installed only for a chunk with declared empty timesteps, which preflight
-    proved are the only empty bands (OBS-007). Other messages print as GDAL's
-    default handler prints them.
+    Works around a GDAL bug (seen in 3.12.0 and 3.12.2, not yet reported
+    upstream): with STATISTICS=YES the COG driver computes statistics through a
+    VRT, which turns each band's valid percent, a 4-digit string, back into a
+    cell count by truncating (frmts/vrt/vrtsourcedrasterband.cpp). The valid
+    percent it embeds can then be one cell short, e.g. 17.74 for 980 of 5,520
+    cells. Statistics computed on the scratch file itself are exact. Remove
+    this once GDAL counts correctly; COG-004 checks the embedded values either way.
     """
-    if "no valid pixels found in sampling" in message:
-        return
-    prefix = _GDAL_PREFIX.get(err_class, "ERROR")
-    sys.stderr.write(f"{prefix} {err_no}: {message}\n" if prefix else f"{message}\n")
+    ds = gdal.Open(str(scratch), gdal.GA_Update)
+    for i in range(1, ds.RasterCount + 1):
+        band = ds.GetRasterBand(i)
+        try:
+            band.ComputeStatistics(False)
+        except RuntimeError as exc:
+            if "no valid pixels" not in str(exc):
+                raise
+            band.SetMetadataItem("STATISTICS_VALID_PERCENT", "0")  # as GDAL embeds it for an empty band
+    ds = None
 
 
-def _to_cog(scratch: Path, target: Path, options: list[str], threads: int, *, expect_empty: bool = False) -> None:
+def _to_cog(scratch: Path, target: Path, options: list[str], threads: int) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
-    if expect_empty:
-        gdal.PushErrorHandler(_hide_empty_band_messages)
-    try:
-        # NUM_THREADS is operational, not declared: the bytes are the same for any value.
-        gdal.Translate(str(target), str(scratch), format="COG", creationOptions=[*options, f"NUM_THREADS={threads}"])
-    finally:
-        if expect_empty:
-            gdal.PopErrorHandler()
+    _embed_exact_statistics(scratch)
+    # NUM_THREADS is operational, not declared: the bytes are the same for any value.
+    gdal.Translate(str(target), str(scratch), format="COG", creationOptions=[*options, f"NUM_THREADS={threads}"])
 
 
 def write_temporal_variable(plan: ValidatedBuildPlan, variable: PlannedVariable, staging: Path, scratch_dir: Path) -> list[Path]:
@@ -152,22 +153,19 @@ def write_temporal_variable(plan: ValidatedBuildPlan, variable: PlannedVariable,
             scratch.Close()  # the COG step must read complete scratch files
         scratches.clear()
     options = cog_creation_options(plan, variable)
-    jobs = [
-        (path, staging / layout.cog_path(variable.id, chunk), not plan.empty_timesteps.isdisjoint(layout.chunk_keys(chunk)))
-        for chunk, path in enumerate(scratch_paths)
-    ]
+    jobs = [(path, staging / layout.cog_path(variable.id, chunk)) for chunk, path in enumerate(scratch_paths)]
     # Chunks are independent, so they may convert in parallel; bytes do not depend on the order.
     parallel, threads = conversion_parallelism(_cpu_count(), os.environ.get("SKOPE_RELEASE_WORKERS"))
     log.info("%s: converting %d chunks, %d at a time with %d threads each", variable.id, len(jobs), parallel, threads)
     with ProcessPoolExecutor(max_workers=parallel, mp_context=multiprocessing.get_context("spawn")) as pool:
         futures = {
-            pool.submit(_convert, str(scratch), str(target), options, threads, expect_empty): target
-            for scratch, target, expect_empty in jobs
+            pool.submit(_convert, str(scratch), str(target), options, threads): target
+            for scratch, target in jobs
         }
         for future in as_completed(futures):
             future.result()
             log.info("wrote %s", futures[future].relative_to(staging))
-    for scratch, target, _ in jobs:
+    for scratch, target in jobs:
         scratch.unlink()
         written.append(target)
     return written
@@ -198,9 +196,9 @@ def _cpu_count() -> int:
         return os.cpu_count() or 1
 
 
-def _convert(scratch: str, target: str, options: list[str], threads: int, expect_empty: bool) -> None:
+def _convert(scratch: str, target: str, options: list[str], threads: int) -> None:
     gdalio.configure()
-    _to_cog(Path(scratch), Path(target), options, threads, expect_empty=expect_empty)
+    _to_cog(Path(scratch), Path(target), options, threads)
 
 
 def write_static_variable(plan: ValidatedBuildPlan, variable: PlannedVariable, staging: Path, scratch_dir: Path) -> list[Path]:

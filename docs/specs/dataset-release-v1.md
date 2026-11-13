@@ -966,14 +966,14 @@ Adopting these requirements does not by itself establish Portolan conformance.
 | `INTERLEAVE` | `TILE` | Selected for PaleoCAR v3 by EXP-003 (ADR 0007): the blocks of one tile position across all bands are stored together, so a multi-timestep read is contiguous. `PIXEL` remains the compatibility baseline. |
 | `OVERVIEWS` | `IGNORE_EXISTING` | Rebuild overviews from final encoded values rather than trusting source overviews. |
 | `OVERVIEW_RESAMPLING` | per variable | Category-preserving or continuous method according to scientific semantics. |
-| `STATISTICS` | `YES` | GDAL 3.8 or later forces inclusion rather than copying only available source statistics. |
+| `STATISTICS` | `AUTO` | Copies statistics computed exactly on the build's scratch file. With `YES`, GDAL 3.12 computes them through a VRT that can count one valid cell too few (Section 20.3). |
 | `BIGTIFF` | `IF_SAFER` | Safer compressed-size heuristic, with explicit `YES` when warranted. |
 | `SPARSE_OK` | `FALSE` | Wider interoperability. |
 
 The OGC standard requires tiled IFDs and defines overview and HTTP range
 conformance classes; it does not choose all performance parameters for SKOPE.
 The GDAL driver documents `BLOCKSIZE=512`, automatic overview generation, and
-`STATISTICS=YES`, but representative benchmarks remain necessary.
+statistics creation, but representative benchmarks remain necessary.
 
 ### 12.2 Per-variable encoding
 
@@ -2102,7 +2102,12 @@ Encoding and layout:
 - Temporal chunk size 250; `INTERLEAVE=TILE`; `BLOCKSIZE=128` (EXP-002 to
   EXP-004, ADR 0007); `COMPRESS=ZSTD` with `LEVEL=9`; `PREDICTOR=2` for integer
   and `3` for floating-point data; `OVERVIEWS=IGNORE_EXISTING`;
-  `STATISTICS=YES`; `BIGTIFF=IF_SAFER`; `SPARSE_OK=FALSE`.
+  `STATISTICS=AUTO`; `BIGTIFF=IF_SAFER`; `SPARSE_OK=FALSE`.
+- Embedded statistics are computed on the build's scratch file and copied by
+  `STATISTICS=AUTO`. This works around a GDAL bug, seen in 3.12.0 and 3.12.2
+  and not yet reported upstream: `STATISTICS=YES` computes statistics through
+  a VRT that rebuilds each band's valid-cell count from its 4-digit valid
+  percent by truncating, so the embedded valid percent can be one cell short.
 - Overview resampling is `AVERAGE` for continuous variables and `MODE` for
   categorical variables.
 - Output encoding preserves the source datatype, nodata, scale, and offset,

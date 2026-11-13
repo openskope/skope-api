@@ -8,7 +8,7 @@ import pytest
 from osgeo import gdal
 
 from skope_release import gdalio, inspect_bytes
-from skope_release.cog_writer import _to_cog, cog_creation_options, write_cogs
+from skope_release.cog_writer import _to_cog, write_cogs
 from skope_release.crosscheck import check_stac_against_bytes
 from skope_release.findings import Report
 from skope_release.inspect_bytes import inspect_asset, observe
@@ -175,7 +175,7 @@ def gap_plan(temporal_dataset):
 def test_declared_empty_bands_round_trip(gap_plan, tmp_path, capfd):
     staging = tmp_path / "staging"
     write_cogs(gap_plan, staging, tmp_path / "scratch")
-    assert "no valid pixels" not in capfd.readouterr().err  # GDAL's message is expected and hidden
+    assert "no valid pixels" not in capfd.readouterr().err  # a declared empty band is not an error
 
     report = Report()
     obs = observe(gap_plan, staging, report)
@@ -198,11 +198,6 @@ def test_an_undeclared_empty_band_is_obs_007(gap_plan, tmp_path):
     assert reinspect(undeclared, staging, "cogs/alpha/synth--0100--0101.tif") == {"OBS-007"}
 
 
-def test_gdal_empty_band_message_is_shown_unless_expected(gap_plan, tmp_path, capfd):
-    write_cogs(gap_plan, tmp_path / "staging", tmp_path / "scratch")
-    cog = tmp_path / "staging" / "cogs/alpha/synth--0100--0101.tif"
-    options = cog_creation_options(gap_plan, gap_plan.variables[0])
-    _to_cog(cog, tmp_path / "again.tif", options, 1)
-    assert "no valid pixels" in capfd.readouterr().err
-    with pytest.raises(RuntimeError):  # real failures still raise
-        _to_cog(tmp_path / "missing.tif", tmp_path / "out.tif", options, 1, expect_empty=True)
+def test_a_scratch_that_cannot_be_read_fails_the_conversion(tmp_path):
+    with pytest.raises(RuntimeError):
+        _to_cog(tmp_path / "missing.tif", tmp_path / "out.tif", ["STATISTICS=AUTO"], 1)

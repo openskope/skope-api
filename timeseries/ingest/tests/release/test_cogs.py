@@ -1,10 +1,11 @@
-"""Writing COGs from the build plan (Section 12; COG-006, COG-010, COG-016)."""
+"""Writing COGs from the build plan (Section 12; COG-004, COG-006, COG-010, COG-016)."""
 
 import numpy as np
 import pytest
 from osgeo import gdal
 
-from skope_release.cog_writer import cog_creation_options, conversion_parallelism, write_cogs
+from skope_release import gdalio
+from skope_release.cog_writer import _to_cog, cog_creation_options, conversion_parallelism, write_cogs
 from skope_release.findings import Report
 from skope_release.plan import Producer, StateError
 from skope_release.preflight import DatasetFiles, preflight_dataset
@@ -54,10 +55,29 @@ def test_static_variable(static_dataset, tmp_path):
     assert gdal.Open(str(written[0])).GetRasterBand(1).GetDescription() == "elevation"
 
 
+@pytest.mark.parametrize("valid", [0, 2, 980, 5520])
+def test_embedded_valid_percent_counts_every_valid_cell(tmp_path, valid):
+    """COG-004: 2 and 980 of 5,520 cells are counts GDAL's own STATISTICS=YES gets one short."""
+    gdalio.configure()
+    data = np.full((48, 115), -9999, np.float32)
+    data.flat[:valid] = 1.5
+    scratch = tmp_path / "scratch.tif"
+    ds = gdal.GetDriverByName("GTiff").Create(str(scratch), 115, 48, 1, gdal.GDT_Float32)
+    ds.GetRasterBand(1).WriteArray(data)
+    ds.GetRasterBand(1).SetNoDataValue(-9999)
+    ds = None
+    target = tmp_path / "cog.tif"
+    _to_cog(scratch, target, ["STATISTICS=AUTO", "BLOCKSIZE=128"], 1)
+    with gdal.Open(str(target)) as cog:
+        meta = cog.GetRasterBand(1).GetMetadata()
+    assert meta["STATISTICS_VALID_PERCENT"] == "%.4g" % (100 * valid / data.size)
+    assert ("STATISTICS_MEAN" in meta) == (valid > 0)
+
+
 def test_creation_options_come_from_the_declaration(temporal_dataset):
     plan = plan_for(temporal_dataset())
     options = cog_creation_options(plan, plan.variables[0])
-    assert {"BLOCKSIZE=256", "COMPRESS=ZSTD", "LEVEL=9", "INTERLEAVE=BAND", "STATISTICS=YES", "SPARSE_OK=FALSE"} <= set(options)
+    assert {"BLOCKSIZE=256", "COMPRESS=ZSTD", "LEVEL=9", "INTERLEAVE=BAND", "STATISTICS=AUTO", "SPARSE_OK=FALSE"} <= set(options)
     assert "OVERVIEW_RESAMPLING=AVERAGE" in options and "PREDICTOR=2" in options
 
 
