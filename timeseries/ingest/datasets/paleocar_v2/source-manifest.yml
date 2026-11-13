@@ -1,0 +1,47 @@
+# Sources and build settings for paleocar_v2 (META-004). The two
+# reconstructions are the PaleoCAR v2 `prediction_scaled` products on S3, whose
+# folders use the crop-and-season spelling (`gdd_maize_maysept`,
+# `ppt_wateryear`).
+schema_version: "0.1.0"
+dataset: "paleocar_v2"
+release:
+  created: "2026-11-13T00:00:00Z"
+  # The PaleoCAR v3 layout (ADR 0007), reused without rerunning EXP-002 and
+  # EXP-003: the sources have v3's grid (1560 x 1440), datatype (UInt32), and
+  # source block size (128), and the 2,000 years make 8 files per variable.
+  chunk_size: 250
+  cog:
+    blocksize: 128
+    interleave: "TILE"
+    compress: "ZSTD"
+    level: 9
+    bigtiff: "IF_SAFER"
+variables:
+  - id: "gdd_may_sept"
+    source:
+      uri: "s3://skope/paleocar_v2/gdd_maize_maysept/prediction_scaled.tif"
+      bands: "descriptions"
+    encoding:
+      data_type: "uint16"
+      nodata: 65535
+      scale: 1.0
+      offset: 0.0
+      predictor: 2
+      overview_resampling: "AVERAGE"
+      narrowing:
+        approved_by: "SKOPE maintainers, 2026-11-13"
+        evidence: "EXP-004 on paleocar_v3 (docs/experiments/paleocar-v3-encoding.md), same producer and source datatype; preflight scans every valid value (COG-014)"
+  - id: "ppt_water_year"
+    source:
+      uri: "s3://skope/paleocar_v2/ppt_wateryear/prediction_scaled.tif"
+      bands: "descriptions"
+    encoding:
+      data_type: "uint16"
+      nodata: 65535
+      scale: 1.0
+      offset: 0.0
+      predictor: 2
+      overview_resampling: "AVERAGE"
+      narrowing:
+        approved_by: "SKOPE maintainers, 2026-11-13"
+        evidence: "EXP-004 on paleocar_v3 (docs/experiments/paleocar-v3-encoding.md), same producer and source datatype; preflight scans every valid value (COG-014)"

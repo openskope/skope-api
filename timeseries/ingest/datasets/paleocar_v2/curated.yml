@@ -1,0 +1,93 @@
+# PROVISIONAL (2026-11-13). Written from the legacy registry
+# (deploy/metadata/prod.yml) and NOAA NCEI study 19783 before a science review
+# (spec §20.1). The license, providers, temporal semantics, and units are
+# provisional, as for paleocar_v3. The variable identifiers are the legacy
+# ones, kept unchanged (Section 8.2).
+schema_version: "0.1.0"
+id: "paleocar_v2"
+version: "2"
+profile: "TemporalCubeDataset"
+title: "PaleoCAR: SW USA Paleoclimate Reconstruction (V2)"
+description: >-
+  High spatial resolution (30 arc-second, ~800 m) tree-ring reconstructions of
+  May–September maize growing degree days and water-year precipitation for the
+  Southwestern United States, 1–2000 CE, made with the PaleoCAR method
+  (Bocinsky and Kohler 2014).
+license: "CC-BY-4.0"
+region_name: "Southwestern USA"
+providers:
+  - name: "R. Kyle Bocinsky and Timothy A. Kohler"
+    roles: ["producer", "licensor"]
+  - name: "SKOPE project"
+    roles: ["processor", "host"]
+# REVIEW: the DOI of NOAA study 19783, which publishes these reconstructions.
+doi: "10.25921/8ctk-8v26"
+publications:
+  - citation: >-
+      Bocinsky, R. Kyle, and Timothy A. Kohler. 2014. A 2,000-year
+      reconstruction of the rain-fed maize agricultural niche in the US
+      Southwest. Nature Communications 5:5618.
+    doi: "10.1038/ncomms6618"
+  - citation: >-
+      Bocinsky, R. Kyle, Johnathan Rush, Keith W. Kintigh, and Timothy A.
+      Kohler. 2016. Exploration and exploitation in the macrohistory of the
+      pre-Hispanic Pueblo Southwest. Science Advances 2(4):e1501532.
+    doi: "10.1126/sciadv.1501532"
+lineage: >-
+  PaleoCAR v2 uses the 'Standard' tree-ring chronologies from the ITRDB and
+  selects models by minimizing the predicted residual error sum of squares
+  (PRESS) statistic in a stepwise fashion. For each pixel and year, the model
+  selects the tree-ring chronologies (within a 10-degree buffer of the Four
+  Corners states, from the National Tree Ring Database) that best predict
+  PRISM data for that location, and uses linear regression to estimate the
+  paleoenvironmental variable for that date and location.
+uncertainty:
+  summary: >-
+    There are two primary sources of uncertainty in PaleoCAR reconstructions.
+    The first is that the PaleoCAR algorithm attempts to select the most
+    relevant three ring chronologies for reconstructing a particular variable of
+    interest at a particular time. This selection process, minimizing the
+    predicted residual error sum of squares (PRESS) statistic in a stepwise
+    fashion, can lead to different sets of chronologies being selected for
+    adjacent pixels in a gridded reconstruction. Discrepancies between selected
+    chronologies can manifest as spatiotemporal "artifacts", or discontinuities
+    (Bocinsky and Kohler 2014:8). These are amplified by the chained
+    mean-variance matching technique (Bocinsky et al. 2016:10). Additional
+    uncertainty is associated with the lack of fit in the regression models;
+    fit decreases as fewer tree ring chronologies are available.
+  methodology_href: null
+links:
+  - rel: "via"
+    href: "https://www.ncei.noaa.gov/access/paleo-search/study/19783"
+    title: "NOAA NCEI paleoclimatology study 19783"
+temporal:
+  calendar: "proleptic_gregorian"
+  precision: "year"
+  origin: "0001"
+  end: "2000"
+  step: "P1Y"
+  endpoint_inclusion: "inclusive"
+  timestep_meaning: "aggregation_period"
+  description: >-
+    Each timestep is one year CE, and each variable aggregates its own period
+    labelled by that year: May–September of the year (`gdd_may_sept`), or
+    October of the previous year through September of the year
+    (`ppt_water_year`).
+# Units: the GDD source holds °F GDD, as the legacy registry and NOAA's study
+# ("days x degrees F") state. At the same pixels it averages 1.8 times
+# paleocar_v3's °C GDD maize product (2026-10-08).
+variables:
+  - id: "gdd_may_sept"
+    title: "Summer (May–Sept) Maize Growing Degree Days"
+    description: >-
+      Summer (May–September) growing degree days for maize, reconstructed by
+      PaleoCAR (the prediction_scaled product). Divide by 1.8 for °C GDD.
+    unit: "°F GDD"
+    category: "Growing Degree Days"
+  - id: "ppt_water_year"
+    title: "Water-year (Oct–Sept) Precipitation"
+    description: >-
+      Water-year (the previous October through September) total precipitation,
+      reconstructed by PaleoCAR (the prediction_scaled product).
+    unit: "mm"
+    category: "Precipitation"

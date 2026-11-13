@@ -104,6 +104,27 @@ datasets:
         note: >-
           Provisional: half the largest band maximum in
           paleocar_v3-r-2026.11.04 (7744 °C GDD).
+  paleocar_v2:
+    order: 15
+    map_view:
+      center: { lon: -108.5, lat: 37.0 }
+      zoom: 4.25
+    default_variable: ppt_water_year
+    variables:
+      ppt_water_year:
+        order: 10
+        palette: skope-precip
+        range: [0, 2165.0]
+        note: >-
+          Provisional: paleocar_v3's ppt_water_year range, so the two
+          versions read alike on the same grid.
+      gdd_may_sept:
+        order: 20
+        palette: skope-precip
+        range: [0, 2684.0]
+        note: >-
+          Provisional: paleocar_v3's gdd_maize_may_sept range (1491 °C GDD)
+          in °F GDD, so the two versions read alike on the same grid.
   lbda_v2:
     order: 20
     variables:
