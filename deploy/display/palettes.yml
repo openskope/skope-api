@@ -5,8 +5,29 @@
 #
 # kind: ramp for continuous variables (interpolated across the range), set for
 # categorical ones (one colour per category, in order) (DISP-010).
+#
+# skope-gdd and skope-precip break at a threshold: 5 steps up to the off-white
+# break, 5 to twice it, and 5 more in an overflow band to three times it. A
+# ramp's colours are evenly spaced, so a variable's range of [0, 3 × break]
+# puts the break at the off-white step. The ends match the UI's navy, maroon
+# and teal (skopeui/app/utils/colors.ts).
 
+# Cooler → navy, warmer → maroon, far warmer → violet.
+skope-gdd:
+  kind: ramp
+  colors: ["#1B3478", "#3B5B90", "#6281A9", "#8DA7C3", "#BCCEDD", "#EFF4F8",
+           "#E3C8BE", "#CD9E8F", "#B67464", "#9F4A3B", "#861210",
+           "#7E092A", "#73073B", "#670948", "#590C52", "#4A0F59"]
+
+# Drier → brown, wetter → teal, far wetter → navy.
 skope-precip:
+  kind: ramp
+  colors: ["#6F4017", "#886342", "#A2866B", "#BDA995", "#D9CEC0", "#F7F3EE",
+           "#C1D4D7", "#95B3B9", "#6A939E", "#3F7484", "#05566B",
+           "#044D69", "#024568", "#003B6A", "#08316B", "#152569"]
+
+# Drought indices: brown below zero, teal above, symmetric about zero.
+skope-drought:
   kind: ramp
   colors: ["#B5834A", "#CDAA78", "#DEC499", "#EFE0CA", "#D8EEEA", "#9ECEC6", "#5CAFA8", "#358C87"]
 
