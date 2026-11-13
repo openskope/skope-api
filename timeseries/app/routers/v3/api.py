@@ -9,10 +9,12 @@ from fastapi import (
     Request,
 )
 from fastapi.responses import StreamingResponse
+from pydantic import ValidationError
 
 from app.config import get_settings
 from app.registry.compose import ServedRelease, normalize_key
 from app.registry.metadata import MetadataResponse
+from app.schemas.jobs import ExtractionJobRecord, ExtractionProvenance
 from app.schemas.timeseries import (
     JobStatus,
     JobStatusResponse,
@@ -38,9 +40,6 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 router = APIRouter()
-
-
-_PRECISION_BY_LENGTH = {4: "year", 7: "month", 10: "day", 20: "datetime"}
 
 
 def _normalized(time_range: TimeRange | None, precision: str) -> TimeRange | None:
@@ -242,7 +241,12 @@ async def create_timeseries_job(
     # Generate a unique job ID, store initial job status, initiate background processing, and return the job ID to the client
     job_id = str(uuid.uuid4())
     try:
-        await store.update_job(job_id, {"status": JobStatus.pending})
+        record = ExtractionJobRecord(
+            schema_version="1.0.0",
+            provenance=ExtractionProvenance.from_release(release, payload.variable_id),
+            status=JobStatus.pending,
+        )
+        await store.update_job(job_id, record.stored())
         background_tasks.add_task(
             run_timeseries_pipeline_task,
             job_id=job_id,
@@ -280,22 +284,34 @@ async def analyze_timeseries(
 
     # 410 when the stored extraction can't serve the request, so the client
     # extracts again; 422 always means the request itself needs changing.
-    base_data = extraction.get("base_series")
-    if not base_data:
+    try:
+        record = ExtractionJobRecord.model_validate(extraction)
+    except ValidationError as exc:
         raise HTTPException(
-            status_code=410, detail="No base series found. Re-submit /extract."
+            status_code=410,
+            detail="The stored extraction is incompatible. Re-submit /extract.",
+        ) from exc
+
+    provenance = record.provenance
+    release = request.app.state.registry.get(provenance.dataset_id)
+    if (
+        release is None
+        or not release.has_variable(provenance.variable_id)
+        or provenance
+        != ExtractionProvenance.from_release(release, provenance.variable_id)
+    ):
+        raise HTTPException(
+            status_code=410,
+            detail="The source release has changed. Re-submit /extract.",
         )
-    # Compare keys at the extraction's own precision, never as raw strings.
-    precision = _PRECISION_BY_LENGTH[len(base_data["timesteps"][0])]
+
+    precision = provenance.precision
     payload = _with_normalized_ranges(payload, precision)
+    base_data = record.base_series.model_dump()
 
     # Slicing a stored series that doesn't cover the range would silently drop
     # timesteps.
-    metadata = extraction.get("result", {})
-    release = request.app.state.registry.get(metadata.get("dataset_id"))
-    if release is None or not _covers(
-        base_data["timesteps"], payload.time_range, release, precision
-    ):
+    if not _covers(base_data["timesteps"], payload.time_range, release, precision):
         raise HTTPException(
             status_code=410,
             detail="The extraction doesn't cover the time range. Re-submit /extract.",
@@ -306,7 +322,7 @@ async def analyze_timeseries(
         return execute_analyze_request(
             payload=payload,
             base_series_payload=base_data,
-            extraction_metadata=metadata,
+            extraction_metadata=record.result.model_dump(),
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))

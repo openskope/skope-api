@@ -4,6 +4,7 @@ from fastapi import HTTPException
 
 # Local imports
 from app.registry.compose import ServedRelease
+from app.schemas.jobs import ExtractionJobRecord, ExtractionProvenance
 from app.schemas.timeseries import JobStatus, TimeseriesRequest
 from app.store.jobs import JobStore
 from app.core.timeseries_processing import execute_timeseries_job
@@ -24,9 +25,17 @@ async def run_timeseries_pipeline_task(
     """Extract the timesteps the request handler already selected: the whole
     axis, whatever the requested range. The response holds only the requested
     range (PROTO-007), computed from the whole series."""
+    provenance = ExtractionProvenance.from_release(release, payload.variable_id)
+
+    async def save(status: JobStatus, **fields):
+        record = ExtractionJobRecord(
+            schema_version="1.0.0", provenance=provenance, status=status, **fields
+        )
+        await store.update_job(job_id, record.stored())
+
     try:
         with anyio.fail_after(payload.max_processing_time / 1000):
-            await store.update_job(job_id, {"status": JobStatus.processing})
+            await save(JobStatus.processing)
 
             grid = release.overview.dataset.grid
             timeseries_response, base_series_payload = await execute_timeseries_job(
@@ -40,13 +49,10 @@ async def run_timeseries_pipeline_task(
             # Save result + base series to JobStore.
             # base_series stores both mean and median zonal stats with timestep index,
             # enabling the synchronous /analyze endpoint to apply any transform/smoother without additional S3 reads.
-            await store.update_job(
-                job_id,
-                {
-                    "status": JobStatus.success,
-                    "result": timeseries_response.model_dump(),
-                    "base_series": base_series_payload,
-                },
+            await save(
+                JobStatus.success,
+                result=timeseries_response,
+                base_series=base_series_payload,
             )
 
     except TimeoutError:
@@ -55,30 +61,21 @@ async def run_timeseries_pipeline_task(
             job_id,
             payload.max_processing_time,
         )
-        await store.update_job(
-            job_id,
-            {
-                "status": JobStatus.timed_out,
-                "error": f"Processing exceeded {payload.max_processing_time} ms.",
-            },
+        await save(
+            JobStatus.timed_out,
+            error=f"Processing exceeded {payload.max_processing_time} ms.",
         )
 
     except ValueError as ve:
         logger.error(f"Job {job_id} failed validation: {ve}")
-        await store.update_job(job_id, {"status": JobStatus.failed, "error": str(ve)})
+        await save(JobStatus.failed, error=str(ve))
 
     except HTTPException as he:
         logger.error(f"Job {job_id} failed upstream fetch: {he.detail}")
-        await store.update_job(job_id, {"status": JobStatus.failed, "error": he.detail})
+        await save(JobStatus.failed, error=he.detail)
 
     except Exception:
         logger.exception("Job %s encountered a fatal execution error.", job_id)
-        await store.update_job(
-            job_id,
-            {
-                "status": JobStatus.failed,
-                "error": "An internal processing error occurred.",
-            },
-        )
+        await save(JobStatus.failed, error="An internal processing error occurred.")
     finally:
         job_controller.release()

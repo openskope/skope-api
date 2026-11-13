@@ -8,6 +8,7 @@ client.post() returns only after the task has written its final status.
 """
 
 import time
+from dataclasses import replace
 
 import pytest
 from fastapi.responses import Response
@@ -15,6 +16,7 @@ from fastapi.testclient import TestClient
 
 from app.tests.pipeline.conftest import SINGLE_CELL_POLYGON
 from app.core.job_control import ExtractionJobController, get_job_controller
+from app.schemas.jobs import ExtractionJobRecord
 
 EXTRACT_URL = "/timeseries/extract"
 ANALYZE_URL = "/timeseries/analyze"
@@ -369,23 +371,14 @@ def test_extract_reference_interval_can_lie_outside_its_range(pipeline_client):
 async def test_analyze_rejects_a_range_the_extraction_does_not_cover(
     pipeline_client, job_store
 ):
-    await job_store.update_job(
-        "short-job",
-        {
-            "status": "SUCCESS",
-            "result": {
-                "dataset_id": "test_annual",
-                "variable_id": "ppt",
-                "area": 1.0,
-                "n_cells": 1,
-            },
-            "base_series": {
-                "timesteps": ["0002", "0003", "0004"],
-                "mean": [2.0, 3.0, 4.0],
-                "median": [2.0, 3.0, 4.0],
-            },
-        },
-    )
+    job_id = _do_extract(pipeline_client, "test_annual", "0001", "0005")
+    stored = await job_store.get_job_status(job_id)
+    stored["base_series"] = {
+        "timesteps": ["0002", "0003", "0004"],
+        "mean": [2.0, 3.0, 4.0],
+        "median": [2.0, 3.0, 4.0],
+    }
+    await job_store.update_job("short-job", stored)
 
     covered = pipeline_client.post(
         ANALYZE_URL,
@@ -399,6 +392,83 @@ async def test_analyze_rejects_a_range_the_extraction_does_not_cover(
     assert covered.status_code == 200
     # 410, not 422: the client extracts again rather than showing an error.
     assert uncovered.status_code == 410
+
+
+@pytest.mark.integration
+async def test_job_lifecycle_keeps_private_release_provenance(
+    pipeline_client, job_store, monkeypatch
+):
+    written = []
+    update = job_store.update_job
+
+    async def capture(job_id, data):
+        written.append(ExtractionJobRecord.model_validate(data))
+        await update(job_id, data)
+
+    monkeypatch.setattr(job_store, "update_job", capture)
+    job_id = _do_extract(pipeline_client, "test_annual", "0001", "0005")
+    assert [record.status for record in written] == ["PENDING", "PROCESSING", "SUCCESS"]
+    release = pipeline_client.app.state.registry.get("test_annual")
+    for record in written:
+        assert record.schema_version == "1.0.0"
+        assert record.provenance.release_id == release.overview.release_id
+        assert (
+            record.provenance.declaration_digest == release.overview.declaration_digest
+        )
+        assert record.provenance.precision == "year"
+    assert set(_get_status(pipeline_client, job_id)) == {"status", "result"}
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "field,value",
+    [("release_id", "test_annual-r-2026.02.02"), ("declaration_digest", "e" * 64)],
+)
+def test_analyze_rejects_a_previous_source_release(
+    pipeline_client, monkeypatch, field, value
+):
+    job_id = _do_extract(pipeline_client, "test_annual", "0001", "0005")
+    releases = pipeline_client.app.state.registry.releases
+    release = releases["test_annual"]
+    monkeypatch.setitem(
+        releases,
+        "test_annual",
+        replace(release, overview=release.overview.model_copy(update={field: value})),
+    )
+
+    response = pipeline_client.post(ANALYZE_URL, json=_analyze_payload(job_id))
+
+    assert response.status_code == 410
+    assert "source release has changed" in response.json()["detail"]
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("schema_version", "2.0.0"),
+        ("schema_version", None),
+        ("provenance", None),
+        ("base_series", {"timesteps": [], "mean": [], "median": []}),
+        ("base_series", {"timesteps": ["bad"], "mean": [1], "median": [1]}),
+        ("base_series", {"timesteps": ["0001"], "mean": [1, 2], "median": [1]}),
+    ],
+)
+async def test_analyze_requires_a_supported_job_record(
+    pipeline_client, job_store, field, value
+):
+    job_id = _do_extract(pipeline_client, "test_annual", "0001", "0005")
+    stored = await job_store.get_job_status(job_id)
+    if value is None:
+        stored.pop(field)
+    else:
+        stored[field] = value
+    await job_store.update_job(job_id, stored)
+
+    response = pipeline_client.post(ANALYZE_URL, json=_analyze_payload(job_id))
+
+    assert response.status_code == 410
+    assert "incompatible" in response.json()["detail"]
 
 
 @pytest.mark.integration

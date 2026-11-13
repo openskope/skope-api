@@ -107,6 +107,11 @@ make logs ENVIRONMENT=<environment>
 Rollback rebuilds the images from the selected commit; image tags alone are
 not a rollback mechanism. A rollback never modifies or deletes a release. Treat
 extraction jobs interrupted by either deploy as abandoned and resubmit them.
+Completed jobs retain their source release ID, declaration digest, and temporal
+precision in their internal record. Analysis returns HTTP 410 if the currently
+served release differs, or if a job uses an older, unsupported record format;
+clients must submit a new extraction. These internal fields are not included
+in job status responses.
 
 ## Routine operations
 
