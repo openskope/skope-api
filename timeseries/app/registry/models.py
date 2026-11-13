@@ -74,10 +74,30 @@ class ManifestDeclaration(Strict):
     digest: Sha256Hex
 
 
-class ManifestSource(Strict):
-    id: Identifier
+class ManifestInput(Strict):
     href: NonEmpty
     checksum: Multihash
+
+
+class ManifestPrepare(Strict):
+    script: NonEmpty
+    script_sha256: Sha256Hex
+    inputs: list[ManifestInput] = Field(min_length=1)
+
+
+class ManifestSource(Strict):
+    id: Identifier
+    href: NonEmpty | None = None
+    prepare: ManifestPrepare | None = None
+    checksum: Multihash
+
+    @model_validator(mode="after")
+    def _one_origin(self):
+        if (self.href is None) == (self.prepare is None):
+            raise ValueError(
+                "a source records exactly one of `href` or `prepare` (MAN-002)"
+            )
+        return self
 
 
 class ManifestFile(Strict):

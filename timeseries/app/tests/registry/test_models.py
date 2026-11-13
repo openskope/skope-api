@@ -34,6 +34,38 @@ def test_real_manifest_parses():
     assert any(f.path == "overview.yml" for f in manifest.files)
 
 
+PREPARE = {
+    "script": "scripts/prepare_lbda_v2.py",
+    "script_sha256": "c" * 64,
+    "inputs": [{"href": "https://example.org/lbda.nc", "checksum": "1220" + "d" * 64}],
+}
+
+
+def _manifest_with_source(source):
+    doc = json.loads((REAL / "release-manifest.json").read_text())
+    doc["sources"] = [{"id": "pmdi", "checksum": "1220" + "e" * 64, **source}]
+    return doc
+
+
+def test_prepared_source_parses():
+    manifest = ReleaseManifest.model_validate(
+        _manifest_with_source({"prepare": PREPARE})
+    )
+
+    assert manifest.sources[0].href is None
+    assert manifest.sources[0].prepare.inputs[0].href == "https://example.org/lbda.nc"
+
+
+@pytest.mark.parametrize(
+    "source",
+    [{}, {"href": "s3://test/pmdi.tif", "prepare": PREPARE}],
+    ids=["neither", "both"],
+)
+def test_source_needs_exactly_one_origin(source):
+    with pytest.raises(ValidationError, match="MAN-002"):
+        ReleaseManifest.model_validate(_manifest_with_source(source))
+
+
 def test_unknown_overview_field_is_rejected():
     doc = _overview_doc()
     doc["dataset"]["colormap"] = "viridis"
