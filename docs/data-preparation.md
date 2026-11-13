@@ -1,5 +1,32 @@
 # Dataset Preparation Runbook
 
+> **Legacy; proposed for deletion.** This runbook describes the pipeline that
+> prepared the `/data` tree with `lookup.json` and `metadata.yml` registries.
+> The API no longer reads any of these: it serves the dataset releases pinned
+> in `deploy/releases/<environment>.yml`. To build a dataset, follow the
+> [ingest README](../timeseries/ingest/README.md) instead.
+>
+> Proposed for deletion together with this runbook, once the legacy migration
+> is no longer needed for reference (MIG-004 allows removing it now that
+> releases pass their acceptance tests):
+>
+> - `timeseries/ingest/src/cog_stac_pipeline/`
+> - `timeseries/ingest/tests/test_config.py`, `test_datetime_utils.py`,
+>   `test_main.py`, `test_manifest.py`, and `test_metadata.py`
+> - `timeseries/ingest/manifests/` (`paleocar_v3.yml` and `legacy/`)
+> - `timeseries/ingest/metadata.yml` and `timeseries/ingest/legacy-metadata.yml`
+> - `scripts/migrate-legacy-datasets.sh`
+> - the `ingest`, `preflight-legacy-data`, and `migrate-legacy-data` Make
+>   targets, with `LEGACY_DATA_ROOT`, `MIGRATED_DATA_ROOT`, and
+>   `MIGRATION_SCRATCH_ROOT`
+> - the `ingest` service in `deploy/compose/base.yml`
+> - in `timeseries/ingest/pyproject.toml`: the `cog-stac-pipeline` script, and
+>   the dependencies only it uses (`boto3`, `pystac`, `python-dateutil`,
+>   `rio-stac`); the project name `cog-stac-pipeline` becomes the release
+>   tool's
+>
+> `timeseries/metadata.yml` and `deploy/metadata/` go at the API/UI cutover.
+
 This runbook prepares the dataset tree mounted at `/data` by the API and
 TiTiler. Development uses `./cog-input`; staging and production use
 `/srv/datasets`. Preparing data and deploying the API are separate operations:
@@ -168,7 +195,7 @@ and processing date with the release.
 4. Deploy staging with
    `make deploy-staging DATASET_RELEASE_ROOT=/srv/datasets/releases/skope-r-2026.09.12`.
 5. Deploy the matching API registry using the
-   [deployment runbook](deployment.md), then test metadata, a representative
+   [app README](../timeseries/app/README.md), then test metadata, a representative
    tile, and a small extraction through the public hostname.
 6. Promote the same validated artifact to production; do not rerun the pipeline
    independently for production.
