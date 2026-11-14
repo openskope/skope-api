@@ -201,9 +201,14 @@ The pin file selects the releases; the target takes no release argument. It:
    progress. This reads every byte, about an hour for a 60 GB release, and runs
    on every deploy, including a rollback or a redeploy of the same releases.
    `make verify-releases` runs the same verification on its own;
-3. recreates the Compose containers, removing orphaned ones, with the pin's
+3. recreates changed Compose services, removing orphaned ones, with the pin's
    release root mounted read-only at `/releases` in the API and TiTiler, and
-   waits up to 120 seconds for the API, Redis, and TiTiler health checks;
+   waits up to 120 seconds for the API, Redis, and TiTiler health checks.
+
+   Unchanged Redis containers stay running, preserving cached job records. Redis
+   persistence is disabled, so recreating Redis or restarting its process still
+   discards those records.
+
 4. appends one line describing the deploy to the
    [deployment log](#the-deployment-log).
 

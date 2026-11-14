@@ -65,7 +65,7 @@ DEPLOY_RUN = $(COMPOSE) run --rm --no-deps --user "$$(id -u):$$(id -g)" \
 deploy: check-release-pin build ##- Deploy ENVIRONMENT (defaults to dev): verify, start, wait for healthy services, and log the deploy
 	@mkdir -p "$(DEPLOY_LOG_DIR)"
 	$(DEPLOY_RUN) python -m app.registry.verify --record $(DEPLOY_PENDING)
-	$(COMPOSE) up -d --remove-orphans --force-recreate --wait --wait-timeout 120
+	$(COMPOSE) up -d --remove-orphans --wait --wait-timeout 120
 	$(DEPLOY_RUN) python -m app.registry.deployment $(DEPLOY_PENDING) /deploy-state/$(notdir $(DEPLOY_LOG)) \
 		--environment $(ENVIRONMENT) \
 		--commit "$$(git rev-parse HEAD)$$(test -z "$$(git status --porcelain)" || echo -dirty)" \
