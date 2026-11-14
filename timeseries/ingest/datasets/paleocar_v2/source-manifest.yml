@@ -20,6 +20,7 @@ variables:
   - id: "gdd_may_sept"
     source:
       uri: "s3://skope/paleocar_v2/gdd_maize_maysept/prediction_scaled.tif"
+      checksum: "1220e9afa37aed9cbc6ce8002288d7fe8da0e2c1b24da5685ab3d834c17cee8505f8"
       bands: "descriptions"
     encoding:
       data_type: "uint16"
@@ -34,6 +35,7 @@ variables:
   - id: "ppt_water_year"
     source:
       uri: "s3://skope/paleocar_v2/ppt_wateryear/prediction_scaled.tif"
+      checksum: "122060d1bddc59e73ec9336574d4391fc5d38ba27c6ed21160fedc4a3632cd157a44"
       bands: "descriptions"
     encoding:
       data_type: "uint16"
