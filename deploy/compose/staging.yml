@@ -3,16 +3,6 @@ services:
     build:
       args:
         ENVIRONMENT: staging
-      dockerfile: deploy/Dockerfile
-    command:
-      - gunicorn
-      - "--bind"
-      - "0.0.0.0:8000"
-      - "--workers"
-      - "4"
-      - "--worker-class"
-      - "uvicorn.workers.UvicornWorker"
-      - "app.main:app"
     environment:
       FORWARDED_ALLOW_IPS: '*'
     image: openskope/skope-api:staging

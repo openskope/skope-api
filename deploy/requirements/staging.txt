@@ -1,3 +1,0 @@
-gunicorn==26.2.0
-httptools==0.8.0
-uvloop==0.22.1

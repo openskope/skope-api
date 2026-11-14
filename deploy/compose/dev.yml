@@ -3,6 +3,8 @@ services:
     build:
       args:
         ENVIRONMENT: dev
+        REQUIREMENTS: dev
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--reload"]
     image: openskope/skope-api:dev
     volumes:
       - ./timeseries/app:/code/app

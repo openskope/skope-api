@@ -1,18 +1,23 @@
-FROM python:3.13
+# syntax=docker/dockerfile:1
+FROM python:3.13-slim-bookworm
 
 ARG ENVIRONMENT
+ARG REQUIREMENTS=production
 ENV ENVIRONMENT="${ENVIRONMENT}"
 
-RUN apt-get update && apt-get install -y libgdal-dev && rm -rf /var/lib/apt/lists/*
+# Rasterio's bundled GDAL still links to the system XML parser.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libexpat1 \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /code
 
-RUN pip install --no-cache-dir --upgrade pip
-
 COPY deploy/requirements /code/requirements
 
-RUN pip install --no-cache-dir \
-    -r requirements/base.txt -r requirements/${ENVIRONMENT}.txt
+# Rasterio wheels bundle GDAL, so no system GDAL or build tools are needed.
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --only-binary=:all: \
+    -r requirements/base.txt -r requirements/${REQUIREMENTS}.txt
 
 COPY deploy/logging/${ENVIRONMENT}.yml /code/config/logging.yml
 COPY deploy/settings/${ENVIRONMENT}.yml /code/config/app_settings.yml
@@ -26,4 +31,4 @@ COPY timeseries/app /code/app
 RUN useradd --uid 1000 --create-home skope
 USER skope
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--reload"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "app.main:app"]
