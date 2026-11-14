@@ -1,5 +1,8 @@
 services:
   server:
+    user: "${SKOPE_OPERATOR_UID:?run through make}:${SKOPE_OPERATOR_GID:?run through make}"
+    environment:
+      HOME: /tmp
     build:
       args:
         ENVIRONMENT: dev

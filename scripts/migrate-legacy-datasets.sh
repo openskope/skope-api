@@ -1,6 +1,9 @@
 #!/bin/sh
 set -eu
 
+export SKOPE_OPERATOR_UID=${SKOPE_OPERATOR_UID:-$(id -u)}
+export SKOPE_OPERATOR_GID=${SKOPE_OPERATOR_GID:-$(id -g)}
+
 if [ "$#" -ne 3 ]; then
     echo "usage: $0 LEGACY_DATA_ROOT MIGRATED_DATA_ROOT MIGRATION_SCRATCH_ROOT" >&2
     exit 2

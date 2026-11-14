@@ -58,6 +58,7 @@ services:
       - internal_geospatial_net
 
   ingest:
+    user: "${SKOPE_OPERATOR_UID:?run through make}:${SKOPE_OPERATOR_GID:?run through make}"
     build:
       context: .
       dockerfile: deploy/Dockerfile.ingest
@@ -76,6 +77,7 @@ services:
       INPUT_MANIFEST_PATH: /ingest/manifests/paleocar_v3.yml
       METADATA_FILE_PATH: /ingest/metadata.yml
       OUTPUT_DIR: /output/paleocar_v3
+      HOME: /tmp
       TRUNC_TO_UINT16: "true"
     volumes:
       - ./timeseries/ingest/metadata.yml:/ingest/metadata.yml
@@ -83,6 +85,7 @@ services:
       - ./timeseries/ingest/output:/output
 
   release:
+    user: "${SKOPE_OPERATOR_UID:?run through make}:${SKOPE_OPERATOR_GID:?run through make}"
     build:
       context: .
       dockerfile: deploy/Dockerfile.ingest
@@ -103,6 +106,7 @@ services:
       SKOPE_RELEASE_ROOT: /releases
       SKOPE_RELEASE_AUDIT_ROOT: /audit
       SKOPE_RELEASE_PINS: /ingest/deploy/releases
+      HOME: /tmp
     volumes:
       - ./timeseries/ingest/datasets:/ingest/datasets:ro
       - ./deploy:/ingest/deploy:ro
@@ -111,6 +115,10 @@ services:
       - ${RELEASE_AUDIT_ROOT:-./timeseries/ingest/output/audit}:/audit
 
   ingest-test:
+    user: "${SKOPE_OPERATOR_UID:?run through make}:${SKOPE_OPERATOR_GID:?run through make}"
+    environment:
+      HOME: /tmp
+      PYTEST_ADDOPTS: "-o cache_dir=/tmp/pytest-cache"
     build:
       context: .
       dockerfile: deploy/Dockerfile.ingest

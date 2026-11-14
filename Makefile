@@ -1,5 +1,8 @@
 ENVIRONMENT ?= dev
 COMPOSE_PROJECT_NAME ?= skope-api
+# Bind-mounted source and generated files belong to the invoking operator.
+export SKOPE_OPERATOR_UID := $(shell id -u)
+export SKOPE_OPERATOR_GID := $(shell id -g)
 LEGACY_DATA_ROOT ?= /srv/ingest/incoming/skope
 MIGRATED_DATA_ROOT ?= timeseries/ingest/output/legacy-migration
 MIGRATION_SCRATCH_ROOT ?= timeseries/ingest/output/legacy-migration-scratch
@@ -19,7 +22,7 @@ TEST_COMPOSE = SKOPE_RELEASE_ROOT=$(CURDIR)/timeseries/app/tests/registry/data \
 	-f deploy/compose/base.yml \
 	-f deploy/compose/dev.yml
 
-.PHONY: help check-environment check-release-pin verify-releases prepare config build deploy \
+.PHONY: help check-environment check-release-pin verify-releases prepare prepare-release config build deploy \
 	deploy-dev deploy-staging deploy-production down restart logs ps ingest release release-fetch release-pin \
 	preflight-legacy-data migrate-legacy-data test test-api test-ingest
 
@@ -59,7 +62,7 @@ verify-releases: check-release-pin ##- Fully verify the pinned releases' bytes (
 DEPLOY_LOG ?= deploy-state/$(ENVIRONMENT).jsonl
 DEPLOY_LOG_DIR = $(abspath $(dir $(DEPLOY_LOG)))
 DEPLOY_PENDING = /deploy-state/.pending-$(ENVIRONMENT).json
-DEPLOY_RUN = $(COMPOSE) run --rm --no-deps --user "$$(id -u):$$(id -g)" \
+DEPLOY_RUN = $(COMPOSE) run --rm --no-deps --user "$(SKOPE_OPERATOR_UID):$(SKOPE_OPERATOR_GID)" \
 	-v "$(DEPLOY_LOG_DIR)":/deploy-state server
 
 deploy: check-release-pin build ##- Deploy ENVIRONMENT (defaults to dev): verify, start, wait for healthy services, and log the deploy
@@ -94,6 +97,7 @@ ps: check-environment ##- Show service status for the selected environment
 	$(COMPOSE) ps
 
 ingest: prepare ##- Build and run the local COG/STAC ingest pipeline container
+	@mkdir -p cog-input timeseries/ingest/output
 	$(COMPOSE) --profile ingest build ingest
 	$(COMPOSE) --profile ingest run --rm ingest
 
@@ -102,26 +106,27 @@ RELEASE_AUDIT_ROOT ?= ./timeseries/ingest/output/audit
 RELEASE_SOURCE_MIRROR ?= ./cog-input
 export RELEASE_ROOT RELEASE_AUDIT_ROOT RELEASE_SOURCE_MIRROR
 
-release: prepare ##- Run the dataset release tool, e.g. make release ARGS="preflight paleocar_v3"
-	@mkdir -p "$(RELEASE_ROOT)" "$(RELEASE_AUDIT_ROOT)"
+prepare-release: prepare
+	@mkdir -p "$(RELEASE_ROOT)" "$(RELEASE_AUDIT_ROOT)" "$(RELEASE_SOURCE_MIRROR)"
+
+release: prepare-release ##- Run the dataset release tool, e.g. make release ARGS="preflight paleocar_v3"
 	@$(COMPOSE) --profile ingest build release
 	PRODUCER_REVISION="$$(git rev-parse HEAD)$$(test -z "$$(git status --porcelain)" || echo -dirty)" \
 		$(COMPOSE) --profile ingest run --rm release $(ARGS)
 
 # The mirror is mounted writable only here; preflight and build read it read-only.
-release-fetch: prepare ##- Copy declared sources into the source mirror, e.g. make release-fetch ARGS="paleocar_v3"
-	@mkdir -p "$(RELEASE_SOURCE_MIRROR)"
+release-fetch: prepare-release ##- Copy declared sources into the source mirror, e.g. make release-fetch ARGS="paleocar_v3"
 	@$(COMPOSE) --profile ingest build release
 	$(COMPOSE) --profile ingest run --rm -v "$(abspath $(RELEASE_SOURCE_MIRROR))":/mirror \
 		-e SKOPE_RELEASE_SOURCE_MIRROR=/mirror release fetch $(ARGS)
 
 # The ledgers and pin files are mounted writable only here, and the command runs
 # as the calling user so the files it writes stay theirs.
-release-pin: prepare ##- Show the edits that pin a release, e.g. make release-pin MANIFEST=path/to/release-manifest.json PIN_ENV=staging; add WRITE=1 to apply them
+release-pin: prepare-release ##- Show the edits that pin a release, e.g. make release-pin MANIFEST=path/to/release-manifest.json PIN_ENV=staging; add WRITE=1 to apply them
 	@test -n "$(MANIFEST)" || { echo "set MANIFEST to a release's release-manifest.json (or a copy of it)" 1>&2; exit 2; }
 	@test -n "$(PIN_ENV)" || { echo "set PIN_ENV to the environment to pin it in (dev, staging, or prod)" 1>&2; exit 2; }
 	@$(COMPOSE) --profile ingest build release
-	$(COMPOSE) --profile ingest run --rm --user "$$(id -u):$$(id -g)" \
+	$(COMPOSE) --profile ingest run --rm \
 		-v "$(abspath timeseries/ingest/datasets)":/pin/datasets \
 		-v "$(abspath deploy/releases)":/pin/releases \
 		-v "$(abspath $(MANIFEST))":/pin/release-manifest.json:ro \
@@ -156,7 +161,7 @@ test-api: prepare ##- Build the development image and run the API tests
 	$(TEST_COMPOSE) build server titiler
 	@trap '$(TEST_COMPOSE) down --remove-orphans' EXIT INT TERM; \
 		$(TEST_COMPOSE) run --rm -v "$(CURDIR)/tests/contracts:/code/tests/contracts:ro" server sh -c \
-		'black --check --extend-exclude "app/vendor/" app && pytest -c app/pytest.ini app/tests'
+		'black --check --extend-exclude "app/vendor/" app && pytest -o cache_dir=/tmp/pytest-cache -c app/pytest.ini app/tests'
 
 test-ingest: override ENVIRONMENT=dev
 test-ingest: prepare ##- Build and run the ingest tests

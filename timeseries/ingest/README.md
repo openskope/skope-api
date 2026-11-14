@@ -16,6 +16,13 @@ requirement IDs such as OBS-011 refer to it.
 Run every command from the repository root. Each one rebuilds its image
 first.
 
+Make runs ingest, release commands, and tests with the invoking user's UID/GID.
+It creates output, audit, and source-mirror directories before mounting them,
+so generated files belong to the operator. These directories must be writable
+by that user; existing files owned by another account are not changed
+automatically. Published releases still receive their read-only publication
+permissions. Containers use `/tmp` as their writable home directory.
+
 | Command | Does |
 | --- | --- |
 | `make release-fetch ARGS="<dataset>…"` | Copy sources into the source mirror and run prepare steps |

@@ -28,7 +28,8 @@ COPY timeseries/app /code/app
 
 # Run unprivileged, as the same uid as TiTiler, so both read releases the same
 # way. The app's own files stay root-owned and read-only to it.
-RUN useradd --uid 1000 --create-home skope
+RUN chmod -R a+rX /code/app /code/config \
+    && useradd --uid 1000 --create-home skope
 USER skope
 
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "app.main:app"]

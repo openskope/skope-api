@@ -19,6 +19,11 @@ Host provisioning, DNS, TLS, and the public reverse proxy are owned by
 | Staging | `/srv/apps/skope-api` | `deploy/releases/staging.yml` | `0.0.0.0:8001` | `make deploy-staging` |
 | Production | `/srv/apps/skope-api` | `deploy/releases/prod.yml` | `0.0.0.0:8001` | `make deploy-production` |
 
+Make runs the development API and tests with the invoking user's UID/GID, so
+bind-mounted source stays readable and generated files belong to that user.
+Staging and production API containers, and TiTiler in every environment, keep
+their fixed unprivileged image identity. No host account is baked into an image.
+
 ## Serving releases
 
 A deployment serves exactly the releases its environment pins. At startup the
