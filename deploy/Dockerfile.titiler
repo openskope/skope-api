@@ -1,14 +1,13 @@
-FROM ghcr.io/developmentseed/titiler:latest
+FROM ghcr.io/developmentseed/titiler:2.4.0@sha256:5b739117ff60d3cef9b0e0b8d9f4d628032c00a4965117e3f745cadc79fa7287
 
-COPY titiler_custom/ /titiler_custom/
-COPY deploy/display/palettes.yml /titiler_custom/palettes.yml
+WORKDIR /app
+COPY skope_titiler/ /app/skope_titiler/
+COPY deploy/display/palettes.yml /app/skope_titiler/palettes.yml
 
 USER root
-RUN python3 /titiler_custom/build_colormaps.py
+RUN chmod -R a+rX /app/skope_titiler && python3 -m skope_titiler.build_colormaps
 USER 1000
-
-WORKDIR /titiler_custom
 
 # Tile reads don't run in parallel on threads, so each worker process serves
 # one tile at a time. The host's 8 vCPUs are shared with the API's workers.
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80", "--workers", "2"]
+CMD ["uvicorn", "skope_titiler.main:app", "--host", "0.0.0.0", "--port", "80", "--workers", "2"]
