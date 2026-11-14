@@ -1,0 +1,52 @@
+{
+  "$defs": {
+    "LedgerEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "declaration_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Declaration Digest",
+          "type": "string"
+        },
+        "release_id": {
+          "pattern": "^[a-z][a-z0-9_]*-r-\\d{4}\\.\\d{2}\\.\\d{2}(-([2-9]|[1-9]\\d+))?$",
+          "title": "Release Id",
+          "type": "string"
+        },
+        "withdrawn": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Withdrawn"
+        }
+      },
+      "required": [
+        "release_id",
+        "declaration_digest"
+      ],
+      "title": "LedgerEntry",
+      "type": "object"
+    }
+  },
+  "$id": "https://api.openskope.org/schemas/release/release-ledger/v0.1.0/schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "releases": {
+      "items": {
+        "$ref": "#/$defs/LedgerEntry"
+      },
+      "title": "Releases",
+      "type": "array"
+    }
+  },
+  "title": "Ledger",
+  "type": "object"
+}

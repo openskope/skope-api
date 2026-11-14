@@ -1,0 +1,6 @@
+# Release IDs assigned to lbda_v2 and the declaration each one was built
+# from (REL-006, spec §20.3). An ID is never reused; a bad release gets
+# `withdrawn: <reason>` instead of being removed.
+releases:
+  - release_id: "lbda_v2-r-2026.11.12"
+    declaration_digest: "7d97a7b8502e90639632e154f0a088f68f999e116b9a948bb48ed4f2d9c6944d"

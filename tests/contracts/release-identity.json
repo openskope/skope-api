@@ -1,0 +1,57 @@
+[
+  {
+    "name": "consistent",
+    "document": null,
+    "path": [],
+    "value": null,
+    "valid": true
+  },
+  {
+    "name": "manifest_digest",
+    "document": "manifest",
+    "path": [
+      "declaration",
+      "digest"
+    ],
+    "value": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "valid": false
+  },
+  {
+    "name": "overview_digest",
+    "document": "overview",
+    "path": [
+      "declaration_digest"
+    ],
+    "value": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "valid": false
+  },
+  {
+    "name": "overview_release",
+    "document": "overview",
+    "path": [
+      "release_id"
+    ],
+    "value": "another-r-2026.01.01",
+    "valid": false
+  },
+  {
+    "name": "overview_dataset",
+    "document": "overview",
+    "path": [
+      "dataset",
+      "id"
+    ],
+    "value": "another",
+    "valid": false
+  },
+  {
+    "name": "overview_version",
+    "document": "overview",
+    "path": [
+      "dataset",
+      "version"
+    ],
+    "value": "2",
+    "valid": false
+  }
+]

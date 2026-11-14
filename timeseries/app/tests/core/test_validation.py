@@ -5,48 +5,26 @@ from app.core.validation import (
     estimate_cell_count,
     validate_dataset_and_variable,
     validate_geom_size,
-    validate_tile_style,
 )
 
 # ---------------------------------------------------------------------------
 # validate_dataset_and_variable
 
 
-def test_validate_dataset_and_variable_happy_path(minimal_registry):
-    validate_dataset_and_variable(minimal_registry, "valid-ds", "ppt")  # no exception
+def test_validate_dataset_and_variable_returns_the_release(served_registry):
+    release = validate_dataset_and_variable(served_registry, "annual", "ppt")
+
+    assert release.dataset_id == "annual"
 
 
-def test_validate_dataset_and_variable_unknown_dataset(minimal_registry):
+def test_validate_dataset_and_variable_unknown_dataset(served_registry):
     with pytest.raises(ValueError, match="does-not-exist"):
-        validate_dataset_and_variable(minimal_registry, "does-not-exist", "ppt")
+        validate_dataset_and_variable(served_registry, "does-not-exist", "ppt")
 
 
-def test_validate_dataset_and_variable_unknown_variable(minimal_registry):
+def test_validate_dataset_and_variable_unknown_variable(served_registry):
     with pytest.raises(ValueError, match="no-such-var"):
-        validate_dataset_and_variable(minimal_registry, "valid-ds", "no-such-var")
-
-
-# ---------------------------------------------------------------------------
-# validate_tile_style
-
-
-def test_validate_tile_style_normalizes_numeric_range():
-    assert validate_tile_style("viridis", "0.0,100.00") == ("viridis", "0,100")
-
-
-@pytest.mark.parametrize(
-    "colormap,rescale",
-    [
-        ("../viridis", "0,100"),
-        ("viridis", "0"),
-        ("viridis", "nan,100"),
-        ("viridis", "100,0"),
-        ("viridis", "0,0"),
-    ],
-)
-def test_validate_tile_style_rejects_invalid_values(colormap, rescale):
-    with pytest.raises(ValueError):
-        validate_tile_style(colormap, rescale)
+        validate_dataset_and_variable(served_registry, "annual", "no-such-var")
 
 
 # ---------------------------------------------------------------------------
@@ -58,7 +36,8 @@ def test_estimate_cell_count_geographic():
     shapes = [box(-110.0, 37.0, -109.0, 38.0)]
     transform = [0.00833, 0.0, -115.0, 0.0, -0.00833, 43.0]
     result = estimate_cell_count(shapes, transform, "EPSG:4326")
-    assert result == 120 * 120
+    # The bounds span columns and rows 600.24 .. 720.29: cells 600 .. 720.
+    assert result == 121 * 121
 
 
 def test_estimate_cell_count_projected_uses_exact_crs_transform():
@@ -68,7 +47,7 @@ def test_estimate_cell_count_projected_uses_exact_crs_transform():
 
     # The precise UTM footprint differs from the former square
     # meters-per-degree approximation.
-    assert result == 113 * 140
+    assert result == 114 * 141
 
 
 def test_estimate_cell_count_zero_area():
@@ -81,31 +60,21 @@ def test_estimate_cell_count_zero_area():
 # ---------------------------------------------------------------------------
 # validate_geom_size
 
+GRID = [0.00833, 0.0, -115.0, 0.0, -0.00833, 43.0]
+
 
 def test_validate_geom_size_within_limit(small_polygon_shape):
-    dataset_entry = {
-        "crs": "EPSG:4326",
-        "transform": [0.00833, 0.0, -115.0, 0.0, -0.00833, 43.0],
-    }
-    validate_geom_size([small_polygon_shape], dataset_entry, max_cells=500_000)
+    validate_geom_size([small_polygon_shape], GRID, "EPSG:4326", max_cells=500_000)
 
 
 def test_validate_geom_size_exceeds_limit(large_polygon_shape):
-    dataset_entry = {
-        "crs": "EPSG:4326",
-        "transform": [0.00833, 0.0, -115.0, 0.0, -0.00833, 43.0],
-    }
     with pytest.raises(ValueError, match="too large"):
-        validate_geom_size([large_polygon_shape], dataset_entry, max_cells=500_000)
+        validate_geom_size([large_polygon_shape], GRID, "EPSG:4326", max_cells=500_000)
 
 
 def test_validate_geom_size_multiple_shapes_uses_unary_union():
     # Two small polygons placed far apart: unary_union bbox spans a large area
     shape1 = box(-114.1, 37.9, -114.0, 38.0)
     shape2 = box(-80.1, 29.9, -80.0, 30.0)
-    dataset_entry = {
-        "crs": "EPSG:4326",
-        "transform": [0.00833, 0.0, -115.0, 0.0, -0.00833, 43.0],
-    }
     with pytest.raises(ValueError):
-        validate_geom_size([shape1, shape2], dataset_entry, max_cells=10)
+        validate_geom_size([shape1, shape2], GRID, "EPSG:4326", max_cells=10)

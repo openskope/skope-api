@@ -20,6 +20,7 @@ env/
 img_logs/
 cog-input/
 timeseries/ingest/output/
+deploy-state/
 *.log
 
 # Tests 

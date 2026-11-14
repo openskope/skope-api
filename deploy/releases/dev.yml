@@ -1,0 +1,11 @@
+# The release set this environment serves (release consumption spec PIN-001).
+# release_root is resolved against the repository root, then to its physical
+# path; it is mounted read-only at /releases in the API and TiTiler.
+# `make deploy-dev` verifies every pinned release in full before starting the services.
+release_root: timeseries/ingest/output/releases
+releases:
+  # Prototype: 2 of the 12 variables, provisional encoding. Not for production.
+  - dataset: paleocar_v3
+    release_id: paleocar_v3-r-2026.10.07
+    declaration_digest: fa5b29a944289e7677f1bff46216a2222f20f5eb73d7237e9d453e0c2e1f059e
+    manifest_sha256: b2f29d873f9aec2c1ca4c4e5872b19b39c004a4da57337ae76a4f9647914098c

@@ -1,0 +1,47 @@
+{
+  "$id": "https://schemas.stacspec.org/v1.1.0/item-spec/json-schema/provider.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "properties": {
+    "providers": {
+      "items": {
+        "properties": {
+          "description": {
+            "title": "Organization description",
+            "type": "string"
+          },
+          "name": {
+            "minLength": 1,
+            "title": "Organization name",
+            "type": "string"
+          },
+          "roles": {
+            "items": {
+              "enum": [
+                "producer",
+                "licensor",
+                "processor",
+                "host"
+              ],
+              "type": "string"
+            },
+            "title": "Organization roles",
+            "type": "array"
+          },
+          "url": {
+            "format": "iri",
+            "title": "Organization homepage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "title": "Providers",
+      "type": "array"
+    }
+  },
+  "title": "Provider Fields",
+  "type": "object"
+}

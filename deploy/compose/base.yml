@@ -17,6 +17,9 @@ services:
       timeout: 3s
       retries: 6
       start_period: 20s
+    volumes:
+      # The pin's release root (PIN-001); the Makefile resolves it.
+      - ${SKOPE_RELEASE_ROOT:?run through make, which reads it from the pin}:/releases:ro
     networks:
       - internal_geospatial_net # Internal network to see Titiler
       - default # External access to reach S3 and serve the frontend
@@ -48,6 +51,8 @@ services:
       timeout: 3s
       retries: 6
       start_period: 20s
+    volumes:
+      - ${SKOPE_RELEASE_ROOT:?run through make, which reads it from the pin}:/releases:ro
     networks:
       # Titiler is ONLY on the internal network.
       - internal_geospatial_net
@@ -76,6 +81,34 @@ services:
       - ./timeseries/ingest/metadata.yml:/ingest/metadata.yml
       - ./cog-input:/data
       - ./timeseries/ingest/output:/output
+
+  release:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.ingest
+      target: runtime
+    image: openskope/skope-api-ingest:latest
+    profiles:
+      - ingest
+    entrypoint: ["skope-release"]
+    environment:
+      AWS_NO_SIGN_REQUEST: YES
+      # GDAL assumes remote files with other extensions don't exist, so it never
+      # probes for sidecars. Each prepare input format needs its extension here.
+      CPL_VSIL_CURL_ALLOWED_EXTENSIONS: .tif,.tiff,.nc
+      GDAL_DISABLE_READDIR_ON_OPEN: EMPTY_DIR
+      PRODUCER_REVISION: ${PRODUCER_REVISION:-unknown}
+      SKOPE_RELEASE_DATASETS: /ingest/datasets
+      SKOPE_RELEASE_SOURCE_MIRROR: /sources
+      SKOPE_RELEASE_ROOT: /releases
+      SKOPE_RELEASE_AUDIT_ROOT: /audit
+      SKOPE_RELEASE_PINS: /ingest/deploy/releases
+    volumes:
+      - ./timeseries/ingest/datasets:/ingest/datasets:ro
+      - ./deploy:/ingest/deploy:ro
+      - ${RELEASE_SOURCE_MIRROR:-./cog-input}:/sources:ro
+      - ${RELEASE_ROOT:-./timeseries/ingest/output/releases}:/releases
+      - ${RELEASE_AUDIT_ROOT:-./timeseries/ingest/output/audit}:/audit
 
   ingest-test:
     build:

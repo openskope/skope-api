@@ -1,0 +1,626 @@
+{
+  "$defs": {
+    "CuratedTemporal": {
+      "additionalProperties": false,
+      "description": "Reviewed temporal semantics (META-002, META-008).",
+      "properties": {
+        "calendar": {
+          "const": "proleptic_gregorian",
+          "title": "Calendar",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "end": {
+          "pattern": "^\\d{4}(-\\d{2}(-\\d{2}(T\\d{2}:\\d{2}:\\d{2}Z)?)?)?$",
+          "title": "End",
+          "type": "string"
+        },
+        "endpoint_inclusion": {
+          "const": "inclusive",
+          "title": "Endpoint Inclusion",
+          "type": "string"
+        },
+        "origin": {
+          "pattern": "^\\d{4}(-\\d{2}(-\\d{2}(T\\d{2}:\\d{2}:\\d{2}Z)?)?)?$",
+          "title": "Origin",
+          "type": "string"
+        },
+        "precision": {
+          "enum": [
+            "year",
+            "month",
+            "day",
+            "datetime"
+          ],
+          "title": "Precision",
+          "type": "string"
+        },
+        "step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Step"
+        },
+        "timestep_meaning": {
+          "enum": [
+            "aggregation_period",
+            "instant"
+          ],
+          "title": "Timestep Meaning",
+          "type": "string"
+        },
+        "values": {
+          "anyOf": [
+            {
+              "items": {
+                "pattern": "^\\d{4}(-\\d{2}(-\\d{2}(T\\d{2}:\\d{2}:\\d{2}Z)?)?)?$",
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Values"
+        }
+      },
+      "required": [
+        "calendar",
+        "precision",
+        "origin",
+        "end",
+        "endpoint_inclusion",
+        "timestep_meaning",
+        "description"
+      ],
+      "title": "CuratedTemporal",
+      "type": "object"
+    },
+    "CuratedVariable": {
+      "additionalProperties": false,
+      "properties": {
+        "categories": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Categories"
+        },
+        "category": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Category"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "unit": {
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        },
+        "valid_range": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid Range"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "unit"
+      ],
+      "title": "CuratedVariable",
+      "type": "object"
+    },
+    "EmptyTimesteps": {
+      "additionalProperties": false,
+      "description": "An inclusive run of timesteps with no valid pixels in any variable (OBS-007).",
+      "properties": {
+        "first": {
+          "pattern": "^\\d{4}(-\\d{2}(-\\d{2}(T\\d{2}:\\d{2}:\\d{2}Z)?)?)?$",
+          "title": "First",
+          "type": "string"
+        },
+        "last": {
+          "pattern": "^\\d{4}(-\\d{2}(-\\d{2}(T\\d{2}:\\d{2}:\\d{2}Z)?)?)?$",
+          "title": "Last",
+          "type": "string"
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "first",
+        "last",
+        "reason"
+      ],
+      "title": "EmptyTimesteps",
+      "type": "object"
+    },
+    "Link": {
+      "additionalProperties": false,
+      "properties": {
+        "href": {
+          "title": "Href",
+          "type": "string"
+        },
+        "rel": {
+          "minLength": 1,
+          "title": "Rel",
+          "type": "string"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Type"
+        }
+      },
+      "required": [
+        "rel",
+        "href"
+      ],
+      "title": "Link",
+      "type": "object"
+    },
+    "Person": {
+      "additionalProperties": false,
+      "description": "A person explicitly selected for this dataset (META-010).",
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "orcid": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Orcid"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "Person",
+      "type": "object"
+    },
+    "Provider": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "roles": {
+          "items": {
+            "enum": [
+              "producer",
+              "licensor",
+              "processor",
+              "host"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Roles",
+          "type": "array"
+        },
+        "ror": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ror"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "required": [
+        "name",
+        "roles"
+      ],
+      "title": "Provider",
+      "type": "object"
+    },
+    "Publication": {
+      "additionalProperties": false,
+      "properties": {
+        "citation": {
+          "minLength": 1,
+          "title": "Citation",
+          "type": "string"
+        },
+        "doi": {
+          "anyOf": [
+            {
+              "pattern": "^10\\.\\d{4,9}/\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Doi"
+        }
+      },
+      "required": [
+        "citation"
+      ],
+      "title": "Publication",
+      "type": "object"
+    },
+    "Uncertainty": {
+      "additionalProperties": false,
+      "properties": {
+        "methodology_href": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Methodology Href"
+        },
+        "summary": {
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "summary"
+      ],
+      "title": "Uncertainty",
+      "type": "object"
+    }
+  },
+  "$id": "https://api.openskope.org/schemas/release/curated/v0.1.0/schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "citation": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Citation"
+    },
+    "contact_href": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Contact Href"
+    },
+    "description": {
+      "minLength": 1,
+      "title": "Description",
+      "type": "string"
+    },
+    "doi": {
+      "anyOf": [
+        {
+          "pattern": "^10\\.\\d{4,9}/\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Doi"
+    },
+    "empty_timesteps": {
+      "items": {
+        "$ref": "#/$defs/EmptyTimesteps"
+      },
+      "title": "Empty Timesteps",
+      "type": "array"
+    },
+    "id": {
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "title": "Id",
+      "type": "string"
+    },
+    "license": {
+      "minLength": 1,
+      "title": "License",
+      "type": "string"
+    },
+    "license_href": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "License Href"
+    },
+    "lineage": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Lineage"
+    },
+    "links": {
+      "items": {
+        "$ref": "#/$defs/Link"
+      },
+      "title": "Links",
+      "type": "array"
+    },
+    "people": {
+      "items": {
+        "$ref": "#/$defs/Person"
+      },
+      "title": "People",
+      "type": "array"
+    },
+    "profile": {
+      "enum": [
+        "TemporalCubeDataset",
+        "StaticRasterDataset"
+      ],
+      "title": "Profile",
+      "type": "string"
+    },
+    "providers": {
+      "items": {
+        "$ref": "#/$defs/Provider"
+      },
+      "minItems": 1,
+      "title": "Providers",
+      "type": "array"
+    },
+    "publications": {
+      "items": {
+        "$ref": "#/$defs/Publication"
+      },
+      "title": "Publications",
+      "type": "array"
+    },
+    "region_name": {
+      "minLength": 1,
+      "title": "Region Name",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "0.1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "temporal": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CuratedTemporal"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "temporal_extent": {
+      "anyOf": [
+        {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          ],
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Temporal Extent"
+    },
+    "title": {
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "uncertainty": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Uncertainty"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "variables": {
+      "items": {
+        "$ref": "#/$defs/CuratedVariable"
+      },
+      "minItems": 1,
+      "title": "Variables",
+      "type": "array"
+    },
+    "version": {
+      "minLength": 1,
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "version",
+    "profile",
+    "title",
+    "description",
+    "license",
+    "region_name",
+    "providers",
+    "variables"
+  ],
+  "title": "Curated",
+  "type": "object"
+}

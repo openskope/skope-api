@@ -1,0 +1,293 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "point",
+    "note": "one cell"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -108.5,
+     37.0
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "small",
+    "note": "20 x 20 cell centers; edges a quarter cell from any center"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -108.58125000041873,
+       36.914583333836966
+      ],
+      [
+       -108.41458333375974,
+       36.914583333836966
+      ],
+      [
+       -108.41458333375974,
+       37.081250000497185
+      ],
+      [
+       -108.58125000041873,
+       37.081250000497185
+      ],
+      [
+       -108.58125000041873,
+       36.914583333836966
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "medium",
+    "note": "100 x 100 cell centers; edges a quarter cell from any center"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -108.91458333373674,
+       36.58125000051653
+      ],
+      [
+       -108.08125000044174,
+       36.58125000051653
+      ],
+      [
+       -108.08125000044174,
+       37.41458333381762
+      ],
+      [
+       -108.91458333373674,
+       37.41458333381762
+      ],
+      [
+       -108.91458333373674,
+       36.58125000051653
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "triangle",
+    "note": "edges cross cells at arbitrary angles"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -108.613,
+       36.871
+      ],
+      [
+       -108.302,
+       36.905
+      ],
+      [
+       -108.455,
+       37.188
+      ],
+      [
+       -108.613,
+       36.871
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "edge",
+    "note": "5 x 5 cell centers; bounds start 0.6 cell into a cell, so the read window's rounding decides the last row and column"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -108.32416666709723,
+       37.11583333382918
+      ],
+      [
+       -108.28250000043248,
+       37.11583333382918
+      ],
+      [
+       -108.28250000043248,
+       37.15750000049423
+      ],
+      [
+       -108.32416666709723,
+       37.15750000049423
+      ],
+      [
+       -108.32416666709723,
+       37.11583333382918
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "two_polygons",
+    "note": "a FeatureCollection of two disjoint squares"
+   },
+   "geometry": {
+    "type": "FeatureCollection",
+    "features": [
+     {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+       "type": "Polygon",
+       "coordinates": [
+        [
+         [
+          -109.2013,
+          37.5021
+         ],
+         [
+          -109.1102,
+          37.5021
+         ],
+         [
+          -109.1102,
+          37.5933
+         ],
+         [
+          -109.2013,
+          37.5933
+         ],
+         [
+          -109.2013,
+          37.5021
+         ]
+        ]
+       ]
+      }
+     },
+     {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+       "type": "Polygon",
+       "coordinates": [
+        [
+         [
+          -107.9017,
+          36.3011
+         ],
+         [
+          -107.8121,
+          36.3011
+         ],
+         [
+          -107.8121,
+          36.3907
+         ],
+         [
+          -107.9017,
+          36.3907
+         ],
+         [
+          -107.9017,
+          36.3011
+         ]
+        ]
+       ]
+      }
+     }
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "sliver",
+    "note": "inside one column, between cell centers: no center inside, so the touched cells count (3)"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -107.91166666711621,
+       36.72250000051107
+      ],
+      [
+       -107.91000000044961,
+       36.72250000051107
+      ],
+      [
+       -107.91000000044961,
+       36.7441666671769
+      ],
+      [
+       -107.91166666711621,
+       36.7441666671769
+      ],
+      [
+       -107.91166666711621,
+       36.72250000051107
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "east_edge",
+    "note": "ends on the grid's east edge"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -102.07708333405127,
+       37.910416667131756
+      ],
+      [
+       -101.995833334055,
+       37.910416667131756
+      ],
+      [
+       -101.995833334055,
+       37.993750000461866
+      ],
+      [
+       -102.07708333405127,
+       37.993750000461866
+      ],
+      [
+       -102.07708333405127,
+       37.910416667131756
+      ]
+     ]
+    ]
+   }
+  }
+ ]
+}

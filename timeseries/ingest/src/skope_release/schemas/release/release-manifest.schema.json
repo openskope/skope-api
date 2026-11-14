@@ -1,0 +1,287 @@
+{
+  "$defs": {
+    "ManifestDataset": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "stac_entrypoint": {
+          "const": "collection.json",
+          "title": "Stac Entrypoint",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "stac_entrypoint"
+      ],
+      "title": "ManifestDataset",
+      "type": "object"
+    },
+    "ManifestDeclaration": {
+      "additionalProperties": false,
+      "properties": {
+        "digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        },
+        "digest_algorithm": {
+          "const": "sha256",
+          "title": "Digest Algorithm",
+          "type": "string"
+        },
+        "identity_profile": {
+          "const": "openskope-release-declaration-v1",
+          "title": "Identity Profile",
+          "type": "string"
+        }
+      },
+      "required": [
+        "identity_profile",
+        "digest_algorithm",
+        "digest"
+      ],
+      "title": "ManifestDeclaration",
+      "type": "object"
+    },
+    "ManifestFile": {
+      "additionalProperties": false,
+      "properties": {
+        "checksum": {
+          "pattern": "^1220[0-9a-f]{64}$",
+          "title": "Checksum",
+          "type": "string"
+        },
+        "path": {
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "roles": {
+          "items": {
+            "enum": [
+              "stac",
+              "collection",
+              "item",
+              "data",
+              "derived"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Roles",
+          "type": "array"
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "roles",
+        "size",
+        "checksum"
+      ],
+      "title": "ManifestFile",
+      "type": "object"
+    },
+    "ManifestInput": {
+      "additionalProperties": false,
+      "properties": {
+        "checksum": {
+          "pattern": "^1220[0-9a-f]{64}$",
+          "title": "Checksum",
+          "type": "string"
+        },
+        "href": {
+          "minLength": 1,
+          "title": "Href",
+          "type": "string"
+        }
+      },
+      "required": [
+        "href",
+        "checksum"
+      ],
+      "title": "ManifestInput",
+      "type": "object"
+    },
+    "ManifestPrepare": {
+      "additionalProperties": false,
+      "properties": {
+        "inputs": {
+          "items": {
+            "$ref": "#/$defs/ManifestInput"
+          },
+          "minItems": 1,
+          "title": "Inputs",
+          "type": "array"
+        },
+        "script": {
+          "pattern": "^scripts/[a-z][a-z0-9_]*\\.py$",
+          "title": "Script",
+          "type": "string"
+        },
+        "script_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Script Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "script",
+        "script_sha256",
+        "inputs"
+      ],
+      "title": "ManifestPrepare",
+      "type": "object"
+    },
+    "ManifestProducer": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "revision": {
+          "minLength": 1,
+          "title": "Revision",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "revision"
+      ],
+      "title": "ManifestProducer",
+      "type": "object"
+    },
+    "ManifestSource": {
+      "additionalProperties": false,
+      "properties": {
+        "checksum": {
+          "pattern": "^1220[0-9a-f]{64}$",
+          "title": "Checksum",
+          "type": "string"
+        },
+        "href": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Href"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "prepare": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ManifestPrepare"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "checksum"
+      ],
+      "title": "ManifestSource",
+      "type": "object"
+    }
+  },
+  "$id": "https://api.openskope.org/schemas/release/release-manifest/v1.0.0/schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "created": {
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$",
+      "title": "Created",
+      "type": "string"
+    },
+    "dataset": {
+      "$ref": "#/$defs/ManifestDataset"
+    },
+    "declaration": {
+      "$ref": "#/$defs/ManifestDeclaration"
+    },
+    "files": {
+      "items": {
+        "$ref": "#/$defs/ManifestFile"
+      },
+      "minItems": 1,
+      "title": "Files",
+      "type": "array"
+    },
+    "producer": {
+      "$ref": "#/$defs/ManifestProducer"
+    },
+    "release_id": {
+      "pattern": "^[a-z][a-z0-9_]*-r-\\d{4}\\.\\d{2}\\.\\d{2}(-([2-9]|[1-9]\\d+))?$",
+      "title": "Release Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/ManifestSource"
+      },
+      "minItems": 1,
+      "title": "Sources",
+      "type": "array"
+    },
+    "status": {
+      "const": "complete",
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "release_id",
+    "created",
+    "status",
+    "dataset",
+    "producer",
+    "declaration",
+    "sources",
+    "files"
+  ],
+  "title": "ReleaseManifest",
+  "type": "object"
+}

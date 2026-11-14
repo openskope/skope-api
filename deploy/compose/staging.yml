@@ -16,10 +16,5 @@ services:
     environment:
       FORWARDED_ALLOW_IPS: '*'
     image: openskope/skope-api:staging
-    volumes:
-      - ${DATASET_RELEASE_ROOT:?DATASET_RELEASE_ROOT is required}:/data:ro
     ports:
       - "0.0.0.0:8001:8000"
-  titiler:
-    volumes:
-      - ${DATASET_RELEASE_ROOT:?DATASET_RELEASE_ROOT is required}:/data:ro

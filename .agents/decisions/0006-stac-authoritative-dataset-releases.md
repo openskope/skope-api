@@ -2,90 +2,105 @@
 
 - Status: Proposed
 - Date: 2026-09-11
-- Specification: [SKOPE Dataset Release Specification v1](../../docs/specs/dataset-release-v1.md)
-- Relates to: [0001: Separate Dataset Metadata From Storage Lookups](0001-dataset-registry-and-lookup-contract.md)
+- Revised: 2026-10-01
+- Specifications: [SKOPE Dataset Release Specification v1](../../docs/specs/dataset-release-v1.md) and [SKOPE Release Consumption Specification v1](../../docs/specs/release-consumption-v1.md)
+- Supersedes, on acceptance: [0001: Separate Dataset Metadata From Storage Lookups](0001-dataset-registry-and-lookup-contract.md)
+- Amends, on acceptance: [0002: Mediate COG Tiles Through Skope API](0002-api-mediated-cog-tiles.md)
 
 ## Context
 
-SKOPE currently duplicates dataset metadata across API and ingest YAML files.
-The ingest pipeline mutates one of those files with observed raster facts, emits
-one STAC Collection per variable, and generates `lookup.json` as the API's
-storage index. Existing output files can be reused by filename without proving
-their identity or validity.
+SKOPE duplicates dataset metadata across API and ingest YAML files. The ingest
+pipeline mutates one of those files with observed raster facts, emits one STAC
+Collection per variable, and generates `lookup.json` as the API's storage index.
+Existing output files can be reused by filename without proving their identity
+or validity. PR 48 proposed splitting curated metadata by dataset and recording
+observed facts in `dataset-facts.json`; the `titiler` branch added temporal
+endpoint validation and a whole-migration preflight. Both exposed the need for
+an explicit authority model, byte validation, and transactional publication.
 
-PR 48 proposes splitting curated metadata by dataset, recording observed facts
-in `dataset-facts.json`, composing packages across partial variable runs, and
-building the API registry from curated files plus release facts. The `titiler`
-branch separately adds per-variable temporal endpoint validation and a complete
-whole-migration preflight before transformation. Both bodies of work expose the
-need for an explicit authority model, byte validation, and transactional release
-publication.
+The design has to respect these forces:
 
-Review of the initial proposal identified three additional boundaries that the
-architecture must make explicit: temporal assets need a standard band-to-time
-mapping from which `lookup.json` is reproducible; planned output properties must
-not be confused with observations of final bytes; and static rasters must not
-be forced through temporal-cube requirements.
+- A temporal asset needs a band-to-time mapping a client can resolve without a
+  separate index file.
+- Planned output properties must not be confused with observations of the final
+  bytes.
+- Static rasters must not be forced through temporal-cube requirements.
+- A release serves both the SKOPE application and external researchers, so what
+  the application needs must be a generated consequence of the release, not a
+  parallel curated document.
+- Data changes over months or years; presentation changes with an application
+  build. Anything on the faster cadence stored in an immutable release forces a
+  needless republication or a forbidden mutation.
+- Datasets are authored, reviewed, and revised independently, so one dataset's
+  change or failure must not republish or block the others.
 
 STAC 1.1.0 and its Projection, File Info, Scientific Citation, Raster,
 Datacube, Versioning, and Processing extensions provide standards-based homes
-for most published metadata. COG headers remain the direct description of the
-encoded raster bytes. Release completion and integrity are operational facts,
-not geospatial metadata.
+for most published metadata. COG headers describe the encoded bytes directly.
+Release completion and integrity are operational facts, not geospatial metadata.
 
 ## Proposed decision
 
-Subject to approval of the linked specification:
+Subject to approval of the linked specifications:
 
-- STAC Collections and Items will be the published metadata authority.
-- COG headers will be authoritative for byte-level raster properties, including
-  grid, encoding, nodata, scale, offset, band descriptions, and embedded
-  statistics. Corresponding STAC fields will be validated projections of those
-  facts.
-- Release manifests will contain integrity, provenance, object inventory, and
-  completion state only. They will not duplicate geospatial or statistical
-  metadata.
-- Generated API metadata and `lookup.json` indexes will be derived compatibility
-  artifacts.
-- Temporal lookup indexes will be derived from ordered STAC Band names checked
-  against the Collection temporal dimension and COG band descriptions.
-- The typed model will have an immutable `ValidatedBuildPlan` consumed by the
-  COG writer and a separate immutable `FinalObservation` consumed by metadata
-  serializers after byte inspection.
-- Dataset releases will declare either a temporal-cube or static-raster profile;
-  SRTM will not acquire synthetic scientific time metadata for API convenience.
-- Published releases will be immutable and selected only after a valid root
-  release manifest acts as the publication commit marker.
-- `dataset-facts.json` will not be part of the target architecture.
-- Curated human-authored metadata will be compiled to STAC and will not contain
-  observed raster facts.
-- The existing public API and API-mediated TiTiler boundary will remain
-  compatible during the initial migration.
+- STAC Collections and Items will be the published metadata authority. COG
+  headers will be authoritative for byte-level raster properties, and the
+  corresponding STAC fields will be validated projections of them.
+- A release will package exactly one dataset, with that dataset's Collection as
+  its root STAC object, and exactly one manifest recording integrity,
+  provenance, inventory, identity, and completion only. Its identifier will
+  carry the dataset identifier and will not be a dataset version.
+- Several datasets are served together through a per-environment pin of each
+  release's ID, declaration digest, and manifest digest, and discovered through a
+  mutable STAC Catalog published outside releases. No aggregate release exists,
+  and a multi-dataset build is a batch of independent releases.
+- Each release will carry one overview generated from its validated STAC,
+  readable by people and read once at startup by the application. It will carry
+  the time-to-band rule: one axis and chunk size per dataset, from which the COG
+  path and band of any timestep are computed. `lookup.json` will not be emitted.
+- The build will separate an immutable `ValidatedBuildPlan`, consumed by the COG
+  writer, from an immutable `FinalObservation` of the written bytes, consumed by
+  metadata serializers.
+- A dataset will declare a temporal-cube or static-raster profile; static
+  rasters get no synthetic time.
+- Published releases will be immutable and become eligible only once a valid
+  manifest, written last, commits them.
+- Curated metadata will be authored as one `curated.yml` per dataset, compiled
+  to STAC, and will never contain observed facts.
+- Presentation will not be a release artifact. It will live in display files in
+  the skope-api repository (`deploy/display/`), and the API will serve explicit
+  rendering fields.
+- TiTiler will remain internal and API-mediated (ADR 0002). The public metadata
+  and time parameters will change in one coordinated API/UI cutover, with no
+  compatibility period.
 
 ## Consequences
 
-- A dataset release can be validated and understood independently of an API
-  image or mutable registry file.
+- A release can be validated, understood, and relocated on its own, independent
+  of any API image or registry file.
 - The ingest workflow needs a typed observation model and strict agreement
-  checks among COG bytes, STAC, lookup indexes, and manifests.
-- Local publication needs same-filesystem staging and atomic rename. Object
-  storage needs a root-manifest-last commit protocol because it has no
-  multi-object transaction.
-- One logical dataset version is represented by one Collection; temporal Items
-  align variable assets by chunk.
-- Candidate STAC extensions require pinned versions and serialization adapters.
-- Ambiguous legacy scientific fields require human review rather than automatic
-  interpretation.
-- Non-publishing experiments may gather evidence for unresolved decisions, but
-  their artifacts cannot become releases or production dependencies without
-  approval.
-- Accepted ADR 0001 remains in force during compatibility migration. A later
-  accepted ADR may supersede its registry duplication consequences after the
-  STAC-derived registry is proven.
+  checks among COG bytes, STAC, the time-to-band rule, and the manifest.
+- Local publication needs same-filesystem staging and atomic rename; object
+  storage needs a manifest-last commit protocol.
+- One dataset changing does not republish the others, and one dataset failing
+  preflight or validation does not block the rest.
+- Which datasets a deployment serves becomes an explicit, reviewed pin. A
+  consistency check spanning datasets belongs at composition, because a release
+  build sees one dataset.
+- Nothing carries a single identity for all SKOPE data at a given time; a
+  citable corpus identity, if ever needed, should be minted against the
+  published catalog.
+- A presentation change never requires a new release, but the API and SKOPE UI
+  must migrate together to explicit rendering fields.
+- Candidate STAC extensions require pinned versions and serialization adapters,
+  and ambiguous legacy fields require human review.
+- On acceptance, this ADR supersedes ADR 0001 at the coordinated cutover (release
+  consumption specification CUT-002), and amends ADR 0002: the tile route's
+  `year` parameter becomes a canonical timestep key.
 
 ## Approval gate
 
 This ADR remains Proposed. No production implementation phase may begin until
-the linked specification's unresolved decisions are reviewed and this ADR is
-accepted or revised. The specification's isolated, non-publishing Phase 0
-experiments may run solely to gather decision evidence.
+the linked specifications' unresolved decisions are reviewed and this ADR is
+accepted or revised. Non-publishing Phase 0 experiments may run solely to
+gather decision evidence.

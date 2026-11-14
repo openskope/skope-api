@@ -1,0 +1,81 @@
+# PROVISIONAL (2026-10-08). Written from the legacy registry and NOAA NCEI
+# study 22454 before a science review (spec §20.1). The license, providers,
+# citation, and temporal semantics are provisional.
+schema_version: "0.1.0"
+id: "lbda_v2"
+version: "2"
+profile: "TemporalCubeDataset"
+title: "Living Blended Drought Atlas (LBDA) Version 2"
+description: >-
+  A recalibrated reconstruction of United States summer (June–August) Palmer
+  Modified Drought Index (PMDI) over the last 2000 years, on a half-degree
+  grid. It updates the gridded reconstructions of Cook et al. (2010) and fills
+  1979–2017 CE with instrumental PMDI.
+# REVIEW: NOAA publishes no license for this study, only a request to cite it.
+license: "other"
+license_href: "https://www.ncei.noaa.gov/access/paleo-search/study/22454"
+region_name: "Continental USA"
+providers:
+  - name: "E. P. Gille, E. R. Wahl, R. S. Vose, and E. R. Cook"
+    roles: ["producer"]
+  - name: "NOAA National Centers for Environmental Information"
+    roles: ["licensor", "host"]
+    url: "https://www.ncei.noaa.gov/products/paleoclimatology"
+  - name: "SKOPE project"
+    roles: ["processor", "host"]
+citation: >-
+  Gille, E. P., E. R. Wahl, R. S. Vose, and E. R. Cook. 2017. Living Blended
+  Drought Atlas (LBDA) Version 2: recalibrated reconstruction of United States
+  summer PMDI over the last 2000 years. NOAA National Centers for Environmental
+  Information.
+# The NOAA study DOI covers LBDA versions 2 and 3; there is no v2-only DOI.
+doi: "10.25921/7xm8-jn36"
+publications:
+  - citation: >-
+      Cook, E. R., R. Seager, R. R. Heim, R. S. Vose, C. Herweijer, and C.
+      Woodhouse. 2010. Megadroughts in North America: placing IPCC projections
+      of hydroclimatic change in a long-term paleoclimate context. Journal of
+      Quaternary Science 25(1):48–61.
+    doi: "10.1002/jqs.1303"
+lineage: >-
+  The half-degree gridded June–August PMDI reconstructions from Cook et al.
+  (2010) were recalibrated against the Global Historical Climatology Network
+  (GHCN) 5 km gridded PMDI, first upscaled to the half-degree grid, with the
+  kernel density distribution mapping (KDDM) technique of McGinnis et al.
+  (2015). The recalibration period was 1929–1978 CE, and each grid point's mean
+  PMDI over that period was set to zero to avoid importing a wet or dry bias.
+  Recalibration applied to 0–1978 CE; 1979–2017 CE are instrumental PMDI from
+  NCEI's GHCN 5 km data. SKOPE converted NOAA's NetCDF file
+  (lbda-v2_kddm_pmdi_2017.nc) to a GeoTIFF without changing any value: it
+  dropped year 0, as the earlier SKOPE release did, turned the grid north up,
+  assigned WGS 84, and recorded missing cells as -9999 instead of NaN.
+links:
+  - rel: "via"
+    href: "https://www.ncei.noaa.gov/access/paleo-search/study/22454"
+    title: "NOAA NCEI paleoclimatology study 22454"
+  - rel: "derived_from"
+    href: "https://www.ncei.noaa.gov/pub/data/paleo/drought/LBDP-v2/lbda-v2_kddm_pmdi_2017.nc"
+    title: "LBDA v2 NetCDF (lbda-v2_kddm_pmdi_2017.nc)"
+    type: "application/x-netcdf"
+temporal:
+  calendar: "proleptic_gregorian"
+  precision: "year"
+  origin: "0001"
+  end: "2017"
+  step: "P1Y"
+  endpoint_inclusion: "inclusive"
+  timestep_meaning: "aggregation_period"
+  description: >-
+    Each timestep is one year CE; its value is that year's June–August PMDI.
+    NOAA's file also holds year 0, which this release leaves out.
+variables:
+  - id: "pmdi"
+    title: "Palmer Modified Drought Index"
+    description: >-
+      June–August Palmer Modified Drought Index. Negative values indicate dry
+      conditions and positive values wet ones: -4 or less is extreme drought,
+      -3 to -3.99 severe drought, -2 to -2.99 moderate drought, -1.99 to 1.99
+      midrange, 2 to 2.99 moderately moist, 3 to 3.99 very moist, and 4 or
+      more extremely moist.
+    unit: "unitless"
+    category: "Drought"

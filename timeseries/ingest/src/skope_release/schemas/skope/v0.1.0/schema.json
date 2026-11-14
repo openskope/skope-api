@@ -1,0 +1,54 @@
+{
+  "$id": "https://api.openskope.org/schemas/stac/v0.1.0/schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SKOPE STAC extension (proposal, v0.1.0)",
+  "description": "Collection-scoped scientific context that STAC core and the pinned extensions do not express (dataset release specification Section 10). Every field describes the data, never its presentation (SKOPE-003).",
+  "type": "object",
+  "required": ["type", "skope:region_name"],
+  "properties": {
+    "type": {"const": "Collection"},
+    "skope:region_name": {"type": "string", "minLength": 1},
+    "skope:variables": {
+      "type": "object",
+      "propertyNames": {"pattern": "^[a-z][a-z0-9_]*$"},
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "minProperties": 1,
+        "properties": {
+          "category": {"type": "string", "minLength": 1},
+          "categories": {
+            "type": "object",
+            "propertyNames": {"pattern": "^-?\\d+$"},
+            "additionalProperties": {"type": "string", "minLength": 1},
+            "minProperties": 1
+          }
+        }
+      }
+    },
+    "skope:uncertainty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary", "methodology_href"],
+      "properties": {
+        "summary": {"type": "string", "minLength": 1},
+        "methodology_href": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^https://"}]}
+      }
+    },
+    "skope:temporal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["calendar", "precision", "timestep_meaning", "endpoint_inclusion", "description"],
+      "properties": {
+        "calendar": {"enum": ["proleptic_gregorian"]},
+        "precision": {"enum": ["year", "month", "day", "datetime"]},
+        "timestep_meaning": {"enum": ["aggregation_period", "instant"]},
+        "endpoint_inclusion": {"enum": ["inclusive"]},
+        "description": {"type": "string", "minLength": 1}
+      }
+    }
+  },
+  "patternProperties": {
+    "^skope:(?!region_name$|variables$|uncertainty$|temporal$)": false
+  }
+}

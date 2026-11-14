@@ -5,19 +5,25 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "cog-stac-pipeline"
 version = "0.1.0"
-description = "Build COG slices, STAC catalogs, and lookup dictionaries for timeseries datasets."
+description = "Build SKOPE dataset releases: COGs, STAC, overviews, and release manifests."
 requires-python = ">=3.12"
 dependencies = [
     "boto3",
+    "jsonschema",
+    "netCDF4",  # prepare scripts read NetCDF sources (META-013)
     "numpy<2",
+    "pydantic>=2.9,<3",
     "pystac",
     "python-dateutil",
     "PyYAML",
+    "referencing",
+    "rfc8785",
     "rio-stac",
 ]
 
 [project.scripts]
 cog-stac-pipeline = "cog_stac_pipeline.main:main"
+skope-release = "skope_release.cli:main"
 
 [dependency-groups]
 dev = [
@@ -26,3 +32,6 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+skope_release = ["schemas/**/*.json"]

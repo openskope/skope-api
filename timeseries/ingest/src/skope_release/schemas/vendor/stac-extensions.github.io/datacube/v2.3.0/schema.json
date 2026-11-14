@@ -1,0 +1,675 @@
+{
+  "$id": "https://stac-extensions.github.io/datacube/v2.3.0/schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "additional_dimension": {
+      "anyOf": [
+        {
+          "required": [
+            "type",
+            "extent"
+          ]
+        },
+        {
+          "required": [
+            "type",
+            "values"
+          ]
+        }
+      ],
+      "not": {
+        "required": [
+          "axis"
+        ]
+      },
+      "properties": {
+        "description": {
+          "$ref": "#/definitions/description"
+        },
+        "dimensions": {
+          "items": {
+            "type": [
+              "string"
+            ]
+          },
+          "type": "array"
+        },
+        "extent": {
+          "$ref": "#/definitions/extent_open"
+        },
+        "reference_system": {
+          "type": "string"
+        },
+        "step": {
+          "$ref": "#/definitions/step"
+        },
+        "type": {
+          "not": {
+            "enum": [
+              "spatial",
+              "geometry"
+            ]
+          },
+          "type": "string"
+        },
+        "unit": {
+          "$ref": "#/definitions/unit"
+        },
+        "values": {
+          "$ref": "#/definitions/values"
+        }
+      },
+      "title": "Additional Dimension Object",
+      "type": "object"
+    },
+    "axis_xy": {
+      "enum": [
+        "x",
+        "y"
+      ],
+      "type": "string"
+    },
+    "axis_z": {
+      "const": "z",
+      "type": "string"
+    },
+    "cube:dimensions": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "$ref": "#/definitions/vector_dimension"
+          },
+          {
+            "$ref": "#/definitions/horizontal_spatial_dimension"
+          },
+          {
+            "$ref": "#/definitions/vertical_spatial_dimension"
+          },
+          {
+            "$ref": "#/definitions/temporal_dimension"
+          },
+          {
+            "$ref": "#/definitions/additional_dimension"
+          }
+        ]
+      },
+      "type": "object"
+    },
+    "cube:variables": {
+      "additionalProperties": {
+        "$ref": "#/definitions/variable"
+      },
+      "type": "object"
+    },
+    "data_type": {
+      "$comment": "The schema is from common metadata, see https://github.com/radiantearth/stac-spec/blob/v1.1.0/item-spec/json-schema/data-values.json",
+      "enum": [
+        "int8",
+        "int16",
+        "int32",
+        "int64",
+        "uint8",
+        "uint16",
+        "uint32",
+        "uint64",
+        "float16",
+        "float32",
+        "float64",
+        "cint16",
+        "cint32",
+        "cfloat32",
+        "cfloat64",
+        "other"
+      ],
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "extent_closed": {
+      "items": {
+        "type": "number"
+      },
+      "maxItems": 2,
+      "minItems": 2,
+      "type": "array"
+    },
+    "extent_open": {
+      "items": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "maxItems": 2,
+      "minItems": 2,
+      "type": "array"
+    },
+    "fields": {
+      "$comment": "Add your new fields here. Don't require them here, do that above in the corresponding schema.",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^(?!cube:)": {}
+      },
+      "properties": {
+        "cube:dimensions": {
+          "$ref": "#/definitions/cube:dimensions"
+        },
+        "cube:variables": {
+          "$ref": "#/definitions/cube:variables"
+        }
+      },
+      "type": "object"
+    },
+    "horizontal_spatial_dimension": {
+      "properties": {
+        "axis": {
+          "$ref": "#/definitions/axis_xy"
+        },
+        "description": {
+          "$ref": "#/definitions/description"
+        },
+        "extent": {
+          "$ref": "#/definitions/extent_closed"
+        },
+        "reference_system": {
+          "$ref": "#/definitions/reference_system_spatial"
+        },
+        "step": {
+          "$ref": "#/definitions/step"
+        },
+        "type": {
+          "$ref": "#/definitions/type_spatial"
+        },
+        "values": {
+          "$ref": "#/definitions/values_numeric"
+        }
+      },
+      "required": [
+        "type",
+        "axis",
+        "extent"
+      ],
+      "title": "Horizontal Spatial Raster Dimension Object",
+      "type": "object"
+    },
+    "nodata": {
+      "$comment": "The schema is from common metadata, see https://github.com/radiantearth/stac-spec/blob/v1.1.0/item-spec/json-schema/data-values.json",
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "enum": [
+            "nan",
+            "inf",
+            "-inf"
+          ],
+          "type": "string"
+        }
+      ]
+    },
+    "reference_system_spatial": {
+      "default": 4326,
+      "oneOf": [
+        {
+          "description": "WKT2",
+          "type": "string"
+        },
+        {
+          "description": "EPSG code",
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "$ref": "https://proj.org/schemas/v0.7/projjson.schema.json"
+        }
+      ]
+    },
+    "require_any_field": {
+      "$comment": "Please list all fields here so that we can force the existance of one of them in other parts of the schemas.",
+      "anyOf": [
+        {
+          "required": [
+            "cube:dimensions"
+          ]
+        },
+        {
+          "required": [
+            "cube:variables"
+          ]
+        }
+      ]
+    },
+    "require_field": {
+      "required": [
+        "cube:dimensions"
+      ]
+    },
+    "stac_extensions": {
+      "properties": {
+        "stac_extensions": {
+          "contains": {
+            "const": "https://stac-extensions.github.io/datacube/v2.3.0/schema.json"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "stac_extensions"
+      ],
+      "type": "object"
+    },
+    "step": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "temporal_dimension": {
+      "not": {
+        "required": [
+          "axis"
+        ]
+      },
+      "properties": {
+        "description": {
+          "$ref": "#/definitions/description"
+        },
+        "extent": {
+          "items": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        "step": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "const": "temporal",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "type",
+        "extent"
+      ],
+      "title": "Temporal Dimension Object",
+      "type": "object"
+    },
+    "type_spatial": {
+      "const": "spatial",
+      "type": "string"
+    },
+    "unit": {
+      "$comment": "The schema is from common metadata, see https://github.com/radiantearth/stac-spec/blob/v1.1.0/item-spec/json-schema/data-values.json",
+      "type": "string"
+    },
+    "values": {
+      "items": {
+        "oneOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "values_numeric": {
+      "items": {
+        "type": "number"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "variable": {
+      "properties": {
+        "data_type": {
+          "$ref": "#/definitions/data_type"
+        },
+        "description": {
+          "$ref": "#/definitions/description"
+        },
+        "dimensions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "extent": {
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "null"
+            ]
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        "nodata": {
+          "$ref": "#/definitions/nodata"
+        },
+        "unit": {
+          "$ref": "#/definitions/unit"
+        },
+        "values": {
+          "minItems": 1,
+          "type": "array"
+        },
+        "variable_type": {
+          "enum": [
+            "data",
+            "auxiliary"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "dimensions"
+      ],
+      "title": "Variable Object",
+      "type": "object"
+    },
+    "vector_dimension": {
+      "properties": {
+        "axes": {
+          "items": {
+            "enum": [
+              "x",
+              "y",
+              "z"
+            ],
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "bbox": {
+          "items": {
+            "type": "number"
+          },
+          "oneOf": [
+            {
+              "maxItems": 4,
+              "minItems": 4
+            },
+            {
+              "maxItems": 6,
+              "minItems": 6
+            }
+          ],
+          "title": "Spatial extent",
+          "type": "array"
+        },
+        "description": {
+          "$ref": "#/definitions/description"
+        },
+        "geometry_types": {
+          "items": {
+            "enum": [
+              "Point",
+              "MultiPoint",
+              "LineString",
+              "MultiLineString",
+              "Polygon",
+              "MultiPolygon",
+              "GeometryCollection"
+            ],
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "reference_system": {
+          "$ref": "#/definitions/reference_system_spatial"
+        },
+        "type": {
+          "const": "geometry",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "description": "WKT or Identifier",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "type",
+        "bbox"
+      ],
+      "title": "Spatial Vector Dimension Object",
+      "type": "object"
+    },
+    "vertical_spatial_dimension": {
+      "anyOf": [
+        {
+          "required": [
+            "type",
+            "axis",
+            "extent"
+          ]
+        },
+        {
+          "required": [
+            "type",
+            "axis",
+            "values"
+          ]
+        }
+      ],
+      "properties": {
+        "axis": {
+          "$ref": "#/definitions/axis_z"
+        },
+        "description": {
+          "$ref": "#/definitions/description"
+        },
+        "extent": {
+          "$ref": "#/definitions/extent_open"
+        },
+        "reference_system": {
+          "$ref": "#/definitions/reference_system_spatial"
+        },
+        "step": {
+          "$ref": "#/definitions/step"
+        },
+        "type": {
+          "$ref": "#/definitions/type_spatial"
+        },
+        "unit": {
+          "$ref": "#/definitions/unit"
+        },
+        "values": {
+          "$ref": "#/definitions/values"
+        }
+      },
+      "title": "Vertical Spatial Dimension Object",
+      "type": "object"
+    }
+  },
+  "description": "STAC Datacube Extension for STAC Items and STAC Collections.",
+  "oneOf": [
+    {
+      "$comment": "This is the schema for STAC Items.",
+      "allOf": [
+        {
+          "properties": {
+            "type": {
+              "const": "Feature"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/definitions/stac_extensions"
+        }
+      ],
+      "anyOf": [
+        {
+          "properties": {
+            "properties": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/require_field"
+                },
+                {
+                  "$ref": "#/definitions/fields"
+                }
+              ]
+            }
+          },
+          "required": [
+            "properties"
+          ],
+          "type": "object"
+        },
+        {
+          "$comment": "This validates the fields in Item Assets.",
+          "properties": {
+            "assets": {
+              "not": {
+                "additionalProperties": {
+                  "not": {
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/require_field"
+                      },
+                      {
+                        "$ref": "#/definitions/fields"
+                      }
+                    ]
+                  }
+                }
+              },
+              "type": "object"
+            }
+          },
+          "required": [
+            "assets"
+          ]
+        }
+      ]
+    },
+    {
+      "$comment": "This is the schema for STAC Collections.",
+      "allOf": [
+        {
+          "properties": {
+            "type": {
+              "const": "Collection"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "$ref": "#/definitions/stac_extensions"
+        }
+      ],
+      "anyOf": [
+        {
+          "$comment": "This is the schema for the top-level fields in a Collection.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/require_field"
+            },
+            {
+              "$ref": "#/definitions/fields"
+            }
+          ]
+        },
+        {
+          "$comment": "This validates the fields in Collection Assets.",
+          "properties": {
+            "assets": {
+              "not": {
+                "additionalProperties": {
+                  "not": {
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/require_field"
+                      },
+                      {
+                        "$ref": "#/definitions/fields"
+                      }
+                    ]
+                  }
+                }
+              },
+              "type": "object"
+            }
+          },
+          "required": [
+            "assets"
+          ]
+        },
+        {
+          "$comment": "This is the schema for the fields in Item Asset Definitions.",
+          "properties": {
+            "item_assets": {
+              "not": {
+                "additionalProperties": {
+                  "not": {
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/require_any_field"
+                      },
+                      {
+                        "$ref": "#/definitions/fields"
+                      }
+                    ]
+                  }
+                }
+              },
+              "type": "object"
+            }
+          },
+          "required": [
+            "item_assets"
+          ]
+        },
+        {
+          "$comment": "This is the schema for the fields in Summaries. By default, only checks the existance of the properties, but not the schema of the summaries.",
+          "properties": {
+            "summaries": {
+              "$ref": "#/definitions/require_any_field"
+            }
+          },
+          "required": [
+            "summaries"
+          ]
+        }
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "Datacube Extension"
+}

@@ -1,0 +1,21 @@
+# The release set this environment serves (release consumption spec PIN-001).
+# Copy each release to release_root on the host; `make deploy-staging` verifies
+# every pinned release in full before starting the services.
+release_root: /srv/datasets/releases
+releases:
+  - dataset: paleocar_v3
+    release_id: paleocar_v3-r-2026.11.04
+    declaration_digest: ebb5bb56d7b0b93b162e2d6f0e8bfc311f8023cafd5a8cd37f73309cdd0b6bd4
+    manifest_sha256: 899b8be2a700f2fb597b6043d865a68d625a75f62ead0d1ec77de634194d4101
+  - dataset: lbda_v2
+    release_id: lbda_v2-r-2026.11.12
+    declaration_digest: 7d97a7b8502e90639632e154f0a088f68f999e116b9a948bb48ed4f2d9c6944d
+    manifest_sha256: 1557d978460a30405df15c7ae47e1d1237f1405466e58adbb5715bd20c4c4859
+  - dataset: owda_v1
+    release_id: owda_v1-r-2026.11.12
+    declaration_digest: ea46dcfe795fe62b56b4b5edb215556916cbd5e687d46cb37d89628bbec3c75b
+    manifest_sha256: 8d0667cf715bcc3a9d09a81bed82aa799502269ebb20d0b60afcd48c624596c2
+  - dataset: paleocar_v2
+    release_id: paleocar_v2-r-2026.11.13
+    declaration_digest: ac9009bde5d2412fe22ef27e476524af565c15d45777f79c6caf3b3bfa17a059
+    manifest_sha256: d001924ec5c745c69e5282a4dd0f144c9dc394a557eeec054b857a8f2d9884e9

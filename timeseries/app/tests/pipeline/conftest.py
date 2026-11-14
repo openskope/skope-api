@@ -1,36 +1,22 @@
-import os
+import numpy as np
 import pytest
-from pathlib import Path
-from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
-from app.main import app
-from app.store.data_reader import LocalDataReader
+import app.main
+from app.main import app as fastapi_app
 from app.store.jobs import FileSystemJobStore, get_job_store
 from app.core.job_control import get_job_controller
+from app.tests.release_builder import build_release, write_pin
 
-# Absolute path to the local test rasters and lookup subdirectories.
-# fetch_lookup_dict constructs: {DATA_DIR}/{dataset_id}/lookup.json
-# resolve_temporal_slice constructs: {DATA_DIR}/{entry["file"]}
-DATA_DIR = Path(__file__).parent / "data"
+# Two small releases on a 5x5 grid of 1-degree pixels with its top-left corner
+# at (-123, 45). Every pixel of timestep i holds the value i + 1.
+GRID = (1.0, 0.0, -123.0, 0.0, -1.0, 45.0)
 
-TEST_REGISTRY = {
-    "test-annual": {
-        "id": "test-annual",
-        "crs": "EPSG:4326",
-        "transform": [1.0, 0.0, -123.0, 0.0, -1.0, 45.0],
-        "timespan": {"period": {"gte": "0001", "lte": "0005"}},
-        "variables": [{"id": "ppt"}],
-    },
-    "test-monthly": {
-        "id": "test-monthly",
-        "crs": "EPSG:4326",
-        "transform": [1.0, 0.0, -123.0, 0.0, -1.0, 45.0],
-        "timespan": {"period": {"gte": "0001-01", "lte": "0005-12"}},
-        "variables": [{"id": "ppt"}],
-    },
-}
+
+def _cube(count):
+    return np.stack([np.full((5, 5), i + 1, dtype=np.float32) for i in range(count)])
+
 
 # 1°×1° polygon covering exactly one pixel of the 1°/pixel test rasters.
 # Pixel column 1, row 1 in the 5×5 grid (0-indexed from top-left at -123, 45).
@@ -48,6 +34,36 @@ SINGLE_CELL_POLYGON = {
 }
 
 
+DISPLAY = """
+datasets:
+  test_annual:
+    order: 10
+    variables:
+      ppt: {order: 10, palette: skope-precip, range: [0, 4.5]}
+  test_monthly:
+    order: 20
+    default_variable: ppt
+    variables:
+      ppt: {order: 10, palette: skope-precip, range: [1, 60]}
+"""
+PALETTES = """
+skope-precip:
+  kind: ramp
+  colors: ["#B5834A", "#358C87"]
+"""
+
+
+def write_display(tmp_path, monkeypatch, preferences=DISPLAY):
+    (tmp_path / "preferences.yml").write_text(preferences)
+    (tmp_path / "palettes.yml").write_text(PALETTES)
+    monkeypatch.setattr(
+        app.main.settings, "display_preferences_path", str(tmp_path / "preferences.yml")
+    )
+    monkeypatch.setattr(
+        app.main.settings, "display_palettes_path", str(tmp_path / "palettes.yml")
+    )
+
+
 @pytest.fixture
 def job_store(tmp_path):
     store_dir = tmp_path / "jobs"
@@ -57,29 +73,31 @@ def job_store(tmp_path):
 
 @pytest.fixture
 def pipeline_client(monkeypatch, tmp_path, job_store):
-    # Redirect lookup dict cache so each test gets a clean slate
-    cache_dir = str(tmp_path / "lookup_cache")
-    os.makedirs(cache_dir, exist_ok=True)
-    monkeypatch.setattr("app.store.index_loaders._CACHE_DIR", cache_dir)
+    # Serve two synthetic releases through the real startup composition.
+    root = tmp_path / "releases"
+    releases = [
+        build_release(root, "test_annual", {"ppt": _cube(5)}, transform=GRID),
+        build_release(
+            root,
+            "test_monthly",
+            {"ppt": _cube(60)},
+            origin="0001-01",
+            step="P1M",
+            precision="month",
+            chunk_size=12,
+            transform=GRID,
+        ),
+    ]
+    pin = write_pin(tmp_path / "releases.yml", root, releases)
+    monkeypatch.setattr(app.main.settings, "release_pin_path", str(pin))
+    monkeypatch.setattr(app.main.settings, "release_root", str(root))
+    write_display(tmp_path, monkeypatch)
 
-    # Patch the lifespan initializers so TestClient doesn't need a real
-    # metadata.yml or cloud storage configuration
-    monkeypatch.setattr("app.main.load_registry", lambda _: TEST_REGISTRY)
-    monkeypatch.setattr("app.main.get_data_reader", lambda _: LocalDataReader())
-
-    # Point timeseries_tasks at DATA_DIR:
-    #   - fetch_lookup_dict reads  {DATA_DIR}/{dataset_id}/lookup.json  via LocalDataReader
-    #   - resolve_temporal_slice builds  {DATA_DIR}/{entry["file"]}  as the raster URI
-    monkeypatch.setattr(
-        "app.core.timeseries_tasks.settings",
-        SimpleNamespace(storage_base_url=str(DATA_DIR), default_max_cells=500_000),
-    )
-
-    app.dependency_overrides[get_job_store] = lambda: job_store
+    fastapi_app.dependency_overrides[get_job_store] = lambda: job_store
 
     try:
-        with TestClient(app, raise_server_exceptions=True) as client:
+        with TestClient(fastapi_app, raise_server_exceptions=True) as client:
             yield client
     finally:
-        app.dependency_overrides.clear()
+        fastapi_app.dependency_overrides.clear()
         get_job_controller.cache_clear()

@@ -1,0 +1,8 @@
+# Release IDs assigned to paleocar_v3 and the declaration each one was built
+# from (REL-006, spec §20.3). An ID is never reused; a bad release gets
+# `withdrawn: <reason>` instead of being removed.
+releases:
+  - release_id: "paleocar_v3-r-2026.10.07"
+    declaration_digest: "fa5b29a944289e7677f1bff46216a2222f20f5eb73d7237e9d453e0c2e1f059e"
+  - release_id: "paleocar_v3-r-2026.11.04"
+    declaration_digest: "ebb5bb56d7b0b93b162e2d6f0e8bfc311f8023cafd5a8cd37f73309cdd0b6bd4"

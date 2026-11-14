@@ -1,0 +1,628 @@
+{
+  "$defs": {
+    "Dataset": {
+      "additionalProperties": false,
+      "properties": {
+        "bbox": {
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Bbox",
+          "type": "array"
+        },
+        "citation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Citation"
+        },
+        "declaration_digest": {
+          "title": "Declaration Digest",
+          "type": "string"
+        },
+        "default_variable": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Default Variable"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "doi": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Doi"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "license": {
+          "title": "License",
+          "type": "string"
+        },
+        "lineage": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Lineage"
+        },
+        "links": {
+          "items": {
+            "$ref": "#/$defs/OverviewLink"
+          },
+          "title": "Links",
+          "type": "array"
+        },
+        "map_view": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MapView"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "order": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Order"
+        },
+        "profile": {
+          "title": "Profile",
+          "type": "string"
+        },
+        "providers": {
+          "items": {
+            "$ref": "#/$defs/OverviewProvider"
+          },
+          "title": "Providers",
+          "type": "array"
+        },
+        "publications": {
+          "items": {
+            "$ref": "#/$defs/OverviewPublication"
+          },
+          "title": "Publications",
+          "type": "array"
+        },
+        "region_name": {
+          "title": "Region Name",
+          "type": "string"
+        },
+        "release_id": {
+          "title": "Release Id",
+          "type": "string"
+        },
+        "resolution_label": {
+          "title": "Resolution Label",
+          "type": "string"
+        },
+        "time": {
+          "$ref": "#/$defs/Time"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "uncertainty": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OverviewUncertainty"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "variables": {
+          "items": {
+            "$ref": "#/$defs/Variable"
+          },
+          "title": "Variables",
+          "type": "array"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "version",
+        "license",
+        "profile",
+        "region_name",
+        "bbox",
+        "resolution_label",
+        "time",
+        "providers",
+        "citation",
+        "doi",
+        "publications",
+        "lineage",
+        "uncertainty",
+        "links",
+        "order",
+        "map_view",
+        "default_variable",
+        "release_id",
+        "declaration_digest",
+        "variables"
+      ],
+      "title": "Dataset",
+      "type": "object"
+    },
+    "Display": {
+      "additionalProperties": false,
+      "properties": {
+        "colors": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Colors",
+          "type": "array"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Note"
+        },
+        "palette": {
+          "title": "Palette",
+          "type": "string"
+        },
+        "range": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Range"
+        },
+        "ticks": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Ticks"
+        },
+        "type": {
+          "enum": [
+            "continuous",
+            "categorical"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "palette",
+        "colors",
+        "range",
+        "ticks",
+        "note"
+      ],
+      "title": "Display",
+      "type": "object"
+    },
+    "MapCenter": {
+      "additionalProperties": false,
+      "properties": {
+        "lat": {
+          "title": "Lat",
+          "type": "number"
+        },
+        "lon": {
+          "title": "Lon",
+          "type": "number"
+        }
+      },
+      "required": [
+        "lon",
+        "lat"
+      ],
+      "title": "MapCenter",
+      "type": "object"
+    },
+    "MapView": {
+      "additionalProperties": false,
+      "properties": {
+        "center": {
+          "$ref": "#/$defs/MapCenter"
+        },
+        "zoom": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Zoom"
+        }
+      },
+      "required": [
+        "center",
+        "zoom"
+      ],
+      "title": "MapView",
+      "type": "object"
+    },
+    "OverviewLink": {
+      "additionalProperties": false,
+      "properties": {
+        "href": {
+          "minLength": 1,
+          "title": "Href",
+          "type": "string"
+        },
+        "rel": {
+          "minLength": 1,
+          "title": "Rel",
+          "type": "string"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        }
+      },
+      "required": [
+        "rel",
+        "href"
+      ],
+      "title": "OverviewLink",
+      "type": "object"
+    },
+    "OverviewProvider": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "roles": {
+          "items": {
+            "enum": [
+              "producer",
+              "licensor",
+              "processor",
+              "host"
+            ],
+            "type": "string"
+          },
+          "title": "Roles",
+          "type": "array"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "required": [
+        "name",
+        "roles"
+      ],
+      "title": "OverviewProvider",
+      "type": "object"
+    },
+    "OverviewPublication": {
+      "additionalProperties": false,
+      "properties": {
+        "citation": {
+          "minLength": 1,
+          "title": "Citation",
+          "type": "string"
+        },
+        "doi": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Doi"
+        }
+      },
+      "required": [
+        "citation"
+      ],
+      "title": "OverviewPublication",
+      "type": "object"
+    },
+    "OverviewUncertainty": {
+      "additionalProperties": false,
+      "properties": {
+        "methodology_href": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Methodology Href"
+        },
+        "summary": {
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "summary",
+        "methodology_href"
+      ],
+      "title": "OverviewUncertainty",
+      "type": "object"
+    },
+    "Time": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "title": "Count",
+          "type": "integer"
+        },
+        "end": {
+          "title": "End",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "regular",
+            "enumerated"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "origin": {
+          "title": "Origin",
+          "type": "string"
+        },
+        "precision": {
+          "title": "Precision",
+          "type": "string"
+        },
+        "step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Step"
+        },
+        "values": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Values"
+        }
+      },
+      "required": [
+        "kind",
+        "precision",
+        "count",
+        "origin",
+        "end",
+        "step",
+        "values"
+      ],
+      "title": "Time",
+      "type": "object"
+    },
+    "Variable": {
+      "additionalProperties": false,
+      "properties": {
+        "categories": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Categories"
+        },
+        "category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Category"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "display": {
+          "$ref": "#/$defs/Display"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "labels": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Labels"
+        },
+        "order": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Order"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "unit": {
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "unit",
+        "category",
+        "categories",
+        "labels",
+        "order",
+        "display"
+      ],
+      "title": "Variable",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "datasets": {
+      "items": {
+        "$ref": "#/$defs/Dataset"
+      },
+      "title": "Datasets",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "datasets"
+  ],
+  "title": "SKOPE /metadata response 1.0.0",
+  "type": "object"
+}

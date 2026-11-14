@@ -1,0 +1,35 @@
+# Sources and build settings for lbda_v2 (META-004). The source is NOAA's LBDA
+# v2 NetCDF, prepared into a GeoTIFF with one band per year by
+# scripts/prepare_lbda_v2.py (META-013; see the curated lineage).
+schema_version: "0.1.0"
+dataset: "lbda_v2"
+release:
+  created: "2026-11-12T00:00:00Z"
+  # The PaleoCAR v3 layout (ADR 0007), reused without rerunning EXP-002 and
+  # EXP-003: the 115 x 48 grid fits in one 128-pixel block, so block size and
+  # interleave make no difference to how many blocks a read touches, and 250
+  # timesteps per file gives 9 small files for the 2,017 years.
+  chunk_size: 250
+  cog:
+    blocksize: 128
+    interleave: "TILE"
+    compress: "ZSTD"
+    level: 9
+    bigtiff: "IF_SAFER"
+variables:
+  - id: "pmdi"
+    source:
+      checksum: "12206f943631d7e6933dc22ec891802d0ee1b08970d96b0c52a37f81e38398ea93e9"  # the prepared GeoTIFF
+      bands: "descriptions"
+      prepare:
+        script: "scripts/prepare_lbda_v2.py"
+        inputs:
+          - uri: "https://www.ncei.noaa.gov/pub/data/paleo/drought/LBDP-v2/lbda-v2_kddm_pmdi_2017.nc"
+            checksum: "1220b02edb8d27cf9ac19087938dd3d306895e208bd3a9f0458e63292ea2695a1f78"
+    encoding:
+      data_type: "float32"
+      nodata: -9999.0
+      scale: 1.0
+      offset: 0.0
+      predictor: 3
+      overview_resampling: "AVERAGE"

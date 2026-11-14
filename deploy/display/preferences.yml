@@ -1,0 +1,182 @@
+# How each dataset and variable is shown (release consumption spec Section 4.1).
+# Shared by every environment; entries for datasets an environment doesn't pin
+# are allowed. Palettes are defined in palettes.yml.
+#
+# Every range is a visualization range in physical units, used unchanged for
+# both the tile rescale and the legend (DISP-004). It is not an observed range
+# and not a valid range.
+
+defaults:
+  ticks: 5
+  nodata: transparent
+
+datasets:
+  paleocar_v3:
+    order: 10
+    map_view:
+      center: { lon: -108.5, lat: 37.0 }
+      zoom: 4.25
+    default_variable: ppt_annual
+    variables:
+      ppt_annual:
+        order: 10
+        palette: skope-precip
+        range: [0, 900]
+        ticks: [0, 150, 300, 450, 600, 750, 900]
+        note: >-
+          Break at 300 mm, the water-year maize threshold of Bocinsky and
+          Kohler (2014) applied to the calendar year; the range ends at
+          three times the break.
+      ppt_may_sept:
+        order: 12
+        palette: skope-precip
+        range: [0, 450]
+        ticks: [0, 75, 150, 225, 300, 375, 450]
+        note: >-
+          Break at about 150 mm, a rough summer share of the 300 mm
+          water-year threshold of Bocinsky and Kohler (2014); no May–September
+          threshold is published. The range ends at three times the break.
+      ppt_water_year:
+        order: 14
+        palette: skope-precip
+        range: [0, 900]
+        ticks: [0, 150, 300, 450, 600, 750, 900]
+        note: >-
+          Break at 300 mm, the rain-fed maize threshold of Bocinsky and
+          Kohler (2014); the range ends at three times the break.
+      gdd_cotton_annual:
+        order: 20
+        palette: skope-gdd
+        range: [0, 3600]
+        ticks: [0, 600, 1200, 1800, 2400, 3000, 3600]
+        note: >-
+          Break at about 1200 °C GDD, the low end of the 2200–2600 °F DD60
+          (base 60 °F) that extension guides give cotton from planting to
+          maturity; the range ends at three times the break. Assumes a 15.6
+          °C base, unconfirmed. A growing-season threshold, used unchanged
+          for this window: where the crop is marginal, months outside
+          May–September add little heat.
+      gdd_cotton_may_sept:
+        order: 22
+        palette: skope-gdd
+        range: [0, 3600]
+        ticks: [0, 600, 1200, 1800, 2400, 3000, 3600]
+        note: >-
+          Break at about 1200 °C GDD, the low end of the 2200–2600 °F DD60
+          (base 60 °F) that extension guides give cotton from planting to
+          maturity; the range ends at three times the break. Assumes a 15.6
+          °C base, unconfirmed.
+      gdd_cotton_water_year:
+        order: 24
+        palette: skope-gdd
+        range: [0, 3600]
+        ticks: [0, 600, 1200, 1800, 2400, 3000, 3600]
+        note: >-
+          Break at about 1200 °C GDD, the low end of the 2200–2600 °F DD60
+          (base 60 °F) that extension guides give cotton from planting to
+          maturity; the range ends at three times the break. Assumes a 15.6
+          °C base, unconfirmed. A growing-season threshold, used unchanged
+          for this window: where the crop is marginal, months outside
+          May–September add little heat.
+      gdd_maize_annual:
+        order: 30
+        palette: skope-gdd
+        range: [0, 3000]
+        ticks: [0, 500, 1000, 1500, 2000, 2500, 3000]
+        note: >-
+          Break at 1000 °C GDD, the maize farming threshold of Bocinsky and
+          Kohler (2014) (1800 °F GDD); the range ends at three times the
+          break. A growing-season threshold, used unchanged for this window:
+          where the crop is marginal, months outside May–September add
+          little heat.
+      gdd_maize_may_sept:
+        order: 32
+        palette: skope-gdd
+        range: [0, 3000]
+        ticks: [0, 500, 1000, 1500, 2000, 2500, 3000]
+        note: >-
+          Break at 1000 °C GDD, the maize farming threshold of Bocinsky and
+          Kohler (2014) (1800 °F GDD); the range ends at three times the
+          break.
+      gdd_maize_water_year:
+        order: 34
+        palette: skope-gdd
+        range: [0, 3000]
+        ticks: [0, 500, 1000, 1500, 2000, 2500, 3000]
+        note: >-
+          Break at 1000 °C GDD, the maize farming threshold of Bocinsky and
+          Kohler (2014) (1800 °F GDD); the range ends at three times the
+          break. A growing-season threshold, used unchanged for this window:
+          where the crop is marginal, months outside May–September add
+          little heat.
+      gdd_wheat_annual:
+        order: 40
+        palette: skope-gdd
+        range: [0, 5700]
+        ticks: [0, 950, 1900, 2850, 3800, 4750, 5700]
+        note: >-
+          Break at 1900 °C GDD, the minimum for wheat (base 0 °C; spring
+          1869, winter 1907) in Guedes and Bocinsky (2018); the range ends
+          at three times the break. Assumes a 0 °C base, unconfirmed.
+      gdd_wheat_may_sept:
+        order: 42
+        palette: skope-gdd
+        range: [0, 5700]
+        ticks: [0, 950, 1900, 2850, 3800, 4750, 5700]
+        note: >-
+          Break at 1900 °C GDD, the minimum for wheat (base 0 °C; spring
+          1869, winter 1907) in Guedes and Bocinsky (2018); the range ends
+          at three times the break. Assumes a 0 °C base, unconfirmed.
+      gdd_wheat_water_year:
+        order: 44
+        palette: skope-gdd
+        range: [0, 5700]
+        ticks: [0, 950, 1900, 2850, 3800, 4750, 5700]
+        note: >-
+          Break at 1900 °C GDD, the minimum for wheat (base 0 °C; spring
+          1869, winter 1907) in Guedes and Bocinsky (2018); the range ends
+          at three times the break. Assumes a 0 °C base, unconfirmed.
+  paleocar_v2:
+    order: 15
+    map_view:
+      center: { lon: -108.5, lat: 37.0 }
+      zoom: 4.25
+    default_variable: ppt_water_year
+    variables:
+      ppt_water_year:
+        order: 10
+        palette: skope-precip
+        range: [0, 900]
+        ticks: [0, 150, 300, 450, 600, 750, 900]
+        note: >-
+          Break at 300 mm, the rain-fed maize threshold of Bocinsky and
+          Kohler (2014); the range ends at three times the break.
+      gdd_may_sept:
+        order: 20
+        palette: skope-gdd
+        range: [0, 5400]
+        ticks: [0, 900, 1800, 2700, 3600, 4500, 5400]
+        note: >-
+          Break at 1800 °F GDD, the maize farming threshold of Bocinsky and
+          Kohler (2014); the range ends at three times the break.
+  lbda_v2:
+    order: 20
+    variables:
+      pmdi:
+        order: 10
+        palette: skope-drought
+        range: [-6, 6]
+        note: >-
+          Provisional: the legacy registry's range, symmetric about zero, so
+          drought (negative) is brown and wetness (positive) teal; the PMDI
+          classes end at -4 and 4.
+  owda_v1:
+    order: 30
+    variables:
+      pdsi:
+        order: 10
+        palette: skope-drought
+        range: [-6, 6]
+        note: >-
+          Provisional: the same range as lbda_v2's PMDI, so the two drought
+          atlases read alike; the PDSI classes end at -4 and 4.

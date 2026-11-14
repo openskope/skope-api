@@ -1,5 +1,4 @@
 import math
-import re
 from typing import Sequence
 
 import rasterio.windows
@@ -11,48 +10,27 @@ from shapely.ops import transform as transform_geometry
 from shapely.geometry import Point as ShapelyPoint
 from shapely.geometry.base import BaseGeometry
 
-COLORMAP_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+from app.registry.compose import AppRegistry, ServedRelease
 
 # ---------------------------------------------------------------------------
 # Dataset and variable validation to prevent arbitrary or malicious queries
 
 
 def validate_dataset_and_variable(
-    registry: dict, dataset_id: str, variable_id: str
-) -> None:
+    registry: AppRegistry, dataset_id: str, variable_id: str
+) -> ServedRelease:
     """
     Validates dataset and variable existence to prevent arbitrary or malicious queries.
-    Raises ValueError if the IDs are not found in the registry.
+    Returns the dataset's release; raises ValueError if either ID is not served.
     """
-    dataset = registry.get(dataset_id)
-    if not dataset:
+    release = registry.get(dataset_id)
+    if release is None:
         raise ValueError(f"Dataset '{dataset_id}' not found.")
-
-    variables = dataset.get("variables", [])
-
-    if not any(var.get("id") == variable_id for var in variables):
+    if not release.has_variable(variable_id):
         raise ValueError(
             f"Variable '{variable_id}' not found in dataset '{dataset_id}'."
         )
-
-
-def validate_tile_style(colormap: str, rescale: str) -> tuple[str, str]:
-    if not COLORMAP_NAME_PATTERN.fullmatch(colormap):
-        raise ValueError("Invalid colormap name.")
-
-    try:
-        lower_text, upper_text = rescale.split(",")
-        lower = float(lower_text)
-        upper = float(upper_text)
-    except ValueError as exc:
-        raise ValueError("Rescale must contain exactly two numeric values.") from exc
-
-    if not math.isfinite(lower) or not math.isfinite(upper):
-        raise ValueError("Rescale values must be finite.")
-    if lower >= upper:
-        raise ValueError("Rescale minimum must be less than maximum.")
-
-    return colormap, f"{lower:g},{upper:g}"
+    return release
 
 
 # ---------------------------------------------------------------------------
@@ -71,16 +49,15 @@ def resolve_spatial_window(
         transform_geometry(transformer.transform, shape) for shape in shapes
     ]
     bounds = unary_union(projected_shapes).bounds
-    window = (
-        rasterio.windows.from_bounds(*bounds, transform=dataset_transform)
-        .round_lengths()
-        .round_offsets()
-    )
+    exact = rasterio.windows.from_bounds(*bounds, transform=dataset_transform)
+    # Every cell the bounds reach: floor the start and ceil the end, so no cell
+    # whose center is inside the area falls outside the window.
+    col_off, row_off = math.floor(exact.col_off), math.floor(exact.row_off)
     window = Window(
-        window.col_off,
-        window.row_off,
-        max(1, window.width),
-        max(1, window.height),
+        col_off,
+        row_off,
+        max(1, math.ceil(exact.col_off + exact.width) - col_off),
+        max(1, math.ceil(exact.row_off + exact.height) - row_off),
     )
     return projected_shapes, dataset_transform, window
 
@@ -94,17 +71,18 @@ def estimate_cell_count(
 
 
 def validate_geom_size(
-    shapes: list[BaseGeometry], dataset_entry: dict, max_cells: int
+    shapes: list[BaseGeometry],
+    transform: Sequence[float],
+    dataset_crs: str,
+    max_cells: int,
 ) -> None:
     """
-    Validates that the geometry does not exceed a maximum number of cells when rasterized.
-    Accepts a list of Shapely geometries and a registry dataset entry (with 'crs' and 'transform').
-    Raises ValueError if the geometry is too large.
+    Validates that the geometry does not exceed a maximum number of cells when rasterized
+    on the dataset's grid. Raises ValueError if the geometry is too large.
     """
     if all(isinstance(s, ShapelyPoint) for s in shapes):
         return  # A point is exactly 1 cell — always within limits
-    transform = dataset_entry["transform"]
-    estimated_cells = estimate_cell_count(shapes, transform, dataset_entry["crs"])
+    estimated_cells = estimate_cell_count(shapes, transform, dataset_crs)
 
     if estimated_cells > max_cells:
         raise ValueError(

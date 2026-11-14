@@ -1,0 +1,390 @@
+{
+  "$defs": {
+    "CogOptions": {
+      "additionalProperties": false,
+      "description": "COG creation options that are part of the declaration (Section 12.1).",
+      "properties": {
+        "bigtiff": {
+          "enum": [
+            "IF_SAFER",
+            "IF_NEEDED",
+            "YES",
+            "NO"
+          ],
+          "title": "Bigtiff",
+          "type": "string"
+        },
+        "blocksize": {
+          "enum": [
+            128,
+            256,
+            512
+          ],
+          "title": "Blocksize",
+          "type": "integer"
+        },
+        "compress": {
+          "enum": [
+            "ZSTD",
+            "DEFLATE",
+            "LZW"
+          ],
+          "title": "Compress",
+          "type": "string"
+        },
+        "interleave": {
+          "enum": [
+            "BAND",
+            "TILE",
+            "PIXEL"
+          ],
+          "title": "Interleave",
+          "type": "string"
+        },
+        "level": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Level"
+        },
+        "sparse_ok": {
+          "const": false,
+          "default": false,
+          "title": "Sparse Ok",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "blocksize",
+        "interleave",
+        "compress",
+        "bigtiff"
+      ],
+      "title": "CogOptions",
+      "type": "object"
+    },
+    "Encoding": {
+      "additionalProperties": false,
+      "properties": {
+        "data_type": {
+          "enum": [
+            "uint8",
+            "int8",
+            "uint16",
+            "int16",
+            "uint32",
+            "int32",
+            "float32",
+            "float64"
+          ],
+          "title": "Data Type",
+          "type": "string"
+        },
+        "narrowing": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Narrowing"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "nodata": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Nodata"
+        },
+        "offset": {
+          "default": 0.0,
+          "title": "Offset",
+          "type": "number"
+        },
+        "overview_resampling": {
+          "enum": [
+            "AVERAGE",
+            "MODE",
+            "NEAREST",
+            "BILINEAR",
+            "CUBIC",
+            "LANCZOS"
+          ],
+          "title": "Overview Resampling",
+          "type": "string"
+        },
+        "predictor": {
+          "enum": [
+            1,
+            2,
+            3
+          ],
+          "title": "Predictor",
+          "type": "integer"
+        },
+        "scale": {
+          "default": 1.0,
+          "title": "Scale",
+          "type": "number"
+        }
+      },
+      "required": [
+        "data_type",
+        "nodata",
+        "predictor",
+        "overview_resampling"
+      ],
+      "title": "Encoding",
+      "type": "object"
+    },
+    "Narrowing": {
+      "additionalProperties": false,
+      "description": "An approved per-variable datatype narrowing (COG-016, EXP-004).",
+      "properties": {
+        "approved_by": {
+          "minLength": 1,
+          "title": "Approved By",
+          "type": "string"
+        },
+        "evidence": {
+          "minLength": 1,
+          "title": "Evidence",
+          "type": "string"
+        }
+      },
+      "required": [
+        "approved_by",
+        "evidence"
+      ],
+      "title": "Narrowing",
+      "type": "object"
+    },
+    "Prepare": {
+      "additionalProperties": false,
+      "description": "A script that makes the source from upstream files the build cannot read (META-013).",
+      "properties": {
+        "inputs": {
+          "items": {
+            "$ref": "#/$defs/PrepareInput"
+          },
+          "minItems": 1,
+          "title": "Inputs",
+          "type": "array"
+        },
+        "script": {
+          "pattern": "^scripts/[a-z][a-z0-9_]*\\.py$",
+          "title": "Script",
+          "type": "string"
+        }
+      },
+      "required": [
+        "script",
+        "inputs"
+      ],
+      "title": "Prepare",
+      "type": "object"
+    },
+    "PrepareInput": {
+      "additionalProperties": false,
+      "properties": {
+        "checksum": {
+          "anyOf": [
+            {
+              "pattern": "^1220[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Checksum"
+        },
+        "uri": {
+          "minLength": 1,
+          "title": "Uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri"
+      ],
+      "title": "PrepareInput",
+      "type": "object"
+    },
+    "ReleaseBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "chunk_size": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Chunk Size"
+        },
+        "cog": {
+          "$ref": "#/$defs/CogOptions"
+        },
+        "created": {
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$",
+          "title": "Created",
+          "type": "string"
+        }
+      },
+      "required": [
+        "created",
+        "cog"
+      ],
+      "title": "ReleaseBlock",
+      "type": "object"
+    },
+    "Source": {
+      "additionalProperties": false,
+      "properties": {
+        "band": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Band"
+        },
+        "bands": {
+          "anyOf": [
+            {
+              "const": "descriptions",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bands"
+        },
+        "checksum": {
+          "anyOf": [
+            {
+              "pattern": "^1220[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Checksum"
+        },
+        "prepare": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Prepare"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "uri": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Uri"
+        }
+      },
+      "title": "Source",
+      "type": "object"
+    },
+    "SourceVariable": {
+      "additionalProperties": false,
+      "properties": {
+        "encoding": {
+          "$ref": "#/$defs/Encoding"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        }
+      },
+      "required": [
+        "id",
+        "source",
+        "encoding"
+      ],
+      "title": "SourceVariable",
+      "type": "object"
+    }
+  },
+  "$id": "https://api.openskope.org/schemas/release/source-manifest/v0.1.0/schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "dataset": {
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "title": "Dataset",
+      "type": "string"
+    },
+    "release": {
+      "$ref": "#/$defs/ReleaseBlock"
+    },
+    "schema_version": {
+      "const": "0.1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "variables": {
+      "items": {
+        "$ref": "#/$defs/SourceVariable"
+      },
+      "minItems": 1,
+      "title": "Variables",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "dataset",
+    "release",
+    "variables"
+  ],
+  "title": "SourceManifest",
+  "type": "object"
+}

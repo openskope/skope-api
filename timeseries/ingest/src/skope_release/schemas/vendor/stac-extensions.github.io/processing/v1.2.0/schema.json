@@ -1,0 +1,323 @@
+{
+  "$id": "https://stac-extensions.github.io/processing/v1.2.0/schema.json#",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "anyOf": [
+    {
+      "$comment": "This is the schema for STAC Items.",
+      "properties": {
+        "assets": {
+          "$comment": "This validates the fields in Item Assets, but does not require them.",
+          "additionalProperties": {
+            "$ref": "#/definitions/fields"
+          },
+          "type": "object"
+        },
+        "properties": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/require_any_field"
+            },
+            {
+              "$ref": "#/definitions/fields"
+            }
+          ]
+        },
+        "type": {
+          "const": "Feature"
+        }
+      },
+      "required": [
+        "type",
+        "properties",
+        "assets"
+      ],
+      "type": "object"
+    },
+    {
+      "$comment": "This is the schema for STAC Collections.",
+      "anyOf": [
+        {
+          "$comment": "Requires at least one provider to contain processing fields.",
+          "properties": {
+            "providers": {
+              "contains": {
+                "allOf": [
+                  {
+                    "properties": {
+                      "roles": {
+                        "contains": {
+                          "enum": [
+                            "producer",
+                            "processor"
+                          ]
+                        },
+                        "type": "array"
+                      }
+                    },
+                    "required": [
+                      "roles"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "$ref": "#/definitions/require_any_field"
+                  }
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "providers"
+          ],
+          "type": "object"
+        },
+        {
+          "$comment": "Requires at least one asset to contain processing fields.",
+          "properties": {
+            "assets": {
+              "not": {
+                "additionalProperties": {
+                  "not": {
+                    "$ref": "#/definitions/require_any_field"
+                  }
+                }
+              },
+              "type": "object"
+            }
+          },
+          "required": [
+            "assets"
+          ],
+          "type": "object"
+        },
+        {
+          "$comment": "Requires at least one item asset definition to contain processing fields.",
+          "properties": {
+            "item_assets": {
+              "not": {
+                "additionalProperties": {
+                  "not": {
+                    "$ref": "#/definitions/require_any_field"
+                  }
+                }
+              },
+              "type": "object"
+            }
+          },
+          "required": [
+            "item_assets"
+          ],
+          "type": "object"
+        },
+        {
+          "$comment": "Requires at least one summary to be a processing field.",
+          "properties": {
+            "summaries": {
+              "$ref": "#/definitions/require_any_field"
+            }
+          },
+          "required": [
+            "summaries"
+          ],
+          "type": "object"
+        }
+      ],
+      "properties": {
+        "assets": {
+          "additionalProperties": {
+            "$ref": "#/definitions/fields"
+          },
+          "type": "object"
+        },
+        "item_assets": {
+          "additionalProperties": {
+            "$ref": "#/definitions/fields"
+          },
+          "type": "object"
+        },
+        "providers": {
+          "items": {
+            "$ref": "#/definitions/fields"
+          },
+          "type": "array"
+        },
+        "summaries": {
+          "$comment": "The values of summaries are not validated yet!"
+        },
+        "type": {
+          "const": "Collection"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    }
+  ],
+  "definitions": {
+    "fields": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^(?!processing:)": {}
+      },
+      "properties": {
+        "processing:datetime": {
+          "examples": [
+            "2020-01-05T12:34:55Z"
+          ],
+          "format": "date-time",
+          "pattern": "(\\+00:00|Z)$",
+          "title": "Processing Datetime",
+          "type": "string"
+        },
+        "processing:expression": {
+          "properties": {
+            "expression": {
+              "description": "Any data type, depending on the format chosen."
+            },
+            "format": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "format",
+            "expression"
+          ],
+          "title": "Processing Expression",
+          "type": "object"
+        },
+        "processing:facility": {
+          "examples": [
+            "Copernicus S1 Core Ground Segment - DPA"
+          ],
+          "title": "Processing Facility",
+          "type": "string"
+        },
+        "processing:level": {
+          "examples": [
+            "RAW",
+            "L1",
+            "L1A",
+            "L1B",
+            "L1C",
+            "L2",
+            "L2A",
+            "L3",
+            "L4"
+          ],
+          "title": "Processing Level",
+          "type": "string"
+        },
+        "processing:lineage": {
+          "examples": [
+            "Post Processing GRD"
+          ],
+          "title": "Processing Lineage Information",
+          "type": "string"
+        },
+        "processing:software": {
+          "examples": [
+            {
+              "Sentinel-1 IPF": "002.71"
+            }
+          ],
+          "patternProperties": {
+            ".{1,}": {
+              "type": "string"
+            }
+          },
+          "title": "Processing Software Name / version",
+          "type": "object"
+        },
+        "processing:version": {
+          "examples": [
+            "0.2.0"
+          ],
+          "title": "Processing Version",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "require_any_field": {
+      "anyOf": [
+        {
+          "required": [
+            "processing:expression"
+          ],
+          "type": "object"
+        },
+        {
+          "required": [
+            "processing:lineage"
+          ],
+          "type": "object"
+        },
+        {
+          "required": [
+            "processing:level"
+          ],
+          "type": "object"
+        },
+        {
+          "required": [
+            "processing:facility"
+          ],
+          "type": "object"
+        },
+        {
+          "required": [
+            "processing:software"
+          ],
+          "type": "object"
+        },
+        {
+          "required": [
+            "processing:version"
+          ],
+          "type": "object"
+        },
+        {
+          "required": [
+            "processing:datetime"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "require_provider_role": {
+      "properties": {
+        "roles": {
+          "contains": {
+            "enum": [
+              "producer",
+              "processor"
+            ]
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "roles"
+      ],
+      "type": "object"
+    },
+    "stac_extensions": {}
+  },
+  "description": "STAC Processing Extension for STAC Items and STAC Collections.",
+  "properties": {
+    "stac_extensions": {
+      "contains": {
+        "const": "https://stac-extensions.github.io/processing/v1.2.0/schema.json"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "stac_extensions"
+  ],
+  "title": "Processing Extension",
+  "type": "object"
+}

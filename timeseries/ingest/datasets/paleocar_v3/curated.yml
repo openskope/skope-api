@@ -1,0 +1,168 @@
+# PROVISIONAL (2026-10-07). Written from the legacy registry before the dataset
+# creator answered the questions in docs/specs/dataset-release-v1.md §20.2.
+# The license, providers, temporal semantics, and units are provisional; see
+# §20.3. This prototype declares 2 of the 12 MIG-009 quantities.
+schema_version: "0.1.0"
+id: "paleocar_v3"
+version: "3"
+profile: "TemporalCubeDataset"
+title: "PaleoCAR: SW USA Paleoclimate Reconstruction (V3)"
+description: >-
+  High spatial resolution (30 arc-second, ~800 m) tree-ring reconstructions of
+  growing degree days and precipitation for the Southwestern United States,
+  103–2000 CE, made with the PaleoCAR method (Bocinsky and Kohler 2014).
+license: "CC-BY-4.0"
+region_name: "Southwestern USA"
+providers:
+  - name: "R. Kyle Bocinsky and Timothy A. Kohler"
+    roles: ["producer", "licensor"]
+  - name: "SKOPE project"
+    roles: ["processor", "host"]
+publications:
+  - citation: >-
+      Bocinsky, R. Kyle, and Timothy A. Kohler. 2014. A 2,000-year
+      reconstruction of the rain-fed maize agricultural niche in the US
+      Southwest. Nature Communications 5:5618.
+    doi: "10.1038/ncomms6618"
+  - citation: >-
+      Bocinsky, R. Kyle, Johnathan Rush, Keith W. Kintigh, and Timothy A.
+      Kohler. 2016. Exploration and exploitation in the macrohistory of the
+      pre-Hispanic Pueblo Southwest. Science Advances 2(4):e1501532.
+    doi: "10.1126/sciadv.1501532"
+lineage: >-
+  In addition to reconstructions of calendar-year and growing-season
+  precipitation, PaleoCAR v3 differs from v2 in two ways. It uses the detrended
+  and indexed (standardized) series ('ARSTND') available from the ITRDB instead
+  of the 'Standard' chronologies, which left four or fewer chronologies
+  available for 1–102 CE and 418–589 CE. It selects models by minimizing the
+  corrected Akaike information criterion in a stepwise fashion, instead of the
+  predicted residual error sum of squares (PRESS) statistic. For each pixel and
+  year, the model selects the tree-ring chronologies (within a 10-degree buffer
+  of the Four Corners states, from the National Tree Ring Database) that best
+  predict PRISM data for that location, and uses linear regression to estimate
+  the paleoenvironmental variable for that date and location.
+uncertainty:
+  summary: >-
+    There are two primary sources of uncertainty in PaleoCAR reconstructions.
+    The first is that the PaleoCAR algorithm attempts to select the most
+    relevant three ring chronologies for reconstructing a particular variable of
+    interest at a particular time. This selection process, minimizing the
+    corrected Akaike information criterion in a stepwise fashion, can lead to
+    different sets of chronologies being selected for adjacent pixels in a
+    gridded reconstruction. Discrepancies between selected chronologies can
+    manifest as spatiotemporal "artifacts", or discontinuities (Bocinsky and
+    Kohler 2014:8). These are amplified by the chained mean-variance matching
+    technique (Bocinsky et al. 2016:10). Additional uncertainty is associated
+    with the lack of fit in the regression models; fit decreases as fewer tree
+    ring chronologies are available.
+  methodology_href: null
+links:
+  - rel: "via"
+    href: "https://www.ncei.noaa.gov/access/paleo-search/study/19783"
+    title: "NOAA NCEI paleoclimatology study 19783"
+temporal:
+  calendar: "proleptic_gregorian"
+  precision: "year"
+  origin: "0103"
+  end: "2000"
+  step: "P1Y"
+  endpoint_inclusion: "inclusive"
+  timestep_meaning: "aggregation_period"
+  description: >-
+    Each timestep is one year CE. Its value aggregates a period that ends in
+    that year: the calendar year, May–September, or the water year from the
+    previous October, as each variable's description states.
+empty_timesteps:
+  - first: "0417"
+    last: "0589"
+    reason: >-
+      PaleoCAR v3 has no reconstruction for these years: too few tree-ring
+      chronologies are available (see the lineage).
+# Units: the GDD sources hold °C GDD, not the legacy registry's °F. At the same
+# pixels, paleocar_v2's °F GDD maize product averages 1.8 times this one's
+# (2026-10-08). Provisional until the dataset creator confirms (§20.2).
+variables:
+  - id: "gdd_cotton_annual"
+    title: "Annual (Jan–Dec) Cotton Growing Degree Days"
+    description: >-
+      Calendar-year (January–December) growing degree days for cotton,
+      reconstructed by PaleoCAR (the prediction_scaled product).
+    unit: "°C GDD"
+    category: "Growing Degree Days"
+  - id: "gdd_cotton_may_sept"
+    title: "Summer (May–Sept) Cotton Growing Degree Days"
+    description: >-
+      Summer (May–September) growing degree days for cotton, reconstructed by
+      PaleoCAR (the prediction_scaled product).
+    unit: "°C GDD"
+    category: "Growing Degree Days"
+  - id: "gdd_cotton_water_year"
+    title: "Water-year (Oct–Sept) Cotton Growing Degree Days"
+    description: >-
+      Water-year (the previous October through September) growing degree days
+      for cotton, reconstructed by PaleoCAR (the prediction_scaled product).
+    unit: "°C GDD"
+    category: "Growing Degree Days"
+  - id: "gdd_maize_annual"
+    title: "Annual (Jan–Dec) Maize Growing Degree Days"
+    description: >-
+      Calendar-year (January–December) growing degree days for maize,
+      reconstructed by PaleoCAR (the prediction_scaled product).
+    unit: "°C GDD"
+    category: "Growing Degree Days"
+  - id: "gdd_maize_may_sept"
+    title: "Summer (May–Sept) Maize Growing Degree Days"
+    description: >-
+      Summer (May–September) growing degree days for maize, reconstructed by
+      PaleoCAR (the prediction_scaled product).
+    unit: "°C GDD"
+    category: "Growing Degree Days"
+  - id: "gdd_maize_water_year"
+    title: "Water-year (Oct–Sept) Maize Growing Degree Days"
+    description: >-
+      Water-year (the previous October through September) growing degree days
+      for maize, reconstructed by PaleoCAR (the prediction_scaled product).
+    unit: "°C GDD"
+    category: "Growing Degree Days"
+  - id: "gdd_wheat_annual"
+    title: "Annual (Jan–Dec) Wheat Growing Degree Days"
+    description: >-
+      Calendar-year (January–December) growing degree days for wheat,
+      reconstructed by PaleoCAR (the prediction_scaled product).
+    unit: "°C GDD"
+    category: "Growing Degree Days"
+  - id: "gdd_wheat_may_sept"
+    title: "Summer (May–Sept) Wheat Growing Degree Days"
+    description: >-
+      Summer (May–September) growing degree days for wheat, reconstructed by
+      PaleoCAR (the prediction_scaled product).
+    unit: "°C GDD"
+    category: "Growing Degree Days"
+  - id: "gdd_wheat_water_year"
+    title: "Water-year (Oct–Sept) Wheat Growing Degree Days"
+    description: >-
+      Water-year (the previous October through September) growing degree days
+      for wheat, reconstructed by PaleoCAR (the prediction_scaled product).
+    unit: "°C GDD"
+    category: "Growing Degree Days"
+  - id: "ppt_annual"
+    title: "Annual (Jan–Dec) Precipitation"
+    description: >-
+      Calendar-year (January–December) total precipitation, reconstructed by
+      PaleoCAR (the prediction_scaled product).
+    unit: "mm"
+    category: "Precipitation"
+  - id: "ppt_may_sept"
+    title: "Summer (May–Sept) Precipitation"
+    description: >-
+      Summer (May–September) total precipitation, reconstructed by PaleoCAR
+      (the prediction_scaled product).
+    unit: "mm"
+    category: "Precipitation"
+  - id: "ppt_water_year"
+    title: "Water-year (Oct–Sept) Precipitation"
+    description: >-
+      Water-year (the previous October through September) total precipitation,
+      reconstructed by PaleoCAR (the prediction_scaled product).
+    unit: "mm"
+    category: "Precipitation"

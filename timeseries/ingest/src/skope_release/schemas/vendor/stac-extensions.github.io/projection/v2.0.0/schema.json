@@ -1,0 +1,186 @@
+{
+  "$comment": "This schema succeeds if the proj: fields are not used at all, please keep this in mind.",
+  "$id": "https://stac-extensions.github.io/projection/v2.0.0/schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "fields": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^(?!proj:)": {}
+      },
+      "properties": {
+        "proj:bbox": {
+          "items": {
+            "type": "number"
+          },
+          "oneOf": [
+            {
+              "maxItems": 4,
+              "minItems": 4
+            },
+            {
+              "maxItems": 6,
+              "minItems": 6
+            }
+          ],
+          "title": "Extent",
+          "type": "array"
+        },
+        "proj:centroid": {
+          "properties": {
+            "lat": {
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            "lon": {
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            }
+          },
+          "required": [
+            "lat",
+            "lon"
+          ],
+          "title": "Centroid",
+          "type": "object"
+        },
+        "proj:code": {
+          "title": "Projection code",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "proj:geometry": {
+          "$ref": "https://geojson.org/schema/Geometry.json"
+        },
+        "proj:projjson": {
+          "oneOf": [
+            {
+              "$ref": "https://proj.org/schemas/v0.7/projjson.schema.json"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Coordinate Reference System in PROJJSON format"
+        },
+        "proj:shape": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Shape",
+          "type": "array"
+        },
+        "proj:transform": {
+          "items": {
+            "type": "number"
+          },
+          "oneOf": [
+            {
+              "maxItems": 6,
+              "minItems": 6
+            },
+            {
+              "maxItems": 9,
+              "minItems": 9
+            }
+          ],
+          "title": "Transform",
+          "type": "array"
+        },
+        "proj:wkt2": {
+          "title": "Coordinate Reference System in WKT2 format",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "stac_extensions": {
+      "properties": {
+        "stac_extensions": {
+          "contains": {
+            "const": "https://stac-extensions.github.io/projection/v2.0.0/schema.json"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "stac_extensions"
+      ],
+      "type": "object"
+    }
+  },
+  "description": "STAC Projection Extension for STAC Items.",
+  "oneOf": [
+    {
+      "$comment": "This is the schema for STAC Items.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/stac_extensions"
+        },
+        {
+          "properties": {
+            "assets": {
+              "additionalProperties": {
+                "$ref": "#/definitions/fields"
+              },
+              "type": "object"
+            },
+            "properties": {
+              "$ref": "#/definitions/fields"
+            },
+            "type": {
+              "const": "Feature"
+            }
+          },
+          "required": [
+            "type",
+            "properties",
+            "assets"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    {
+      "$comment": "This is the schema for STAC Collections.",
+      "allOf": [
+        {
+          "properties": {
+            "assets": {
+              "additionalProperties": {
+                "$ref": "#/definitions/fields"
+              },
+              "type": "object"
+            },
+            "item_assets": {
+              "additionalProperties": {
+                "$ref": "#/definitions/fields"
+              },
+              "type": "object"
+            },
+            "type": {
+              "const": "Collection"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/definitions/stac_extensions"
+        }
+      ]
+    }
+  ],
+  "title": "Projection Extension"
+}

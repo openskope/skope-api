@@ -1,0 +1,527 @@
+{
+  "created": "2026-10-07T15:10:00Z",
+  "dataset": {
+    "id": "paleocar_v3",
+    "stac_entrypoint": "collection.json",
+    "version": "3"
+  },
+  "declaration": {
+    "digest": "fa5b29a944289e7677f1bff46216a2222f20f5eb73d7237e9d453e0c2e1f059e",
+    "digest_algorithm": "sha256",
+    "identity_profile": "openskope-release-declaration-v1"
+  },
+  "files": [
+    {
+      "checksum": "1220192708cc9d22a61ac6ac7a058b57cdb16642347f0cd238922914c96a29c9b4f6",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--0103--0202.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 334201065
+    },
+    {
+      "checksum": "1220a11b25caa5b249b255276f1879db41da5e03925563b5096c4146e62c1a86db57",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--0203--0302.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 334013704
+    },
+    {
+      "checksum": "12202ff31c771f9f222d1cbd26c7e0c1d4bb932dc243aacc92273d1d91211e383f5d",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--0303--0402.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 334691295
+    },
+    {
+      "checksum": "12203c48198020ecfed1bbbf65ca2740b049b377c61aa8d15f2b1ff61acf8316a2f1",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--0403--0502.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 46701727
+    },
+    {
+      "checksum": "122027a13f1ef099134356359201573b4efb9385438cae3b6b2cb5e14a02fc51f3e0",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--0503--0602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 43567335
+    },
+    {
+      "checksum": "1220637f4e5dcc4c60acd4cee8f17726a25642a3bd4514b5a055a677ed62f4a1ab89",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--0603--0702.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 334156422
+    },
+    {
+      "checksum": "1220ce321d2b00719a0e737bb9f3a6a317d15b79b3d69a2d0abe1c656b596f47e049",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--0703--0802.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 334310102
+    },
+    {
+      "checksum": "1220053e2d6316017aea152b922a2a3d0c433fff6af843433edbbf63c774d194cc25",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--0803--0902.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 334009672
+    },
+    {
+      "checksum": "122066d73e88e6e9f1254ca08dc6f1d60f491b7375aed5872cf5addc8792af120e36",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--0903--1002.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 335574944
+    },
+    {
+      "checksum": "1220c276e631d79e58b05005c1c37f76be91aedb5dfcdb4f2ef8c0a0a44a15c92248",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--1003--1102.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 337828787
+    },
+    {
+      "checksum": "1220216211aa1b23718fc128cf89408c1164cafd077c34ea986d035e745f7bcd5342",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--1103--1202.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 339713115
+    },
+    {
+      "checksum": "1220f801070d7cca6860276deb67cb910495ad490699b5f8dcc4018882822e8c23dc",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--1203--1302.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 344881082
+    },
+    {
+      "checksum": "122064371c0473ceb5d3dfd5978737fd21302f69a1213b3e2490e905c3e118d2375b",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--1303--1402.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 347377036
+    },
+    {
+      "checksum": "1220141ee64838f1a2e15e96b0b701c140ef67d7a072c50747c0951d48bee587fc95",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--1403--1502.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 349325755
+    },
+    {
+      "checksum": "12200c7bbf9ac64dd486d5506ed35d5d61f9ca04f6d4f31b3f146e86b026558d675c",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--1503--1602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 350561419
+    },
+    {
+      "checksum": "1220636db60fa097670deb2ad590742615fdfd51c4ec6c9c5c549bcd523df2e8c0cd",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--1603--1702.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 353890787
+    },
+    {
+      "checksum": "122025287f35679cb84ce41595cf915616532997597154ca7690342905084b69049a",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--1703--1802.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 355045528
+    },
+    {
+      "checksum": "1220f409851f030629f10ad47a83a70fc5d361b4ee728d401639b25bfedb6fa5355a",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--1803--1902.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 357355357
+    },
+    {
+      "checksum": "1220bfef8b5095f820f10c2e7d528d4fdf1071543a72c4faeb9db2eb21328aba33ba",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--1903--2000.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 347233745
+    },
+    {
+      "checksum": "1220756f1f45c1bed835542094a5629a8fdb98e6ff7333aaeb66842f1cb78206887b",
+      "path": "cogs/ppt_annual/paleocar_v3--0103--0202.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 211826301
+    },
+    {
+      "checksum": "1220a9bfbbc66c468cc2707a42a683fa4fe7747ee27c970591ac17a79b4fe922a286",
+      "path": "cogs/ppt_annual/paleocar_v3--0203--0302.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 213190705
+    },
+    {
+      "checksum": "1220a78caa5b5777ac8849d6401285497750f1865bb7a81e1a4630149821b490f53a",
+      "path": "cogs/ppt_annual/paleocar_v3--0303--0402.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 209849801
+    },
+    {
+      "checksum": "12208484fbe356eb099088b562d41c9d76ac795028bca0d4ffdc17893c3b78e96682",
+      "path": "cogs/ppt_annual/paleocar_v3--0403--0502.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 31430068
+    },
+    {
+      "checksum": "122012fafe2ea6c6ae5d02a78301ed3c06a293bb86b255a3736cf1f173791a50e341",
+      "path": "cogs/ppt_annual/paleocar_v3--0503--0602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 27980030
+    },
+    {
+      "checksum": "122030c37020b41ca20aa66c1acc8f60f69a1d00f425b7c6249f9923637d893e1dc2",
+      "path": "cogs/ppt_annual/paleocar_v3--0603--0702.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 211721802
+    },
+    {
+      "checksum": "12202c07b7bb3b49fa2cbcb74ab199d7c7b185edca6e131b1caa9f3fe7e9f01d3ac9",
+      "path": "cogs/ppt_annual/paleocar_v3--0703--0802.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 211489982
+    },
+    {
+      "checksum": "1220b84ca0187417fa97e0467f73463591ce9c56b90018a362e7dc7109d1bc5a9ced",
+      "path": "cogs/ppt_annual/paleocar_v3--0803--0902.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 212383733
+    },
+    {
+      "checksum": "1220beded7b63fdac263eba974cba1657c9061158665237e09865633e8ad5340f649",
+      "path": "cogs/ppt_annual/paleocar_v3--0903--1002.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 212239368
+    },
+    {
+      "checksum": "1220331b50fbe6faab7444196ec8fb5104d99cee5767aba146c17a7c40e9ba51f18e",
+      "path": "cogs/ppt_annual/paleocar_v3--1003--1102.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 219305779
+    },
+    {
+      "checksum": "12209c0855668f46de033537e4ab085b7d589821958b61a81425b521132ca9ce6e53",
+      "path": "cogs/ppt_annual/paleocar_v3--1103--1202.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 220353849
+    },
+    {
+      "checksum": "1220b2fc1c2e9702bff8b5e4d5a63d01b76bcf829c427f2a71efb273d9382dd3aa46",
+      "path": "cogs/ppt_annual/paleocar_v3--1203--1302.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 231490468
+    },
+    {
+      "checksum": "122073301aba912e6ad05ac1ff64a5f63284cfa8c07862b905bd737bcace407ef6d0",
+      "path": "cogs/ppt_annual/paleocar_v3--1303--1402.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 242629482
+    },
+    {
+      "checksum": "12209c59f784707cc5a8d099f8464b1194fcf58aeb3b716929e9ee020beab974a3d9",
+      "path": "cogs/ppt_annual/paleocar_v3--1403--1502.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 254511679
+    },
+    {
+      "checksum": "12202a5e973c83c40064bf7a1f446aecd95ddb0749c9d2cf2981cf5b4accafd4980e",
+      "path": "cogs/ppt_annual/paleocar_v3--1503--1602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 262393536
+    },
+    {
+      "checksum": "1220154c0dd8d93bbb8db9383ca9ee7f3787db1ffb39f3b8066b5003baac8a656475",
+      "path": "cogs/ppt_annual/paleocar_v3--1603--1702.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 279140013
+    },
+    {
+      "checksum": "12204775d91a8fc24d513c8f1f7817b317693a02d8bda69ac056f0f991c9d906ef39",
+      "path": "cogs/ppt_annual/paleocar_v3--1703--1802.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 284868461
+    },
+    {
+      "checksum": "1220a948d87e72a1d97c8c97846a2297ee6e3e2bdad0379597d8800c4af1627d7362",
+      "path": "cogs/ppt_annual/paleocar_v3--1803--1902.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 287065180
+    },
+    {
+      "checksum": "122033aee757851069d4526e4d7ec5f6c3669b91fdabb37a98656e31fe27ae373a17",
+      "path": "cogs/ppt_annual/paleocar_v3--1903--2000.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 277465636
+    },
+    {
+      "checksum": "1220764284789415bf94b07b28f59723cd032bfa9bce2be150a536a6d963046c1971",
+      "path": "collection.json",
+      "roles": [
+        "stac",
+        "collection"
+      ],
+      "size": 39541
+    },
+    {
+      "checksum": "122024c3be46d2b84857859725dc0b2ca25db8de8fe9c065af7407c802431733edda",
+      "path": "items/paleocar_v3--0103--0202.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 54414
+    },
+    {
+      "checksum": "1220d76a109977302b669ff06fe38125ef15ef5e82ed212c3b5a10a54a78e512914a",
+      "path": "items/paleocar_v3--0203--0302.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 54421
+    },
+    {
+      "checksum": "12205ecd6bf381bc0cce731da63ae6d05dc74d3135b1f4f97a19ab07586e7b960b69",
+      "path": "items/paleocar_v3--0303--0402.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 54408
+    },
+    {
+      "checksum": "1220e85883444794ac8062bfa7e9a836f37eed41d1d7e26ab5452a554e7a5b65e015",
+      "path": "items/paleocar_v3--0403--0502.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 30784
+    },
+    {
+      "checksum": "12209965b5ad2e6c7b637c490d7c69158fe19cc0feb0df5e957cc1f673ccc33f96a4",
+      "path": "items/paleocar_v3--0503--0602.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 30511
+    },
+    {
+      "checksum": "1220d0c5afd6f318f97a72bdd5a7b26a3a2c8aff5c30afa351bd4b6babfe816347eb",
+      "path": "items/paleocar_v3--0603--0702.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 54399
+    },
+    {
+      "checksum": "12204d03576ecafb7f4aee4d525b171e759eb0042b9d6fd406aae7c8e6159c1048bb",
+      "path": "items/paleocar_v3--0703--0802.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 54415
+    },
+    {
+      "checksum": "12202c553f18811942c1748c96a49cf7e696fda11a7d28ca95d3e55fa153f682103d",
+      "path": "items/paleocar_v3--0803--0902.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 54418
+    },
+    {
+      "checksum": "12204d8106a9c1c79683a7769721bee5d7e1db16cc12a7d24ed2e3740938bda62c07",
+      "path": "items/paleocar_v3--0903--1002.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 54389
+    },
+    {
+      "checksum": "122042efed50621cb4fc8b7be86ab2f65363a5a103cf80428f6443163eb5877b04c6",
+      "path": "items/paleocar_v3--1003--1102.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 54360
+    },
+    {
+      "checksum": "1220cd1c5eea2d4640d8c7b4ff9768b241425ff1a5220a06f1554b7da5f159c0eb42",
+      "path": "items/paleocar_v3--1103--1202.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 54365
+    },
+    {
+      "checksum": "12208d63c3cc4a0c518bf2367e77cab38f4fe358e99068dcc76a8439cd4f2ccdd17c",
+      "path": "items/paleocar_v3--1203--1302.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 54341
+    },
+    {
+      "checksum": "12209fe3e57d2ec833bacf5d727b2ff90c9aadfae0006a9fc684c98ea3c3dc775c94",
+      "path": "items/paleocar_v3--1303--1402.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 54334
+    },
+    {
+      "checksum": "122041f3aa2172e96121c049656aab284961b45e4e0f23a351cba01e99de06725f2e",
+      "path": "items/paleocar_v3--1403--1502.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 54303
+    },
+    {
+      "checksum": "12208be1d5f8a4cab6ea73f70b05b17b935f78b8a58d933a7602c32530c6731afa84",
+      "path": "items/paleocar_v3--1503--1602.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 54333
+    },
+    {
+      "checksum": "12204eb442696b5eff227915086865c8382114b2ec27f1b1c113567cbbde1a82c105",
+      "path": "items/paleocar_v3--1603--1702.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 54298
+    },
+    {
+      "checksum": "12203bef06b1b5a564d23e78408bc544a7f7defc51cf03a63e119d448cfca35c0363",
+      "path": "items/paleocar_v3--1703--1802.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 54318
+    },
+    {
+      "checksum": "1220b788bbebabe3ebb1c807d9b9a85b2e3bace2d9eb3fd91966507590b492797842",
+      "path": "items/paleocar_v3--1803--1902.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 54301
+    },
+    {
+      "checksum": "1220c67298633a186cd1af234655964189d11d8d5902cf84274ed9b2e6640f13d1ab",
+      "path": "items/paleocar_v3--1903--2000.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 53324
+    },
+    {
+      "checksum": "122029d9f8090ed486cb996954b5fa7e645d791780604481daf12ae1f9685d38d6d6",
+      "path": "overview.yml",
+      "roles": [
+        "derived"
+      ],
+      "size": 4434
+    }
+  ],
+  "producer": {
+    "name": "skope-api dataset pipeline",
+    "revision": "89592b99af41f86be2d7f48ddf2993869f952e27",
+    "version": "0.1.0"
+  },
+  "release_id": "paleocar_v3-r-2026.10.07",
+  "schema_version": "1.0.0",
+  "sources": [
+    {
+      "checksum": "12204386dbde76acd840a144bc4974fd754e27e872d222f7ca8a342bb86760473c99",
+      "href": "s3://skope/paleocar_v3/gdd_cotton_annual/prediction_scaled.tif",
+      "id": "gdd_cotton_annual"
+    },
+    {
+      "checksum": "12209cec240a41ec6683488b51bd0c11081776d476d1de763277608f052819fc6fb5",
+      "href": "s3://skope/paleocar_v3/ppt_annual/prediction_scaled.tif",
+      "id": "ppt_annual"
+    }
+  ],
+  "status": "complete"
+}

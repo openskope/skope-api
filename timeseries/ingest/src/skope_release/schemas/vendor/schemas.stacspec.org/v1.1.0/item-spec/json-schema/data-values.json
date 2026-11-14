@@ -1,0 +1,84 @@
+{
+  "$id": "https://schemas.stacspec.org/v1.1.0/item-spec/json-schema/data-values.json#",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "properties": {
+    "data_type": {
+      "enum": [
+        "int8",
+        "int16",
+        "int32",
+        "int64",
+        "uint8",
+        "uint16",
+        "uint32",
+        "uint64",
+        "float16",
+        "float32",
+        "float64",
+        "cint16",
+        "cint32",
+        "cfloat32",
+        "cfloat64",
+        "other"
+      ],
+      "title": "Data type of the values",
+      "type": "string"
+    },
+    "nodata": {
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "enum": [
+            "nan",
+            "inf",
+            "-inf"
+          ],
+          "type": "string"
+        }
+      ],
+      "title": "No data value"
+    },
+    "statistics": {
+      "minProperties": 1,
+      "properties": {
+        "count": {
+          "minimum": 0,
+          "title": "Total number of all data values",
+          "type": "integer"
+        },
+        "maximum": {
+          "title": "Maximum value of all the data values",
+          "type": "number"
+        },
+        "mean": {
+          "title": "Mean value of all the data values",
+          "type": "number"
+        },
+        "minimum": {
+          "title": "Minimum value of all the data values",
+          "type": "number"
+        },
+        "stddev": {
+          "title": "Standard deviation value of all the data values",
+          "type": "number"
+        },
+        "valid_percent": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Percentage of valid (not nodata) values",
+          "type": "number"
+        }
+      },
+      "title": "Statistics",
+      "type": "object"
+    },
+    "unit": {
+      "title": "Unit denomination of the data value",
+      "type": "string"
+    }
+  },
+  "title": "Fields related to data values",
+  "type": "object"
+}

@@ -1,0 +1,67 @@
+# Generated from validated STAC. Do not edit.
+# Authority: collection.json and items/. Regenerated and byte-compared on build.
+schema_version: "1.0.0"
+release_id: "paleocar_v3-r-2026.10.07"
+declaration_digest: "fa5b29a944289e7677f1bff46216a2222f20f5eb73d7237e9d453e0c2e1f059e"
+dataset:
+  id: "paleocar_v3"
+  version: "3"
+  title: "PaleoCAR: SW USA Paleoclimate Reconstruction (V3)"
+  description: "High spatial resolution (30 arc-second, ~800 m) tree-ring reconstructions of growing degree days and precipitation for the Southwestern United States, 103–2000 CE, made with the PaleoCAR method (Bocinsky and Kohler 2014)."
+  profile: "TemporalCubeDataset"
+  license: "CC-BY-4.0"
+  region_name: "Southwestern USA"
+  extent:
+    bbox: [-114.995833333457, 30.99583333406604, -101.995833334055, 42.9958333336016]
+  grid:
+    code: "EPSG:4269"
+    shape: [1440, 1560]
+    transform: [0.008333333332949996, 0.0, -114.995833333457, 0.0, -0.008333333333010806,
+      42.9958333336016]
+  time:
+    kind: "regular"
+    origin: "0103"
+    step: "P1Y"
+    count: 1898
+    chunk_size: 100
+    precision: "year"
+    calendar: "proleptic_gregorian"
+    timestep_meaning: "aggregation_period"
+    endpoint_inclusion: "inclusive"
+  providers:
+    - name: "R. Kyle Bocinsky and Timothy A. Kohler"
+      roles: ["producer", "licensor"]
+    - name: "SKOPE project"
+      roles: ["processor", "host"]
+  lineage: "In addition to reconstructions of calendar-year and growing-season precipitation, PaleoCAR v3 differs from v2 in two ways. It uses the detrended and indexed (standardized) series ('ARSTND') available from the ITRDB instead of the 'Standard' chronologies, which left four or fewer chronologies available for 1–102 CE and 418–589 CE. It selects models by minimizing the corrected Akaike information criterion in a stepwise fashion, instead of the predicted residual error sum of squares (PRESS) statistic. For each pixel and year, the model selects the tree-ring chronologies (within a 10-degree buffer of the Four Corners states, from the National Tree Ring Database) that best predict PRISM data for that location, and uses linear regression to estimate the paleoenvironmental variable for that date and location."
+  publications:
+    - citation: "Bocinsky, R. Kyle, and Timothy A. Kohler. 2014. A 2,000-year reconstruction of the rain-fed maize agricultural niche in the US Southwest. Nature Communications 5:5618."
+      doi: "10.1038/ncomms6618"
+    - citation: "Bocinsky, R. Kyle, Johnathan Rush, Keith W. Kintigh, and Timothy A. Kohler. 2016. Exploration and exploitation in the macrohistory of the pre-Hispanic Pueblo Southwest. Science Advances 2(4):e1501532."
+      doi: "10.1126/sciadv.1501532"
+  uncertainty:
+    summary: "There are two primary sources of uncertainty in PaleoCAR reconstructions. The first is that the PaleoCAR algorithm attempts to select the most relevant three ring chronologies for reconstructing a particular variable of interest at a particular time. This selection process, minimizing the corrected Akaike information criterion in a stepwise fashion, can lead to different sets of chronologies being selected for adjacent pixels in a gridded reconstruction. Discrepancies between selected chronologies can manifest as spatiotemporal \"artifacts\", or discontinuities (Bocinsky and Kohler 2014:8). These are amplified by the chained mean-variance matching technique (Bocinsky et al. 2016:10). Additional uncertainty is associated with the lack of fit in the regression models; fit decreases as fewer tree ring chronologies are available."
+    methodology_href: null
+  links:
+    - rel: "via"
+      href: "https://www.ncei.noaa.gov/access/paleo-search/study/19783"
+      title: "NOAA NCEI paleoclimatology study 19783"
+variables:
+  gdd_cotton_annual:
+    title: "Annual (Jan–Dec) Cotton Growing Degree Days"
+    description: "Calendar-year (January–December) growing degree days for cotton, reconstructed by PaleoCAR (the prediction_scaled product)."
+    unit: "°F GDD"
+    category: "Growing Degree Days"
+    data_type: "uint32"
+    nodata: 4294967295
+    scale: 1.0
+    offset: 0.0
+  ppt_annual:
+    title: "Annual (Jan–Dec) Precipitation"
+    description: "Calendar-year (January–December) total precipitation, reconstructed by PaleoCAR (the prediction_scaled product)."
+    unit: "mm"
+    category: "Precipitation"
+    data_type: "uint32"
+    nodata: 4294967295
+    scale: 1.0
+    offset: 0.0

@@ -1,0 +1,212 @@
+{
+  "$id": "https://stac-extensions.github.io/scientific/v1.0.0/schema.json#",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "fields": {
+      "$comment": "Add your new fields here. Don't require them here, do that above in the item schema.",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^(?!sci:)": {}
+      },
+      "properties": {
+        "sci:citation": {
+          "title": "Proposed Data Citation",
+          "type": "string"
+        },
+        "sci:doi": {
+          "pattern": "^10\\.[0-9a-zA-Z]{4,}/[^\\s]+$",
+          "title": "Data DOI",
+          "type": "string"
+        },
+        "sci:publications": {
+          "items": {
+            "properties": {
+              "citation": {
+                "title": "Publication Citation",
+                "type": "string"
+              },
+              "doi": {
+                "pattern": "^10\\.[0-9a-zA-Z]{4,}/[^\\s]+$",
+                "title": "Publication DOI",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "title": "Publications",
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "require_any_field": {
+      "$comment": "Please list all fields here so that we can force the existance of one of them in other parts of the schemas.",
+      "anyOf": [
+        {
+          "required": [
+            "sci:doi"
+          ]
+        },
+        {
+          "required": [
+            "sci:citation"
+          ]
+        },
+        {
+          "required": [
+            "sci:publications"
+          ]
+        }
+      ]
+    },
+    "stac_extensions": {
+      "properties": {
+        "stac_extensions": {
+          "contains": {
+            "const": "https://stac-extensions.github.io/scientific/v1.0.0/schema.json"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "stac_extensions"
+      ],
+      "type": "object"
+    }
+  },
+  "description": "Scientific Citation Extension for STAC Items and STAC Collections.",
+  "oneOf": [
+    {
+      "$comment": "This is the schema for STAC Items. Remove this object if this extension only applies to Collections.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/stac_extensions"
+        },
+        {
+          "properties": {
+            "assets": {
+              "$comment": "This validates the fields in Item Assets, but does not require them.",
+              "additionalProperties": {
+                "$ref": "#/definitions/fields"
+              },
+              "type": "object"
+            },
+            "properties": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/require_any_field"
+                },
+                {
+                  "$ref": "#/definitions/fields"
+                }
+              ]
+            },
+            "type": {
+              "const": "Feature"
+            }
+          },
+          "required": [
+            "type",
+            "properties",
+            "assets"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    {
+      "$comment": "This is the schema for STAC Collections.",
+      "allOf": [
+        {
+          "properties": {
+            "type": {
+              "const": "Collection"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "$ref": "#/definitions/stac_extensions"
+        }
+      ],
+      "anyOf": [
+        {
+          "$comment": "This is the schema for the top-level fields in a Collection. Remove this if this extension does not define top-level fields for Collections.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/require_any_field"
+            },
+            {
+              "$ref": "#/definitions/fields"
+            }
+          ]
+        },
+        {
+          "$comment": "This validates the fields in Collection Assets, but does not require them.",
+          "properties": {
+            "assets": {
+              "not": {
+                "additionalProperties": {
+                  "not": {
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/require_any_field"
+                      },
+                      {
+                        "$ref": "#/definitions/fields"
+                      }
+                    ]
+                  }
+                }
+              },
+              "type": "object"
+            }
+          },
+          "required": [
+            "assets"
+          ]
+        },
+        {
+          "$comment": "This is the schema for the fields in Item Asset Definitions. It doesn't require any fields.",
+          "properties": {
+            "item_assets": {
+              "not": {
+                "additionalProperties": {
+                  "not": {
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/require_any_field"
+                      },
+                      {
+                        "$ref": "#/definitions/fields"
+                      }
+                    ]
+                  }
+                }
+              },
+              "type": "object"
+            }
+          },
+          "required": [
+            "item_assets"
+          ]
+        },
+        {
+          "$comment": "This is the schema for the fields in Summaries. By default, only checks the existance of the properties, but not the schema of the summaries.",
+          "properties": {
+            "summaries": {
+              "$ref": "#/definitions/require_any_field"
+            }
+          },
+          "required": [
+            "summaries"
+          ]
+        }
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "Scientific Citation Extension"
+}

@@ -1,0 +1,34 @@
+{
+  "$id": "https://schemas.stacspec.org/v1.1.0/item-spec/json-schema/basics.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "properties": {
+    "description": {
+      "description": "Detailed multi-line description to fully explain the entity.",
+      "minLength": 1,
+      "title": "Description",
+      "type": "string"
+    },
+    "keywords": {
+      "description": "List of keywords describing the entity.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Keywords",
+      "type": "array"
+    },
+    "roles": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Roles",
+      "type": "array"
+    },
+    "title": {
+      "description": "A human-readable title describing the entity.",
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "title": "Basic Descriptive Fields",
+  "type": "object"
+}

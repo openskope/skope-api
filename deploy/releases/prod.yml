@@ -1,0 +1,5 @@
+# The release set this environment serves (release consumption spec PIN-001).
+# No release is approved for production yet, so the API refuses to start in
+# production until one is pinned here (cutover: CUT-001).
+release_root: /srv/datasets/releases
+releases: []

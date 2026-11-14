@@ -1,0 +1,677 @@
+{
+  "$defs": {
+    "OverviewDataset": {
+      "additionalProperties": false,
+      "properties": {
+        "citation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Citation"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "doi": {
+          "anyOf": [
+            {
+              "pattern": "^10\\.\\d{4,9}/\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Doi"
+        },
+        "extent": {
+          "$ref": "#/$defs/OverviewExtent"
+        },
+        "grid": {
+          "$ref": "#/$defs/OverviewGrid"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "license": {
+          "minLength": 1,
+          "title": "License",
+          "type": "string"
+        },
+        "lineage": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lineage"
+        },
+        "links": {
+          "items": {
+            "$ref": "#/$defs/OverviewLink"
+          },
+          "title": "Links",
+          "type": "array"
+        },
+        "profile": {
+          "enum": [
+            "TemporalCubeDataset",
+            "StaticRasterDataset"
+          ],
+          "title": "Profile",
+          "type": "string"
+        },
+        "providers": {
+          "items": {
+            "$ref": "#/$defs/OverviewProvider"
+          },
+          "title": "Providers",
+          "type": "array"
+        },
+        "publications": {
+          "items": {
+            "$ref": "#/$defs/Publication"
+          },
+          "title": "Publications",
+          "type": "array"
+        },
+        "region_name": {
+          "minLength": 1,
+          "title": "Region Name",
+          "type": "string"
+        },
+        "time": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "enumerated": "#/$defs/OverviewTimeEnumerated",
+                  "regular": "#/$defs/OverviewTimeRegular"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/OverviewTimeRegular"
+                },
+                {
+                  "$ref": "#/$defs/OverviewTimeEnumerated"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Time"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "uncertainty": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OverviewUncertainty"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "title",
+        "description",
+        "profile",
+        "license",
+        "region_name",
+        "extent",
+        "grid",
+        "providers"
+      ],
+      "title": "OverviewDataset",
+      "type": "object"
+    },
+    "OverviewExtent": {
+      "additionalProperties": false,
+      "properties": {
+        "bbox": {
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Bbox",
+          "type": "array"
+        }
+      },
+      "required": [
+        "bbox"
+      ],
+      "title": "OverviewExtent",
+      "type": "object"
+    },
+    "OverviewGrid": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "minLength": 1,
+          "title": "Code",
+          "type": "string"
+        },
+        "shape": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "integer"
+            }
+          ],
+          "title": "Shape",
+          "type": "array"
+        },
+        "transform": {
+          "maxItems": 6,
+          "minItems": 6,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Transform",
+          "type": "array"
+        }
+      },
+      "required": [
+        "code",
+        "shape",
+        "transform"
+      ],
+      "title": "OverviewGrid",
+      "type": "object"
+    },
+    "OverviewLink": {
+      "additionalProperties": false,
+      "properties": {
+        "href": {
+          "title": "Href",
+          "type": "string"
+        },
+        "rel": {
+          "minLength": 1,
+          "title": "Rel",
+          "type": "string"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        }
+      },
+      "required": [
+        "rel",
+        "href"
+      ],
+      "title": "OverviewLink",
+      "type": "object"
+    },
+    "OverviewProvider": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "roles": {
+          "items": {
+            "enum": [
+              "producer",
+              "licensor",
+              "processor",
+              "host"
+            ],
+            "type": "string"
+          },
+          "title": "Roles",
+          "type": "array"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "required": [
+        "name",
+        "roles"
+      ],
+      "title": "OverviewProvider",
+      "type": "object"
+    },
+    "OverviewTimeEnumerated": {
+      "additionalProperties": false,
+      "properties": {
+        "calendar": {
+          "const": "proleptic_gregorian",
+          "title": "Calendar",
+          "type": "string"
+        },
+        "chunk_size": {
+          "minimum": 1,
+          "title": "Chunk Size",
+          "type": "integer"
+        },
+        "count": {
+          "minimum": 1,
+          "title": "Count",
+          "type": "integer"
+        },
+        "endpoint_inclusion": {
+          "const": "inclusive",
+          "title": "Endpoint Inclusion",
+          "type": "string"
+        },
+        "kind": {
+          "const": "enumerated",
+          "title": "Kind",
+          "type": "string"
+        },
+        "precision": {
+          "enum": [
+            "year",
+            "month",
+            "day",
+            "datetime"
+          ],
+          "title": "Precision",
+          "type": "string"
+        },
+        "timestep_meaning": {
+          "enum": [
+            "aggregation_period",
+            "instant"
+          ],
+          "title": "Timestep Meaning",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "pattern": "^\\d{4}(-\\d{2}(-\\d{2}(T\\d{2}:\\d{2}:\\d{2}Z)?)?)?$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": [
+        "count",
+        "chunk_size",
+        "precision",
+        "calendar",
+        "timestep_meaning",
+        "endpoint_inclusion",
+        "kind",
+        "values"
+      ],
+      "title": "OverviewTimeEnumerated",
+      "type": "object"
+    },
+    "OverviewTimeRegular": {
+      "additionalProperties": false,
+      "properties": {
+        "calendar": {
+          "const": "proleptic_gregorian",
+          "title": "Calendar",
+          "type": "string"
+        },
+        "chunk_size": {
+          "minimum": 1,
+          "title": "Chunk Size",
+          "type": "integer"
+        },
+        "count": {
+          "minimum": 1,
+          "title": "Count",
+          "type": "integer"
+        },
+        "endpoint_inclusion": {
+          "const": "inclusive",
+          "title": "Endpoint Inclusion",
+          "type": "string"
+        },
+        "kind": {
+          "const": "regular",
+          "title": "Kind",
+          "type": "string"
+        },
+        "origin": {
+          "pattern": "^\\d{4}(-\\d{2}(-\\d{2}(T\\d{2}:\\d{2}:\\d{2}Z)?)?)?$",
+          "title": "Origin",
+          "type": "string"
+        },
+        "precision": {
+          "enum": [
+            "year",
+            "month",
+            "day",
+            "datetime"
+          ],
+          "title": "Precision",
+          "type": "string"
+        },
+        "step": {
+          "minLength": 1,
+          "title": "Step",
+          "type": "string"
+        },
+        "timestep_meaning": {
+          "enum": [
+            "aggregation_period",
+            "instant"
+          ],
+          "title": "Timestep Meaning",
+          "type": "string"
+        }
+      },
+      "required": [
+        "count",
+        "chunk_size",
+        "precision",
+        "calendar",
+        "timestep_meaning",
+        "endpoint_inclusion",
+        "kind",
+        "origin",
+        "step"
+      ],
+      "title": "OverviewTimeRegular",
+      "type": "object"
+    },
+    "OverviewUncertainty": {
+      "additionalProperties": false,
+      "properties": {
+        "methodology_href": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Methodology Href"
+        },
+        "summary": {
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "summary",
+        "methodology_href"
+      ],
+      "title": "OverviewUncertainty",
+      "type": "object"
+    },
+    "OverviewVariable": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_href": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Asset Href"
+        },
+        "band_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Band Name"
+        },
+        "categories": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Categories"
+        },
+        "category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Category"
+        },
+        "data_type": {
+          "enum": [
+            "uint8",
+            "int8",
+            "uint16",
+            "int16",
+            "uint32",
+            "int32",
+            "float32",
+            "float64"
+          ],
+          "title": "Data Type",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "nodata": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Nodata"
+        },
+        "offset": {
+          "title": "Offset",
+          "type": "number"
+        },
+        "scale": {
+          "title": "Scale",
+          "type": "number"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "unit": {
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "description",
+        "unit",
+        "data_type",
+        "nodata",
+        "scale",
+        "offset"
+      ],
+      "title": "OverviewVariable",
+      "type": "object"
+    },
+    "Publication": {
+      "additionalProperties": false,
+      "properties": {
+        "citation": {
+          "minLength": 1,
+          "title": "Citation",
+          "type": "string"
+        },
+        "doi": {
+          "anyOf": [
+            {
+              "pattern": "^10\\.\\d{4,9}/\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Doi"
+        }
+      },
+      "required": [
+        "citation"
+      ],
+      "title": "Publication",
+      "type": "object"
+    }
+  },
+  "$id": "https://api.openskope.org/schemas/release/release-overview/v1.0.0/schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "dataset": {
+      "$ref": "#/$defs/OverviewDataset"
+    },
+    "declaration_digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Declaration Digest",
+      "type": "string"
+    },
+    "release_id": {
+      "pattern": "^[a-z][a-z0-9_]*-r-\\d{4}\\.\\d{2}\\.\\d{2}(-([2-9]|[1-9]\\d+))?$",
+      "title": "Release Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "variables": {
+      "patternProperties": {
+        "^[a-z][a-z0-9_]*$": {
+          "$ref": "#/$defs/OverviewVariable"
+        }
+      },
+      "title": "Variables",
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "release_id",
+    "declaration_digest",
+    "dataset",
+    "variables"
+  ],
+  "title": "Overview",
+  "type": "object"
+}

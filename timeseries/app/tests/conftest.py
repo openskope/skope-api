@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 import pandas as pd
-from unittest.mock import AsyncMock
 from shapely.geometry import box
 
 # ---------------------------------------------------------------------------
@@ -27,46 +26,25 @@ def _find_config_root() -> Path:
 
 os.chdir(_find_config_root())
 
-from app.store.data_reader import DataReader
 from app.store.jobs import FileSystemJobStore, RedisJobStore
 
 # ---------------------------------------------------------------------------
-# Registry / lookup fixtures
+# Registry fixtures
 
 
 @pytest.fixture
-def minimal_registry():
-    return {
-        "valid-ds": {
-            "id": "valid-ds",
-            "crs": "EPSG:4326",
-            "transform": [0.00833, 0.0, -115.0, 0.0, -0.00833, 43.0],
-            "variables": [{"id": "ppt"}],
-        },
-        "projected-ds": {
-            "id": "projected-ds",
-            "crs": "EPSG:32612",
-            "transform": [800.0, 0.0, 200000.0, 0.0, -800.0, 4800000.0],
-            "variables": [{"id": "temp"}],
-        },
-    }
+def served_registry(tmp_path):
+    """A registry serving one small synthetic release, `annual` with `ppt`."""
+    import numpy as np
 
+    from app.registry.compose import verify_releases
+    from app.registry.models import Pin
+    from app.tests.release_builder import build_release
 
-@pytest.fixture
-def minimal_lookup_data():
-    return {
-        "ppt": {
-            "0100": {"file": "file_a.tif", "bidx": 1},
-            "0101": {"file": "file_a.tif", "bidx": 2},
-            "0102": {"file": "file_b.tif", "bidx": 1},
-            "0103": {"file": "file_b.tif", "bidx": 2},
-            "0104": {"file": "file_b.tif", "bidx": 3},
-            "0105": {"file": "file_c.tif", "bidx": 1},
-        },
-        "temp": {
-            "0100": {"file": "temp_a.tif", "bidx": 1},
-        },
-    }
+    root = tmp_path / "releases"
+    cube = np.zeros((5, 3, 4), dtype=np.float32)
+    pinned = build_release(root, "annual", {"ppt": cube})
+    return verify_releases(Pin(release_root=str(root), releases=[pinned]), root)
 
 
 # ---------------------------------------------------------------------------
@@ -122,17 +100,6 @@ async def redis_job_store():
     yield store
     await store._client.flushdb()
     await store.close()
-
-
-# ---------------------------------------------------------------------------
-# Data reader mock
-
-
-@pytest.fixture
-def mock_data_reader(minimal_lookup_data):
-    reader = AsyncMock(spec=DataReader)
-    reader.read_json = AsyncMock(return_value=minimal_lookup_data)
-    return reader
 
 
 # ---------------------------------------------------------------------------

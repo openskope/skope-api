@@ -1,0 +1,144 @@
+{
+  "$id": "https://stac-extensions.github.io/version/v1.2.0/schema.json#",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "fields": {
+      "properties": {
+        "deprecated": {
+          "default": false,
+          "title": "Deprecated",
+          "type": "boolean"
+        },
+        "experimental": {
+          "default": false,
+          "title": "Experimental",
+          "type": "boolean"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "stac_extensions": {
+      "properties": {
+        "stac_extensions": {
+          "contains": {
+            "const": "https://stac-extensions.github.io/version/v1.2.0/schema.json"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "stac_extensions"
+      ],
+      "type": "object"
+    }
+  },
+  "description": "STAC Versioning Indicators Extension for STAC Items and STAC Collections.",
+  "oneOf": [
+    {
+      "$comment": "This is the schema for STAC Items.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/stac_extensions"
+        },
+        {
+          "properties": {
+            "assets": {
+              "additionalProperties": {
+                "$ref": "#/definitions/fields"
+              },
+              "type": "object"
+            },
+            "properties": {
+              "$ref": "#/definitions/fields"
+            },
+            "type": {
+              "const": "Feature"
+            }
+          },
+          "required": [
+            "type",
+            "properties",
+            "assets"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    {
+      "$comment": "This is the schema for STAC Collections.",
+      "allOf": [
+        {
+          "properties": {
+            "type": {
+              "const": "Collection"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "$ref": "#/definitions/stac_extensions"
+        },
+        {
+          "$comment": "This is the schema for the top-level fields in a Collection.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/fields"
+            }
+          ]
+        },
+        {
+          "$comment": "This validates the fields in Collection Assets.",
+          "properties": {
+            "assets": {
+              "additionalProperties": {
+                "$ref": "#/definitions/fields"
+              },
+              "type": "object"
+            }
+          }
+        },
+        {
+          "$comment": "This is the schema for the fields in Item Asset Definitions.",
+          "properties": {
+            "item_assets": {
+              "additionalProperties": {
+                "$ref": "#/definitions/fields"
+              },
+              "type": "object"
+            }
+          }
+        }
+      ],
+      "type": "object"
+    },
+    {
+      "$comment": "This is the schema for STAC Catalog.",
+      "allOf": [
+        {
+          "properties": {
+            "type": {
+              "const": "Catalog"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/definitions/stac_extensions"
+        },
+        {
+          "$ref": "#/definitions/fields"
+        }
+      ]
+    }
+  ],
+  "title": "Versioning Indicators Extension"
+}

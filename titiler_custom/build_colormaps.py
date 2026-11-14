@@ -1,13 +1,20 @@
 """
-Run once at Docker image build time to bake custom colormaps into rio-tiler's
-cmap_data directory as .npy files. Each file is a (256, 4) uint8 array [R, G, B, A].
+Run once at Docker image build time to register every palette in
+deploy/display/palettes.yml as a named rio-tiler colormap (release consumption
+spec DISP-011). Each becomes a (256, 4) uint8 .npy file [R, G, B, A] in
+rio-tiler's cmap_data directory, replacing any built-in palette of the same
+name, so tiles render with exactly the colours the API serves for legends.
+
+- ramp: the colours are spread evenly over 0-255 and interpolated linearly.
+- set: entry i is colour i, for categorical values 0..n-1; the rest are
+  transparent.
 """
-import json
 import sys
 from pathlib import Path
 
 import numpy as np
 import rio_tiler
+import yaml
 
 
 def _hex_to_rgb(h: str) -> tuple:
@@ -15,9 +22,9 @@ def _hex_to_rgb(h: str) -> tuple:
     return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
 
 
-def _stops_to_array(stops: list, name: str = "") -> np.ndarray:
+def _ramp(stops: list, name: str = "") -> np.ndarray:
     if len(stops) < 2:
-        raise ValueError(f"Colormap {name!r} must have at least 2 color stops, got {len(stops)}.")
+        raise ValueError(f"Ramp {name!r} must have at least 2 colours, got {len(stops)}.")
     n = len(stops)
     positions = [i / (n - 1) for i in range(n)]
     result = np.zeros((256, 4), dtype=np.uint8)
@@ -41,13 +48,22 @@ def _stops_to_array(stops: list, name: str = "") -> np.ndarray:
     return result
 
 
+def _set(colors: list, name: str = "") -> np.ndarray:
+    if not 1 <= len(colors) <= 256:
+        raise ValueError(f"Set {name!r} must have 1 to 256 colours, got {len(colors)}.")
+    result = np.zeros((256, 4), dtype=np.uint8)
+    for i, color in enumerate(colors):
+        result[i] = [*_hex_to_rgb(color), 255]
+    return result
+
+
 cmap_dir = Path(rio_tiler.__file__).parent / "cmap_data"
-source = Path(__file__).parent / "custom.json"
+source = Path(__file__).parent / "palettes.yml"
 
 with open(source) as f:
-    colormaps = json.load(f)
+    palettes = yaml.safe_load(f)
 
-for name, stops in colormaps.items():
-    dest = cmap_dir / f"{name}.npy"
-    np.save(str(dest), _stops_to_array(stops, name))
+for name, palette in palettes.items():
+    build = {"ramp": _ramp, "set": _set}[palette["kind"]]
+    np.save(str(cmap_dir / f"{name}.npy"), build(palette["colors"], name))
 sys.exit(0)

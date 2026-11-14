@@ -69,9 +69,11 @@ class MovingAverageSmoother(BaseModel):
     method: WindowType
     width: int = Field(
         ...,
-        description="Number of time steps from current time to use in the moving window",
+        description=(
+            "Number of time steps from current time to use in the moving window;"
+            " at most the dataset's number of time steps"
+        ),
         ge=1,
-        le=200,
     )
 
     @field_validator("width")
@@ -107,9 +109,11 @@ class ZScoreMovingInterval(BaseModel):
     type: Literal["ZScoreMovingInterval"] = "ZScoreMovingInterval"
     width: int = Field(
         ...,
-        description="Number of prior time steps to use in the moving window",
-        ge=1,
-        le=200,
+        description=(
+            "Number of prior time steps to use in the moving window: at least 2,"
+            " so the window has a spread, and fewer than the dataset's time steps"
+        ),
+        ge=2,
     )
     model_config = ConfigDict(
         json_schema_extra={"example": {"type": "ZScoreMovingInterval", "width": 5}}
@@ -169,7 +173,16 @@ class SeriesOptions(BaseModel):
 class Series(BaseModel):
     options: SeriesOptions
     time_range: TimeRange
+    timesteps: List[str] = Field(
+        ..., description="The timestep of each value, in order (PROTO-007)"
+    )
     values: List[Optional[float]]
+
+    @model_validator(mode="after")
+    def one_timestep_per_value(self) -> Self:
+        if len(self.timesteps) != len(self.values):
+            raise ValueError("Every value needs exactly one timestep.")
+        return self
 
 
 class TimeseriesResponse(BaseModel):
@@ -183,6 +196,23 @@ class TimeseriesResponse(BaseModel):
     series: List[Series]
     transform: Transform
     zonal_statistic: ZonalStatistic
+
+
+class JobStatus(str, Enum):
+    pending = "PENDING"
+    processing = "PROCESSING"
+    success = "SUCCESS"
+    failed = "FAILED"
+    timed_out = "TIMED_OUT"
+
+
+class JobStatusResponse(BaseModel):
+    """What a client sees of an extraction job. The stored job also keeps the
+    base series for /analyze, which is internal and never listed here."""
+
+    status: JobStatus
+    result: Optional[TimeseriesResponse] = None
+    error: Optional[str] = None
 
 
 # ---------------------------
