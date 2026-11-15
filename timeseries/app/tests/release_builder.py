@@ -36,6 +36,7 @@ def build_release(
     date: str = "2026.01.01",
     declaration_digest: str = DIGEST,
     variable_fields: dict | None = None,
+    creation_options: dict | None = None,
 ) -> PinnedRelease:
     """Write a release of `data` ({variable: array[time, row, col]}) under `root`."""
     release_id = f"{dataset_id}-r-{date}"
@@ -50,9 +51,7 @@ def build_release(
             first, last = layout.bounds(chunk)
             cog = path / layout.cog_path(variable_id, chunk)
             cog.parent.mkdir(parents=True, exist_ok=True)
-            with rasterio.open(
-                cog,
-                "w",
+            profile = dict(
                 driver="GTiff",
                 width=width,
                 height=height,
@@ -61,7 +60,9 @@ def build_release(
                 crs=crs,
                 transform=Affine(*transform),
                 nodata=nodata,
-            ) as dst:
+            )
+            profile.update(creation_options or {})
+            with rasterio.open(cog, "w", **profile) as dst:
                 dst.write(cube[first : last + 1])
                 for band, key in enumerate(layout.chunk_keys(chunk), start=1):
                     dst.set_band_description(band, key)

@@ -12,6 +12,7 @@ timeseries/deploy/settings/config.yml
 cog-input/
 timeseries/ingest/output/
 deploy-state/
+runtime-images/
 experiments/paleocar-v3-encoding/results/
 
 

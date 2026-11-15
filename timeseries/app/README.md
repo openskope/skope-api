@@ -167,10 +167,14 @@ The API serves temporal datasets only; it refuses a pinned static raster
    update `/srv/apps/skope-api` to that commit using the project's release
    process and confirm that `git status --short` is empty. Do not deploy an
    unreviewed branch or a dirty checkout.
-2. Confirm CI passed for that commit. Locally, run the same test suite with:
+2. Confirm CI passed for that commit. The workflow also runs weekly and on
+   manual dispatch, pulling fresh runtime bases, testing real containers, and
+   scanning for fixable high/critical vulnerabilities. Locally, run:
 
    ```bash
-   make test
+   make test BUILD_FLAGS=--pull
+   make test-runtime
+   make scan-runtime-images
    ```
 
 3. If the releases served change, the commit must pin them and add display
@@ -193,15 +197,48 @@ The API serves temporal datasets only; it refuses a pinned static raster
 
 ## Deploy
 
+For staging and production, download the `runtime-images-<run>-<attempt>`
+artifact from a successful default-branch or manually dispatched CI run for
+the selected commit. Pull requests run the checks without retaining large image
+archives. Extract the artifact outside the checkout and load its images on the
+application host:
+
 ```bash
-make deploy-dev
-make deploy-staging
-make deploy-production
+docker load --input /srv/apps/image-bundles/<run>/images.tar.gz
+make deploy-staging DEPLOY_IMAGES=/srv/apps/image-bundles/<run>/images-staging.json
+make deploy-production DEPLOY_IMAGES=/srv/apps/image-bundles/<run>/images-prod.json
 ```
+
+The selections name exact local image IDs for the API, TiTiler, and Redis.
+Make refuses a missing image, a different environment or source revision, or a
+dirty checkout. It also requires the bundle's successful scan manifest and checks
+that its image IDs match the selection. It requires host `python3` for these
+checks. Each bundle contains staging and production API images with their
+environment-specific configuration, tested separately with the same TiTiler
+and Redis.
+GitHub-hosted CI builds Linux amd64 images; the target host must support that
+platform. Download bundles you intend to deploy or retain before their 30-day
+Actions retention expires. Keep the current and previous known-good bundles
+on the host for rollback; neither deploy nor image export prunes them.
+
+Development still builds locally with `make deploy-dev`. To reproduce a CI
+bundle locally, run the checks above followed by `make export-runtime-images`.
+Bundles built from a dirty checkout are marked `-dirty` and cannot be deployed
+to staging or production.
+
+TiTiler follows upstream `latest`; Python and Redis follow their existing
+version-scoped tags. The Dockerfiles upgrade installed OS packages while
+building the API (Debian), TiTiler (Wolfi), and Redis (Alpine) replacement
+images. CI tests the actual runtime images, including custom palettes,
+ZSTD tile-interleaved COGs, one-band VRT reads, transparent nodata,
+extraction values and subsequent analysis. The ingest GDAL image stays pinned
+because it produces reproducible scientific release artifacts. A newer runtime
+is never fetched during staging or production deployment.
 
 The pin file selects the releases; the target takes no release argument. It:
 
-1. builds the selected images with refreshed base images;
+1. checks the loaded CI image selection against the clean source checkout
+   (or builds fresh local images in development);
 2. fully verifies every pinned release against its manifest, logging its
    progress. This reads every byte, about an hour for a 60 GB release, and runs
    on every deploy, including a rollback or a redeploy of the same releases.
@@ -232,6 +269,62 @@ checks every byte first.
 TiTiler remains on the internal Compose network; public tile requests pass
 through the API. Run deploys inside `tmux` or similar on staging and
 production, so a dropped connection does not stop one.
+
+### Weekly security maintenance
+
+The application maintainer owns a weekly maintenance deployment. Monday's CI
+run at 06:00 America/Phoenix prepares a candidate automatically; an operator
+promotes it through staging and production during that week's maintenance
+window. A passing build alone does not patch the running services.
+
+1. **Review dependency updates.** Dependabot proposes API package, base image,
+   and GitHub Actions updates weekly. Scientific libraries and the release
+   toolchain are grouped separately for review; ingest lockfile updates are
+   proposed monthly. Review and merge appropriate updates before selecting the
+   candidate commit. Major upgrades and changes to scientific encoding or
+   numerical behavior need their own review. Enable Dependabot alerts and
+   security updates in the repository settings as well; version-update PRs do
+   not replace vulnerability alerts.
+2. **Build the patched candidate.** Scheduled and manually dispatched workflow
+   runs pull current bases and disable runtime layer reuse (`--pull
+   --no-cache`). OS upgrades and package installation therefore run even when a
+   base tag has not moved. BuildKit download caches still avoid unnecessary
+   downloads. Unit tests, real staging/production container checks and the
+   vulnerability gate must pass before an image archive is produced. The
+   manifest records build time, maintenance mode, image IDs, and scan time.
+   To reproduce this process locally:
+
+   ```bash
+   make maintenance-candidate
+   ```
+
+3. **Deploy to staging.** Retain the current and previous known-good bundles,
+   load the new archive, and use `make deploy-staging DEPLOY_IMAGES=...` from its
+   clean source checkout. Check the public `/metadata`, a known dataset's map
+   and legend, and an extraction followed by analysis in the UI. Also check
+   service logs and the deployment log. Container health checks make actual
+   HTTP requests; the API has 45 seconds to stop gracefully. A Redis upgrade
+   restarts its process and discards cached jobs because persistence is disabled.
+   Choose a low-traffic window and expect interrupted jobs to need resubmission.
+4. **Promote the same bundle.** After staging passes, run
+   `make deploy-production DEPLOY_IMAGES=.../images-prod.json`, then repeat the
+   public checks and inspect errors and resource use. Do not rebuild between
+   staging and production or install packages inside running containers. If
+   verification fails, use the [rollback procedure](#roll-back) with the prior
+   bundle and its source commit. Keep that bundle until a later deployment is
+   verified.
+5. **Handle failures and urgent fixes.** A failed candidate leaves the current
+   deployment running and retains scan reports. Review the finding, update its
+   source package or base, and rerun the workflow; do not bypass the gate to
+   complete a routine maintenance window. For an urgent security fix, dispatch
+   the same workflow immediately and expedite staging and production promotion
+   instead of waiting for Monday. The runtime process does not rebuild or
+   mutate published scientific dataset releases.
+
+The `comses/infrastructure` maintainers separately patch and reboot hosts,
+update Docker Engine and the reverse proxy, and maintain TLS. Container package
+upgrades do not patch the host kernel or Docker daemon. Coordinate host
+maintenance with the same verification and rollback window.
 
 ### The first production deployment
 
@@ -271,12 +364,13 @@ make logs ENVIRONMENT=<environment>
 2. Revert the commit that changed the pin (and any display change made with
    it), or restore the checkout to the previous known-good commit. Confirm the
    checkout is clean.
-3. Run the canonical deploy target. It verifies the pinned releases in full
-   again.
+3. Load the previous known-good CI bundle if necessary, then run the canonical
+   deploy target with that bundle's `DEPLOY_IMAGES` selection for the environment.
+   It verifies the pinned releases in full again.
 4. Repeat all verification checks above.
 
-Rollback rebuilds the images from the selected commit; image tags alone are
-not a rollback mechanism. A rollback never modifies or deletes a release. Treat
+Rollback uses the previously tested images without rebuilding against today's
+upstream tags. A rollback never modifies or deletes a release. Treat
 extraction jobs interrupted by either deploy as abandoned and resubmit them.
 Completed jobs retain their source release ID, declaration digest, and temporal
 precision in their internal record. Analysis returns HTTP 410 if the currently

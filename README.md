@@ -43,6 +43,12 @@ Run the tests:
 make test
 ```
 
+The [weekly security maintenance path](timeseries/app/README.md#weekly-security-maintenance)
+rebuilds OS-patched runtime images, tests and scans them, then promotes a retained
+bundle through staging and production. `make maintenance-candidate` reproduces
+the candidate build locally. See the [deployment guide](timeseries/app/README.md#deploy)
+for deploying or rolling back with the exact images that passed CI.
+
 ## Dataset releases
 
 ### What a release is

@@ -1,5 +1,10 @@
 ENVIRONMENT ?= dev
 COMPOSE_PROJECT_NAME ?= skope-api
+BUILD_FLAGS ?=
+DEPLOY_IMAGES ?=
+RUNTIME_IMAGES_DIR ?= runtime-images
+RUNTIME_REFRESH ?= 0
+export RUNTIME_IMAGES_DIR RUNTIME_REFRESH
 # Bind-mounted source and generated files belong to the invoking operator.
 export SKOPE_OPERATOR_UID := $(shell id -u)
 export SKOPE_OPERATOR_GID := $(shell id -g)
@@ -9,7 +14,8 @@ MIGRATION_SCRATCH_ROOT ?= timeseries/ingest/output/legacy-migration-scratch
 COMPOSE = docker compose --project-name $(COMPOSE_PROJECT_NAME) \
 	--project-directory . \
 	-f deploy/compose/base.yml \
-	-f deploy/compose/$(ENVIRONMENT).yml
+	-f deploy/compose/$(ENVIRONMENT).yml \
+	$(if $(DEPLOY_IMAGES),-f "$(abspath $(DEPLOY_IMAGES))")
 # PIN-001: the API and TiTiler mount the release root the environment's pin
 # names, resolved to its physical path (release spec TXN-011).
 PIN_FILE = deploy/releases/$(ENVIRONMENT).yml
@@ -22,9 +28,9 @@ TEST_COMPOSE = SKOPE_RELEASE_ROOT=$(CURDIR)/timeseries/app/tests/registry/data \
 	-f deploy/compose/base.yml \
 	-f deploy/compose/dev.yml
 
-.PHONY: help check-environment check-release-pin verify-releases prepare prepare-release config build deploy \
+.PHONY: help check-environment check-release-pin verify-releases prepare prepare-release prepare-deploy config build deploy \
 	deploy-dev deploy-staging deploy-production down restart logs ps ingest release release-fetch release-pin \
-	preflight-legacy-data migrate-legacy-data test test-api test-ingest
+	preflight-legacy-data migrate-legacy-data test test-api test-ingest test-runtime scan-runtime-images export-runtime-images maintenance-candidate
 
 # Make 'help' the default target if someone just types `make`
 .DEFAULT_GOAL := help
@@ -62,13 +68,22 @@ verify-releases: check-release-pin ##- Fully verify the pinned releases' bytes (
 DEPLOY_LOG ?= deploy-state/$(ENVIRONMENT).jsonl
 DEPLOY_LOG_DIR = $(abspath $(dir $(DEPLOY_LOG)))
 DEPLOY_PENDING = /deploy-state/.pending-$(ENVIRONMENT).json
-DEPLOY_RUN = $(COMPOSE) run --rm --no-deps --user "$(SKOPE_OPERATOR_UID):$(SKOPE_OPERATOR_GID)" \
+DEPLOY_RUN = $(COMPOSE) run --rm --no-deps --no-build --pull never --user "$(SKOPE_OPERATOR_UID):$(SKOPE_OPERATOR_GID)" \
 	-v "$(DEPLOY_LOG_DIR)":/deploy-state server
 
-deploy: check-release-pin build ##- Deploy ENVIRONMENT (defaults to dev): verify, start, wait for healthy services, and log the deploy
+prepare-deploy: prepare
+	@if [ -n "$(DEPLOY_IMAGES)" ]; then \
+		python3 scripts/runtime-images.py check "$(DEPLOY_IMAGES)" "$(ENVIRONMENT)"; \
+	elif [ "$(ENVIRONMENT)" = dev ]; then \
+		$(MAKE) build ENVIRONMENT=dev; \
+	else \
+		echo 'set DEPLOY_IMAGES to the tested CI bundle selection for this environment (see timeseries/app/README.md)' >&2; exit 2; \
+	fi
+
+deploy: check-release-pin prepare-deploy ##- Deploy tested images (DEPLOY_IMAGES required for staging/prod), verify releases, wait for health, and log the deploy
 	@mkdir -p "$(DEPLOY_LOG_DIR)"
 	$(DEPLOY_RUN) python -m app.registry.verify --record $(DEPLOY_PENDING)
-	$(COMPOSE) up -d --remove-orphans --wait --wait-timeout 120
+	$(COMPOSE) up -d --no-build --pull never --remove-orphans --wait --wait-timeout 120
 	$(DEPLOY_RUN) python -m app.registry.deployment $(DEPLOY_PENDING) /deploy-state/$(notdir $(DEPLOY_LOG)) \
 		--environment $(ENVIRONMENT) \
 		--commit "$$(git rev-parse HEAD)$$(test -z "$$(git status --porcelain)" || echo -dirty)" \
@@ -158,7 +173,7 @@ test-api: prepare ##- Build the development image and run the API tests
 	@cmp -s timeseries/ingest/src/skope_release/timeaxis.py timeseries/app/vendor/timeaxis.py || \
 		{ echo "timeseries/app/vendor/timeaxis.py differs from the release build's; copy it again" 1>&2; exit 1; }
 	@$(TEST_COMPOSE) config --quiet
-	$(TEST_COMPOSE) build server titiler redis
+	$(TEST_COMPOSE) build $(BUILD_FLAGS) server titiler redis
 	@trap '$(TEST_COMPOSE) down --remove-orphans' EXIT INT TERM; \
 		$(TEST_COMPOSE) run --rm -v "$(CURDIR)/tests/contracts:/code/tests/contracts:ro" server sh -c \
 		'black --check --extend-exclude "app/vendor/" app && pytest -o cache_dir=/tmp/pytest-cache -c app/pytest.ini app/tests'
@@ -166,6 +181,22 @@ test-api: prepare ##- Build the development image and run the API tests
 test-ingest: override ENVIRONMENT=dev
 test-ingest: prepare ##- Build and run the ingest tests
 	@$(TEST_COMPOSE) --profile test config --quiet
-	$(TEST_COMPOSE) --profile test build ingest-test
+	$(TEST_COMPOSE) --profile test build $(BUILD_FLAGS) ingest-test
 	@trap '$(TEST_COMPOSE) --profile test down --remove-orphans' EXIT INT TERM; \
 		$(TEST_COMPOSE) --profile test run --rm --no-deps ingest-test
+
+test-runtime: prepare ##- Build fresh runtime images and exercise real tiles, extraction and analysis
+	python3 -m unittest discover -s tests -p test_runtime_images.py
+	python3 scripts/runtime-images.py test
+
+scan-runtime-images: ##- Scan the tested runtime images for fixable high/critical vulnerabilities
+	python3 scripts/runtime-images.py scan
+
+export-runtime-images: ##- Archive tested runtime images for deployment and rollback
+	python3 scripts/runtime-images.py export
+
+maintenance-candidate: ##- Rebuild patched runtime images without cached layers, test, scan and archive a maintenance candidate
+	$(MAKE) test BUILD_FLAGS=--pull
+	$(MAKE) test-runtime RUNTIME_REFRESH=1
+	$(MAKE) scan-runtime-images
+	$(MAKE) export-runtime-images
