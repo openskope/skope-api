@@ -1,0 +1,59 @@
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /deploy/requirements
+    schedule:
+      interval: weekly
+      day: monday
+      time: '05:00'
+      timezone: America/Phoenix
+    groups:
+      api-runtime:
+        patterns: ['*']
+        exclude-patterns:
+          - rasterio
+          - Shapely
+          - shapely
+          - pyproj
+          - numpy
+          - pandas
+          - scipy
+          - pytest
+          - pytest-asyncio
+          - black
+          - ipython
+          - requests
+        update-types: [minor, patch]
+      scientific-libraries:
+        patterns: [rasterio, Shapely, shapely, pyproj, numpy, pandas, scipy]
+        update-types: [minor, patch]
+      test-tools:
+        patterns: [pytest, pytest-asyncio, black, ipython, requests]
+        update-types: [minor, patch]
+  - package-ecosystem: docker
+    directory: /deploy
+    schedule:
+      interval: weekly
+      day: monday
+      time: '05:00'
+      timezone: America/Phoenix
+    groups:
+      runtime-bases:
+        patterns: [python, redis]
+        update-types: [minor, patch]
+      release-toolchain:
+        patterns: ['ghcr.io/osgeo/gdal', 'ghcr.io/astral-sh/uv']
+        update-types: [minor, patch]
+  - package-ecosystem: uv
+    directory: /timeseries/ingest
+    schedule:
+      interval: monthly
+    groups:
+      release-toolchain:
+        patterns: ['*']
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
