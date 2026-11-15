@@ -158,7 +158,7 @@ test-api: prepare ##- Build the development image and run the API tests
 	@cmp -s timeseries/ingest/src/skope_release/timeaxis.py timeseries/app/vendor/timeaxis.py || \
 		{ echo "timeseries/app/vendor/timeaxis.py differs from the release build's; copy it again" 1>&2; exit 1; }
 	@$(TEST_COMPOSE) config --quiet
-	$(TEST_COMPOSE) build server titiler
+	$(TEST_COMPOSE) build server titiler redis
 	@trap '$(TEST_COMPOSE) down --remove-orphans' EXIT INT TERM; \
 		$(TEST_COMPOSE) run --rm -v "$(CURDIR)/tests/contracts:/code/tests/contracts:ro" server sh -c \
 		'black --check --extend-exclude "app/vendor/" app && pytest -o cache_dir=/tmp/pytest-cache -c app/pytest.ini app/tests'

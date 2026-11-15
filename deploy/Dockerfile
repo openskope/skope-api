@@ -7,6 +7,7 @@ ENV ENVIRONMENT="${ENVIRONMENT}"
 
 # Rasterio's bundled GDAL still links to the system XML parser.
 RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
     && apt-get install -y --no-install-recommends libexpat1 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -15,9 +16,12 @@ WORKDIR /code
 COPY deploy/requirements /code/requirements
 
 # Rasterio wheels bundle GDAL, so no system GDAL or build tools are needed.
+# Package installers and their bundled dependencies are not needed at runtime.
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --only-binary=:all: \
-    -r requirements/base.txt -r requirements/${REQUIREMENTS}.txt
+    -r requirements/base.txt -r requirements/${REQUIREMENTS}.txt \
+    && python -m pip uninstall --yes pip \
+    && python -c 'import ensurepip, shutil; shutil.rmtree(ensurepip.__path__[0])'
 
 COPY deploy/logging/${ENVIRONMENT}.yml /code/config/logging.yml
 COPY deploy/settings/${ENVIRONMENT}.yml /code/config/app_settings.yml

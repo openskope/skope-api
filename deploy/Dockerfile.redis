@@ -1,0 +1,5 @@
+FROM redis:7-alpine
+
+# Keep the supported Redis major while refreshing its installed OS packages.
+# The official entrypoint drops privileges before starting redis-server.
+RUN apk upgrade --no-cache

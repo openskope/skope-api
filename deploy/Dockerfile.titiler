@@ -1,10 +1,14 @@
-FROM ghcr.io/developmentseed/titiler:2.4.0@sha256:5b739117ff60d3cef9b0e0b8d9f4d628032c00a4965117e3f745cadc79fa7287
+# Follow upstream in CI; deployments use the exact image that passed its checks.
+FROM ghcr.io/developmentseed/titiler:latest
+
+USER root
+# The upstream image uses Wolfi. Patch installed OS packages before testing.
+RUN apk upgrade --no-cache
 
 WORKDIR /app
 COPY skope_titiler/ /app/skope_titiler/
 COPY deploy/display/palettes.yml /app/skope_titiler/palettes.yml
 
-USER root
 RUN chmod -R a+rX /app/skope_titiler && python3 -m skope_titiler.build_colormaps
 USER 1000
 
