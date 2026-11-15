@@ -7,7 +7,7 @@ FROM ${GDAL_IMAGE} AS runtime
 ARG GDAL_IMAGE
 ENV SKOPE_RELEASE_GDAL_IMAGE=${GDAL_IMAGE}
 
-COPY --from=ghcr.io/astral-sh/uv:0.12.13 /uv /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.13.8 /uv /bin/
 
 ENV UV_SYSTEM_PYTHON=1 \
     UV_COMPILE_BYTECODE=1 \
