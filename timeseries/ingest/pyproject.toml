@@ -11,7 +11,7 @@ dependencies = [
     "boto3",
     "jsonschema",
     "netCDF4",  # prepare scripts read NetCDF sources (META-013)
-    "numpy<2",
+    "numpy<3",
     "pydantic>=2.9,<3",
     "pystac",
     "python-dateutil",
