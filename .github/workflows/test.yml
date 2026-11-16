@@ -23,7 +23,7 @@ jobs:
       # Re-execute OS/package installation even if upstream tags did not move.
       RUNTIME_REFRESH: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '1' || '0' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Run the tests
         run: make test BUILD_FLAGS=--pull
       - name: Test fresh runtime images
