@@ -3,4 +3,4 @@ pytest-asyncio==1.4.0
 anyio[trio]==4.15.1
 ipython==9.17.1
 requests==2.34.2
-black==26.5.1
+black==26.10.1
