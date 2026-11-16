@@ -1,7 +1,7 @@
 """Build, exercise, scan and retain the exact images used for deployment.
 
 Called through the root Make targets. Images stay local until CI uploads the
-archive; this tool never publishes to a registry or deploys an environment.
+archive. Staging can download a CI bundle and invoke the root deployment target.
 """
 
 import argparse
@@ -63,12 +63,15 @@ def selection_images(selection, environment, revision):
     return images
 
 
-def check(path, environment):
+def clean_revision():
     if run("git", "status", "--porcelain", capture=True):
         raise ValueError(
             "deploy tested images from a clean checkout of their source commit"
         )
-    revision = run("git", "rev-parse", "HEAD", capture=True)
+    return run("git", "rev-parse", "HEAD", capture=True)
+
+
+def bundle_images(path, environment, revision):
     images = selection_images(json.loads(path.read_text()), environment, revision)
     manifest = json.loads((path.parent / "manifest.json").read_text())
     approved = scanned_images(manifest)
@@ -79,6 +82,13 @@ def check(path, environment):
             raise ValueError(
                 f"{service}: image selection does not match the scanned bundle"
             )
+    return images
+
+
+def check(path, environment):
+    revision = clean_revision()
+    images = bundle_images(path, environment, revision)
+    for service, image in images.items():
         info = inspect(image)
         if info["Id"] != image:
             raise ValueError(f"{service}: loaded image does not match the selection")
@@ -92,6 +102,94 @@ def check(path, environment):
         ):
             raise ValueError("API image was built for a different environment")
     print("Loaded images match the tested selection and source revision.")
+
+
+def github_records(endpoint, collection):
+    output = run(
+        "gh",
+        "api",
+        "--paginate",
+        endpoint,
+        "--jq",
+        f".{collection}[] | @json",
+        capture=True,
+    )
+    return [json.loads(line) for line in output.splitlines() if line]
+
+
+def staging_bundle(revision, repository, cache):
+    runs = github_records(
+        f"repos/{repository}/actions/workflows/test.yml/runs"
+        f"?head_sha={revision}&status=success&per_page=100",
+        "workflow_runs",
+    )
+    for workflow in runs:
+        if workflow["head_sha"] != revision or workflow["conclusion"] != "success":
+            continue
+        if workflow["event"] not in ("push", "schedule", "workflow_dispatch"):
+            continue
+        run_id = workflow["id"]
+        name = f"runtime-images-{run_id}-{workflow['run_attempt']}"
+        artifacts = github_records(
+            f"repos/{repository}/actions/runs/{run_id}/artifacts?per_page=100",
+            "artifacts",
+        )
+        artifact = next(
+            (item for item in artifacts if item["name"] == name and not item["expired"]),
+            None,
+        )
+        if artifact is None:
+            continue
+        destination = cache / repository / f"{name}-{artifact['id']}"
+        if not destination.is_dir():
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            # Failed or interrupted downloads never become cached bundles.
+            with tempfile.TemporaryDirectory(
+                prefix=".download-", dir=destination.parent
+            ) as directory:
+                download = Path(directory) / "bundle"
+                run(
+                    "gh",
+                    "run",
+                    "download",
+                    run_id,
+                    "--repo",
+                    repository,
+                    "--name",
+                    name,
+                    "--dir",
+                    download,
+                )
+                bundle_images(download / "images-staging.json", "staging", revision)
+                if not (download / "images.tar.gz").is_file():
+                    raise ValueError("CI bundle is missing images.tar.gz")
+                download.rename(destination)
+        print(
+            f"Using {repository} CI run {run_id}, attempt {workflow['run_attempt']}",
+            flush=True,
+        )
+        return destination
+    raise ValueError(
+        f"no retained successful CI bundle for {revision} in {repository}; "
+        "run test.yml for this commit, or supply DEPLOY_IMAGES for a retained local bundle"
+    )
+
+
+def deploy_staging():
+    revision = clean_revision()
+    repository = os.environ.get("STAGING_CI_REPOSITORY", "openskope/skope-api")
+    default_cache = (
+        Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+        / "skope-api/image-bundles"
+    )
+    cache = Path(os.environ.get("STAGING_BUNDLES_DIR", default_cache)).expanduser().resolve()
+    if cache == ROOT or ROOT in cache.parents:
+        raise ValueError("STAGING_BUNDLES_DIR must be outside the source checkout")
+    bundle = staging_bundle(revision, repository, cache)
+    selection = bundle / "images-staging.json"
+    bundle_images(selection, "staging", revision)
+    run("docker", "load", "--input", bundle / "images.tar.gz")
+    run("make", "deploy", "ENVIRONMENT=staging", f"DEPLOY_IMAGES={selection}")
 
 
 def test():
@@ -363,7 +461,9 @@ def export():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["test", "scan", "export", "check"])
+    parser.add_argument(
+        "command", choices=["test", "scan", "export", "check", "deploy-staging"]
+    )
     parser.add_argument("selection", nargs="?", type=Path)
     parser.add_argument("environment", nargs="?", choices=["dev", "staging", "prod"])
     args = parser.parse_args()
@@ -373,7 +473,12 @@ def main():
                 parser.error("check needs a selection file and environment")
             check(args.selection, args.environment)
         else:
-            {"test": test, "scan": scan, "export": export}[args.command]()
+            {
+                "test": test,
+                "scan": scan,
+                "export": export,
+                "deploy-staging": deploy_staging,
+            }[args.command]()
     except (ValueError, OSError, subprocess.CalledProcessError) as exc:
         parser.exit(1, f"{exc}\n")
 

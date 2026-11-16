@@ -4,6 +4,7 @@ import copy
 import importlib.util
 import json
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -121,6 +122,126 @@ class ImageSelectionTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     runtime.check(path, "prod")
                 inspect.assert_not_called()
+
+
+class StagingDeploymentTests(unittest.TestCase):
+    def setUp(self):
+        self.revision = "a" * 40
+        self.workflow = {
+            "id": 123,
+            "run_attempt": 2,
+            "head_sha": self.revision,
+            "conclusion": "success",
+            "event": "push",
+        }
+        self.artifact = {
+            "id": 456,
+            "name": "runtime-images-123-2",
+            "expired": False,
+        }
+
+    def test_successful_download_is_cached(self):
+        def download(*args, **kwargs):
+            directory = Path(args[-1])
+            directory.mkdir()
+            (directory / "images.tar.gz").touch()
+
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory)
+            records = [[self.workflow], [self.artifact]] * 2
+            with patch.object(runtime, "github_records", side_effect=records), patch.object(
+                runtime, "bundle_images"
+            ), patch.object(runtime, "run", side_effect=download) as command:
+                first = runtime.staging_bundle(self.revision, "openskope/skope-api", cache)
+                second = runtime.staging_bundle(self.revision, "openskope/skope-api", cache)
+            self.assertEqual(first, second)
+            command.assert_called_once()
+            self.assertTrue((first / "images.tar.gz").is_file())
+
+    def test_failed_download_does_not_leave_a_cached_bundle(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory)
+            with patch.object(
+                runtime, "github_records", side_effect=[[self.workflow], [self.artifact]]
+            ), patch.object(
+                runtime, "run", side_effect=subprocess.CalledProcessError(1, "gh")
+            ):
+                with self.assertRaises(subprocess.CalledProcessError):
+                    runtime.staging_bundle(self.revision, "openskope/skope-api", cache)
+            self.assertEqual(list(cache.rglob("runtime-images-*")), [])
+            self.assertEqual(list(cache.rglob(".download-*")), [])
+
+    def test_expired_or_previous_attempt_artifacts_are_not_selected(self):
+        for artifact in (
+            dict(self.artifact, expired=True),
+            dict(self.artifact, name="runtime-images-123-1"),
+        ):
+            with patch.object(
+                runtime, "github_records", side_effect=[[self.workflow], [artifact]]
+            ), patch.object(runtime, "run") as command:
+                with self.assertRaisesRegex(
+                    ValueError, "no retained successful CI bundle"
+                ):
+                    runtime.staging_bundle(
+                        self.revision, "openskope/skope-api", Path("unused")
+                    )
+                command.assert_not_called()
+
+    def test_wrong_commit_failed_and_pull_request_runs_are_not_selected(self):
+        runs = [
+            dict(self.workflow, head_sha="b" * 40),
+            dict(self.workflow, conclusion="failure"),
+            dict(self.workflow, event="pull_request"),
+        ]
+        with patch.object(runtime, "github_records", return_value=runs) as records:
+            with self.assertRaises(ValueError):
+                runtime.staging_bundle(
+                    self.revision, "openskope/skope-api", Path("unused")
+                )
+            records.assert_called_once()
+
+    def test_dirty_checkout_stops_before_downloading_or_loading(self):
+        with patch.object(runtime, "run", return_value=" M tracked.py") as command:
+            with self.assertRaises(ValueError):
+                runtime.deploy_staging()
+            command.assert_called_once_with("git", "status", "--porcelain", capture=True)
+
+    def test_deploy_validates_bundle_then_loads_and_uses_existing_target(self):
+        bundle = Path("/tmp/test-staging-bundle")
+        events = []
+        with patch.object(
+            runtime, "clean_revision", return_value=self.revision
+        ), patch.object(runtime, "staging_bundle", return_value=bundle), patch.object(
+            runtime, "bundle_images", side_effect=lambda *args: events.append("validate")
+        ), patch.object(
+            runtime, "run", side_effect=lambda *args: events.append(args)
+        ):
+            runtime.deploy_staging()
+        self.assertEqual(
+            events,
+            [
+                "validate",
+                ("docker", "load", "--input", bundle / "images.tar.gz"),
+                (
+                    "make",
+                    "deploy",
+                    "ENVIRONMENT=staging",
+                    f"DEPLOY_IMAGES={bundle / 'images-staging.json'}",
+                ),
+            ],
+        )
+
+    def test_invalid_bundle_stops_before_loading_or_deploying(self):
+        with patch.object(
+            runtime, "clean_revision", return_value=self.revision
+        ), patch.object(
+            runtime, "staging_bundle", return_value=Path("/tmp/test-staging-bundle")
+        ), patch.object(
+            runtime, "bundle_images", side_effect=ValueError("invalid bundle")
+        ), patch.object(runtime, "run") as command:
+            with self.assertRaisesRegex(ValueError, "invalid bundle"):
+                runtime.deploy_staging()
+            command.assert_not_called()
 
 
 if __name__ == "__main__":

@@ -197,10 +197,34 @@ The API serves temporal datasets only; it refuses a pinned static raster
 
 ## Deploy
 
-For staging and production, download the `runtime-images-<run>-<attempt>`
-artifact from a successful default-branch or manually dispatched CI run for
-the selected commit. Pull requests run the checks without retaining large image
-archives. Extract the artifact outside the checkout and load its images on the
+On the staging application host, use a clean checkout of the commit to deploy
+and run:
+
+```bash
+make deploy-staging
+```
+
+This requires host `python3`, Docker Compose, and the GitHub CLI (`gh`)
+authenticated with permission to read the repository's Actions artifacts.
+It finds the newest successful `test.yml` run for that exact commit with an
+unexpired bundle from its current attempt, downloads the bundle, loads its
+images, and runs the deployment checks below. It never switches commits or
+builds staging images locally. A missing bundle fails with instructions to run
+CI or select an existing local bundle explicitly.
+
+Bundles are cached outside the checkout under
+`${XDG_CACHE_HOME:-~/.cache}/skope-api/image-bundles/`; set
+`STAGING_BUNDLES_DIR` to use another directory outside the checkout. They remain
+available for rollback until an operator removes them. Discovery uses
+`openskope/skope-api`; set `STAGING_CI_REPOSITORY=owner/repo` to use a fork's CI.
+Automatic selection requires GitHub access even for a cached bundle. For offline
+deployment or rollback, pass its `images-staging.json` as `DEPLOY_IMAGES`.
+
+For explicit staging selection and for production, download the
+`runtime-images-<run>-<attempt>` artifact from a successful default-branch or
+manually dispatched CI run for the selected commit. Pull requests run the checks
+without retaining large image archives. Extract the artifact outside the checkout
+and load its images on the
 application host:
 
 ```bash

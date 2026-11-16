@@ -94,7 +94,12 @@ deploy-dev: override ENVIRONMENT=dev
 deploy-dev: deploy ##- Build and deploy the local development environment
 
 deploy-staging: override ENVIRONMENT=staging
-deploy-staging: deploy ##- Build and deploy staging on its application host
+deploy-staging: ##- Download and deploy tested CI images on the staging application host
+	@if [ -n "$(DEPLOY_IMAGES)" ]; then \
+		$(MAKE) deploy ENVIRONMENT=staging; \
+	else \
+		python3 scripts/runtime-images.py deploy-staging; \
+	fi
 
 deploy-production: override ENVIRONMENT=prod
 deploy-production: deploy ##- Build and deploy production on its application host
