@@ -68,7 +68,7 @@ verify-releases: check-release-pin ##- Fully verify the pinned releases' bytes (
 DEPLOY_LOG ?= deploy-state/$(ENVIRONMENT).jsonl
 DEPLOY_LOG_DIR = $(abspath $(dir $(DEPLOY_LOG)))
 DEPLOY_PENDING = /deploy-state/.pending-$(ENVIRONMENT).json
-DEPLOY_RUN = $(COMPOSE) run --rm --no-deps --no-build --pull never --user "$(SKOPE_OPERATOR_UID):$(SKOPE_OPERATOR_GID)" \
+DEPLOY_RUN = $(COMPOSE) run --rm --no-deps --pull never --user "$(SKOPE_OPERATOR_UID):$(SKOPE_OPERATOR_GID)" \
 	-v "$(DEPLOY_LOG_DIR)":/deploy-state server
 
 prepare-deploy: prepare
