@@ -1,7 +1,7 @@
 """Build, exercise, scan and retain the exact images used for deployment.
 
 Called through the root Make targets. Images stay local until CI uploads the
-archive. Staging can download a CI bundle and invoke the root deployment target.
+archive. Deployments can download a CI bundle and invoke the root deploy target.
 """
 
 import argparse
@@ -118,7 +118,7 @@ def github_records(endpoint, collection):
     return [json.loads(line) for line in output.splitlines() if line]
 
 
-def staging_bundle(revision, repository, cache):
+def ci_bundle(revision, repository, cache, environment):
     runs = github_records(
         f"repos/{repository}/actions/workflows/test.yml/runs"
         f"?head_sha={revision}&status=success&per_page=100",
@@ -165,7 +165,9 @@ def staging_bundle(revision, repository, cache):
                     "--dir",
                     download,
                 )
-                bundle_images(download / "images-staging.json", "staging", revision)
+                bundle_images(
+                    download / f"images-{environment}.json", environment, revision
+                )
                 if not (download / "images.tar.gz").is_file():
                     raise ValueError("CI bundle is missing images.tar.gz")
                 download.rename(destination)
@@ -180,25 +182,26 @@ def staging_bundle(revision, repository, cache):
     )
 
 
-def deploy_staging():
+def deploy_ci(environment):
     revision = clean_revision()
-    repository = os.environ.get("STAGING_CI_REPOSITORY", "openskope/skope-api")
+    prefix = "STAGING" if environment == "staging" else "PRODUCTION"
+    repository = os.environ.get(f"{prefix}_CI_REPOSITORY", "openskope/skope-api")
     default_cache = (
         Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
         / "skope-api/image-bundles"
     )
     cache = (
-        Path(os.environ.get("STAGING_BUNDLES_DIR", default_cache))
+        Path(os.environ.get(f"{prefix}_BUNDLES_DIR", default_cache))
         .expanduser()
         .resolve()
     )
     if cache == ROOT or ROOT in cache.parents:
-        raise ValueError("STAGING_BUNDLES_DIR must be outside the source checkout")
-    bundle = staging_bundle(revision, repository, cache)
-    selection = bundle / "images-staging.json"
-    bundle_images(selection, "staging", revision)
+        raise ValueError(f"{prefix}_BUNDLES_DIR must be outside the source checkout")
+    bundle = ci_bundle(revision, repository, cache, environment)
+    selection = bundle / f"images-{environment}.json"
+    bundle_images(selection, environment, revision)
     run("docker", "load", "--input", bundle / "images.tar.gz")
-    run("make", "deploy", "ENVIRONMENT=staging", f"DEPLOY_IMAGES={selection}")
+    run("make", "deploy", f"ENVIRONMENT={environment}", f"DEPLOY_IMAGES={selection}")
 
 
 def test():
@@ -366,22 +369,24 @@ def test():
                 # already-built images. The dev preparation path needs no CI
                 # bundle or clean checkout; this fixture has nothing to build.
                 deploy_log = fixture / f"{environment}-deploy.jsonl"
-                run(
-                    "make",
-                    "deploy-dev",
-                    f"COMPOSE={shlex.join(str(arg) for arg in compose)}",
-                    f"PIN_FILE={host_pin}",
-                    f"DEPLOY_LOG={deploy_log}",
-                    "DEPLOY_IMAGES=",
-                )
-                entry = json.loads(deploy_log.read_text())
-                assert entry["images"] == {
-                    "server": images[environment],
-                    "titiler": images["titiler"],
-                    "redis": images["redis"],
-                }, entry
-                assert entry["releases"][0]["verification"] == "full", entry
-                assert entry["releases"][0]["result"] == "passed", entry
+                for skip_full, mode in (("0", "full"), ("1", "metadata")):
+                    run(
+                        "make",
+                        "deploy-dev",
+                        f"COMPOSE={shlex.join(str(arg) for arg in compose)}",
+                        f"PIN_FILE={host_pin}",
+                        f"DEPLOY_LOG={deploy_log}",
+                        "DEPLOY_IMAGES=",
+                        f"SKIP_FULL_VERIFICATION={skip_full}",
+                    )
+                    entry = json.loads(deploy_log.read_text().splitlines()[-1])
+                    assert entry["images"] == {
+                        "server": images[environment],
+                        "titiler": images["titiler"],
+                        "redis": images["redis"],
+                    }, entry
+                    assert entry["releases"][0]["verification"] == mode, entry
+                    assert entry["releases"][0]["result"] == "passed", entry
                 run(*compose, "--profile", "test", "run", "--rm", "--no-deps", "check")
             except subprocess.CalledProcessError:
                 run(*compose, "logs", "--no-color")
@@ -503,7 +508,15 @@ def export():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "command", choices=["test", "scan", "export", "check", "deploy-staging"]
+        "command",
+        choices=[
+            "test",
+            "scan",
+            "export",
+            "check",
+            "deploy-staging",
+            "deploy-production",
+        ],
     )
     parser.add_argument("selection", nargs="?", type=Path)
     parser.add_argument("environment", nargs="?", choices=["dev", "staging", "prod"])
@@ -518,7 +531,8 @@ def main():
                 "test": test,
                 "scan": scan,
                 "export": export,
-                "deploy-staging": deploy_staging,
+                "deploy-staging": lambda: deploy_ci("staging"),
+                "deploy-production": lambda: deploy_ci("prod"),
             }[args.command]()
     except (ValueError, OSError, subprocess.CalledProcessError) as exc:
         parser.exit(1, f"{exc}\n")

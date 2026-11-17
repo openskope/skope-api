@@ -2,6 +2,7 @@ ENVIRONMENT ?= dev
 COMPOSE_PROJECT_NAME ?= skope-api
 BUILD_FLAGS ?=
 DEPLOY_IMAGES ?=
+SKIP_FULL_VERIFICATION ?= 0
 RUNTIME_IMAGES_DIR ?= runtime-images
 RUNTIME_REFRESH ?= 0
 export RUNTIME_IMAGES_DIR RUNTIME_REFRESH
@@ -28,7 +29,7 @@ TEST_COMPOSE = SKOPE_RELEASE_ROOT=$(CURDIR)/timeseries/app/tests/registry/data \
 	-f deploy/compose/base.yml \
 	-f deploy/compose/dev.yml
 
-.PHONY: help check-environment check-release-pin verify-releases prepare prepare-release prepare-deploy config build deploy \
+.PHONY: help check-environment check-verification-mode check-release-pin verify-releases prepare prepare-release prepare-deploy config build deploy \
 	deploy-dev deploy-staging deploy-production down restart logs ps ingest release release-fetch release-pin \
 	preflight-legacy-data migrate-legacy-data test test-api test-ingest test-runtime scan-runtime-images export-runtime-images maintenance-candidate
 
@@ -51,6 +52,12 @@ prepare: check-environment
 
 check-release-pin: check-environment
 	@scripts/release-root.sh $(PIN_FILE) >/dev/null
+
+check-verification-mode:
+	@case "$(SKIP_FULL_VERIFICATION)" in \
+	  0|1) ;; \
+	  *) echo 'SKIP_FULL_VERIFICATION must be 0 or 1' >&2; exit 2;; \
+	esac
 
 config: check-environment ##- Render and validate the selected Compose configuration
 	@$(COMPOSE) config
@@ -80,9 +87,9 @@ prepare-deploy: prepare
 		echo 'set DEPLOY_IMAGES to the tested CI bundle selection for this environment (see timeseries/app/README.md)' >&2; exit 2; \
 	fi
 
-deploy: check-release-pin prepare-deploy ##- Deploy tested images (DEPLOY_IMAGES required for staging/prod), verify releases, wait for health, and log the deploy
+deploy: check-verification-mode check-release-pin prepare-deploy ##- Deploy tested images, verify releases (SKIP_FULL_VERIFICATION=1 for metadata checks), wait for health, and log the deploy
 	@mkdir -p "$(DEPLOY_LOG_DIR)"
-	$(DEPLOY_RUN) python -m app.registry.verify --record $(DEPLOY_PENDING)
+	$(DEPLOY_RUN) python -m app.registry.verify $(if $(filter 1,$(SKIP_FULL_VERIFICATION)),--metadata-only) --record $(DEPLOY_PENDING)
 	$(COMPOSE) up -d --no-build --pull never --remove-orphans --wait --wait-timeout 180
 	$(DEPLOY_RUN) python -m app.registry.deployment $(DEPLOY_PENDING) /deploy-state/$(notdir $(DEPLOY_LOG)) \
 		--environment $(ENVIRONMENT) \
@@ -94,15 +101,17 @@ deploy-dev: override ENVIRONMENT=dev
 deploy-dev: deploy ##- Build and deploy the local development environment
 
 deploy-staging: override ENVIRONMENT=staging
-deploy-staging: ##- Download and deploy tested CI images on the staging application host
-	@if [ -n "$(DEPLOY_IMAGES)" ]; then \
-		$(MAKE) deploy ENVIRONMENT=staging; \
-	else \
-		python3 scripts/runtime-images.py deploy-staging; \
-	fi
+deploy-staging: check-verification-mode ##- Download and deploy tested CI images on the staging application host
 
 deploy-production: override ENVIRONMENT=prod
-deploy-production: deploy ##- Build and deploy production on its application host
+deploy-production: check-verification-mode ##- Download and deploy tested CI images on the production application host
+
+deploy-staging deploy-production:
+	@if [ -n "$(DEPLOY_IMAGES)" ]; then \
+		$(MAKE) deploy ENVIRONMENT=$(ENVIRONMENT); \
+	else \
+		python3 scripts/runtime-images.py $@; \
+	fi
 
 down: check-environment ##- Stop and remove the selected environment's containers
 	$(COMPOSE) down

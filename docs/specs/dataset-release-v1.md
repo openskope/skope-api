@@ -1201,7 +1201,11 @@ transaction. The release manifest supplies an application-level commit protocol.
   Promotion MUST fully verify each newly pinned release, checking every file's
   size and checksum against its manifest, and MUST record each selected release
   ID, declaration digest, manifest digest, resolved path, and verification
-  result in deployment state. At startup, the API MUST run the checks in
+  result in deployment state. For an application-only redeploy of previously
+  verified releases, an operator MAY explicitly select only the startup checks
+  in PIN-004. Deployment state MUST then record `verification: metadata`, not
+  `full`; this mode does not establish the current integrity of asset contents.
+  At startup, the API MUST run the checks in
   release consumption specification PIN-004. Promotion and rollback MUST recreate both
   containers. Promoting one dataset MUST NOT require re-selecting the others.
 - **TXN-012:** An object-storage deployment MUST read each pinned release
@@ -2195,9 +2199,10 @@ Operations:
   outside version control and outside the release root, recording the deploy
   time, environment, operator, the commit the images were built from, the
   running image IDs, and each pinned release's ID, declaration digest, manifest
-  digest, resolved path, and verification result. Every deploy verifies every
-  pinned release in full, so the log is a record and never a reason to skip
-  verification.
+  digest, resolved path, and verification mode and result. Deployment defaults
+  to full verification; an explicit application-only redeploy may use the
+  metadata checks described in TXN-011. The log is a record, never an automatic
+  reason to skip verification.
 - The operational audit store (TXN-017) is a directory of JSON records outside
   the release root. A cleanup authorization is a JSON record naming the
   operator, time, mechanism, reason, and a grace period of at least 24 hours.

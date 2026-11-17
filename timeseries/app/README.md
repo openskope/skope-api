@@ -155,7 +155,8 @@ rebuilds the TiTiler image, and both images must be built from the same commit.
 | When | Checks | Needs release data? |
 | --- | --- | --- |
 | **CI**, on every change to the display files | Referenced palettes exist; `kind` matches a stated `type`; `palette[i]` indexes in range; ranges finite with lower < upper; explicit ticks within range; numeric `order`; `map_view` keys and ranges; no unknown fields | No |
-| **Promotion**, in every `make deploy-<env>`, for every pinned release | Every file's size and checksum against its manifest (full byte verification) | Yes |
+| **Deployment**, by default, for every pinned release | Every file's size and checksum against its manifest (full byte verification) | Yes |
+| **Application-only redeploy**, with `SKIP_FULL_VERIFICATION=1` | Startup release checks below; asset contents are not hashed | Yes, overviews, manifests, and file metadata |
 | **API startup**, for every pinned release | Manifest SHA-256 matches the pin; the manifest is valid for this API; `overview.yml` checksum matches its manifest entry; the overview's release ID and declaration digest match the pin; every inventoried file exists with its recorded size; no dataset pinned twice; every pinned dataset and variable has a display entry; `type` agrees with curated categories; `default_variable` exists; `set` palettes have enough colours | Yes, overviews and manifests only |
 
 The API serves temporal datasets only; it refuses a pinned static raster
@@ -197,11 +198,12 @@ The API serves temporal datasets only; it refuses a pinned static raster
 
 ## Deploy
 
-On the staging application host, use a clean checkout of the commit to deploy
-and run:
+On either application host, use a clean checkout of the commit to deploy and
+run the matching target:
 
 ```bash
 make deploy-staging
+make deploy-production
 ```
 
 This requires host `python3`, Docker Compose, and the GitHub CLI (`gh`)
@@ -209,23 +211,30 @@ authenticated with permission to read the repository's Actions artifacts.
 It finds the newest successful `test.yml` run for that exact commit with an
 unexpired bundle from its current attempt, downloads the bundle, loads its
 images, and runs the deployment checks below. It never switches commits or
-builds staging images locally. A missing bundle fails with instructions to run
-CI or select an existing local bundle explicitly.
+builds staging or production images locally. A missing bundle fails with
+instructions to run CI or select an existing local bundle explicitly.
 
 Bundles are cached outside the checkout under
 `${XDG_CACHE_HOME:-~/.cache}/skope-api/image-bundles/`; set
-`STAGING_BUNDLES_DIR` to use another directory outside the checkout. They remain
-available for rollback until an operator removes them. Discovery uses
-`openskope/skope-api`; set `STAGING_CI_REPOSITORY=owner/repo` to use a fork's CI.
+`STAGING_BUNDLES_DIR` or `PRODUCTION_BUNDLES_DIR` to use another directory outside
+the checkout for that environment. They remain available for rollback until an
+operator removes them. Discovery uses
+`openskope/skope-api`; set `STAGING_CI_REPOSITORY=owner/repo` or
+`PRODUCTION_CI_REPOSITORY=owner/repo` to use a fork's CI for that environment.
 Automatic selection requires GitHub access even for a cached bundle. For offline
-deployment or rollback, pass its `images-staging.json` as `DEPLOY_IMAGES`.
+deployment or rollback, pass its `images-staging.json` or `images-prod.json` as
+`DEPLOY_IMAGES`.
 
-For explicit staging selection and for production, download the
+Automatic selection uses the newest available successful bundle for the commit.
+If CI rebuilt that commit after staging was tested, production may select a
+different bundle. To promote the exact staging-tested bundle, explicitly select
+that bundle's `images-prod.json` using `DEPLOY_IMAGES`.
+
+For explicit bundle selection in either environment, download the
 `runtime-images-<run>-<attempt>` artifact from a successful default-branch or
 manually dispatched CI run for the selected commit. Pull requests run the checks
 without retaining large image archives. Extract the artifact outside the checkout
-and load its images on the
-application host:
+and load its images on the application host:
 
 ```bash
 docker load --input /srv/apps/image-bundles/<run>/images.tar.gz
@@ -260,16 +269,33 @@ because it produces reproducible scientific release artifacts. A newer runtime
 is never fetched during staging or production deployment.
 
 The runtime smoke test also runs the shared Make deployment recipe against
-synthetic releases, checking full verification, HTTP readiness, and the logged
+synthetic releases, checking both verification modes, HTTP readiness, and the logged
 image IDs before testing tiles, extraction, and analysis.
+
+Full byte verification remains the default. For an application-only deployment
+using releases already fully verified on this host, explicitly request the faster
+startup checks:
+
+```bash
+make deploy-staging SKIP_FULL_VERIFICATION=1
+make deploy-production SKIP_FULL_VERIFICATION=1
+```
+
+This still checks manifest digests and release identities, overview checksums,
+file existence and sizes, and all other startup checks. It does not read and hash
+the COG contents, so same-size asset corruption can go undetected. The deployment
+log records `verification: metadata` instead of `full`. Use the default full check
+when promoting new dataset releases. `make verify-releases ENVIRONMENT=staging`
+(or `prod`) always performs full verification, regardless of this flag.
 
 The pin file selects the releases; the target takes no release argument. It:
 
 1. checks the loaded CI image selection against the clean source checkout
    (or builds fresh local images in development);
-2. fully verifies every pinned release against its manifest, logging its
+2. by default, fully verifies every pinned release against its manifest, logging its
    progress. This reads every byte, about an hour for a 60 GB release, and runs
-   on every deploy, including a rollback or a redeploy of the same releases.
+   on every deploy, including a rollback or a redeploy of the same releases,
+   unless `SKIP_FULL_VERIFICATION=1` selects the faster checks above.
    `make verify-releases` runs the same verification on its own;
 3. recreates changed Compose services, removing orphaned ones, with the pin's
    release root mounted read-only at `/releases` in the API and TiTiler, and
@@ -293,8 +319,8 @@ The API then runs its startup checks ([What is checked where](#what-is-checked-w
 fall back to an older release or serve the remaining datasets. The API logs one
 structured error per failed check, naming the requirement ID, dataset, release
 ID, and the expected and observed values, then exits with a failure status. One
-bad pin entry therefore takes the environment down, which is why promotion
-checks every byte first.
+bad pin entry therefore takes the environment down, which is why promotion of
+new releases must check every byte first.
 
 TiTiler remains on the internal Compose network; public tile requests pass
 through the API. Run deploys inside `tmux` or similar on staging and

@@ -1,12 +1,15 @@
 """Promotion: fully verify the pinned releases before a deploy (release spec TXN-011).
 
-    python -m app.registry.verify [--record PATH]
+    python -m app.registry.verify [--metadata-only] [--record PATH]
 
 Runs every startup check (PIN-004) and also compares every file's checksum
 with its manifest. Prints one JSON line per verified release and exits 0, or
 logs each failed check and exits 1. With `--record`, it also writes the verified
 releases to PATH, for `app.registry.deployment` to add to the deployment log
 once the deploy has succeeded.
+
+With --metadata-only, keep the startup checks but skip hashing asset contents.
+The deployment record identifies this reduced verification mode explicitly.
 """
 
 import argparse
@@ -21,6 +24,11 @@ from app.registry.compose import ReleaseRefused, load_pin, log_refusals, verify_
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.registry.verify")
     parser.add_argument(
+        "--metadata-only",
+        action="store_true",
+        help="check metadata, file existence and sizes without hashing asset contents",
+    )
+    parser.add_argument(
         "--record", type=Path, help="also write the verified releases here"
     )
     args = parser.parse_args(argv)
@@ -28,7 +36,9 @@ def main(argv: list[str] | None = None) -> int:
     settings = get_settings()
     pin = load_pin(Path(settings.release_pin_path))
     try:
-        registry = verify_releases(pin, Path(settings.release_root), full=True)
+        registry = verify_releases(
+            pin, Path(settings.release_root), full=not args.metadata_only
+        )
     except ReleaseRefused as exc:
         log_refusals(exc.refusals)
         print(f"verification failed: {len(exc.refusals)} check(s); see the log")
@@ -43,7 +53,7 @@ def main(argv: list[str] | None = None) -> int:
                 "declaration_digest": pinned.declaration_digest,
                 "manifest_sha256": pinned.manifest_sha256,
                 "path": str(release.path),
-                "verification": "full",
+                "verification": "metadata" if args.metadata_only else "full",
                 "result": "passed",
             }
         )

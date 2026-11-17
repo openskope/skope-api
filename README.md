@@ -48,8 +48,9 @@ rebuilds OS-patched runtime images, tests and scans them, then promotes a retain
 bundle through staging and production. `make maintenance-candidate` reproduces
 the candidate build locally. See the [deployment guide](timeseries/app/README.md#deploy)
 for deploying or rolling back with the exact images that passed CI.
-On the staging host, `make deploy-staging` automatically downloads and loads
-the successful CI bundle for the checked-out commit (requires authenticated `gh`).
+On the matching application host, `make deploy-staging` or `make deploy-production`
+automatically downloads and loads a successful CI bundle for the checked-out
+commit (requires authenticated `gh`).
 
 ## Dataset releases
 
