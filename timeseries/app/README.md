@@ -259,6 +259,10 @@ extraction values and subsequent analysis. The ingest GDAL image stays pinned
 because it produces reproducible scientific release artifacts. A newer runtime
 is never fetched during staging or production deployment.
 
+The runtime smoke test also runs the shared Make deployment recipe against
+synthetic releases, checking full verification, HTTP readiness, and the logged
+image IDs before testing tiles, extraction, and analysis.
+
 The pin file selects the releases; the target takes no release argument. It:
 
 1. checks the loaded CI image selection against the clean source checkout
@@ -269,7 +273,9 @@ The pin file selects the releases; the target takes no release argument. It:
    `make verify-releases` runs the same verification on its own;
 3. recreates changed Compose services, removing orphaned ones, with the pin's
    release root mounted read-only at `/releases` in the API and TiTiler, and
-   waits up to 120 seconds for the API, Redis, and TiTiler health checks.
+   waits up to 180 seconds for the API, Redis, and TiTiler health checks.
+   TiTiler's HTTP readiness probe allows 120 seconds for startup before failed
+   checks count toward an unhealthy result; readiness can succeed sooner.
 
    Unchanged Redis containers stay running, preserving cached job records. Redis
    persistence is disabled, so recreating Redis or restarting its process still

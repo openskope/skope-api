@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -135,7 +136,11 @@ def staging_bundle(revision, repository, cache):
             "artifacts",
         )
         artifact = next(
-            (item for item in artifacts if item["name"] == name and not item["expired"]),
+            (
+                item
+                for item in artifacts
+                if item["name"] == name and not item["expired"]
+            ),
             None,
         )
         if artifact is None:
@@ -182,7 +187,11 @@ def deploy_staging():
         Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
         / "skope-api/image-bundles"
     )
-    cache = Path(os.environ.get("STAGING_BUNDLES_DIR", default_cache)).expanduser().resolve()
+    cache = (
+        Path(os.environ.get("STAGING_BUNDLES_DIR", default_cache))
+        .expanduser()
+        .resolve()
+    )
     if cache == ROOT or ROOT in cache.parents:
         raise ValueError("STAGING_BUNDLES_DIR must be outside the source checkout")
     bundle = staging_bundle(revision, repository, cache)
@@ -271,12 +280,35 @@ def test():
             "/smoke.py",
             "prepare",
         )
+        host_pin = fixture / "host-pin.yml"
+        host_pin.write_text(f"release_root: {fixture / 'releases'}\n")
         for environment in ("staging", "prod"):
+            # Exercise the deployed HTTP probe and startup allowance, rather
+            # than a separate TCP-only approximation of readiness.
+            deployed = json.loads(
+                run(
+                    "env",
+                    f"SKOPE_RELEASE_ROOT={fixture / 'releases'}",
+                    f"SKOPE_OPERATOR_UID={os.getuid()}",
+                    f"SKOPE_OPERATOR_GID={os.getgid()}",
+                    "docker",
+                    "compose",
+                    "-f",
+                    "deploy/compose/base.yml",
+                    "-f",
+                    f"deploy/compose/{environment}.yml",
+                    "config",
+                    "--format",
+                    "json",
+                    capture=True,
+                )
+            )
             compose_path = fixture / f"{environment}.json"
             config = {
                 "services": {
                     "server": {
                         "image": images[environment],
+                        "healthcheck": deployed["services"]["server"]["healthcheck"],
                         "environment": {
                             "REDIS_URL": "redis://redis:6379",
                             "SENTRY_DSN": "",
@@ -295,17 +327,7 @@ def test():
                     "titiler": {
                         "image": images["titiler"],
                         "volumes": [f"{fixture / 'releases'}:/releases:ro"],
-                        "healthcheck": {
-                            "test": [
-                                "CMD",
-                                "python",
-                                "-c",
-                                "import socket; socket.create_connection(('127.0.0.1', 80), 2).close()",
-                            ],
-                            "interval": "1s",
-                            "timeout": "3s",
-                            "retries": 30,
-                        },
+                        "healthcheck": deployed["services"]["titiler"]["healthcheck"],
                     },
                     "redis": {
                         "image": images["redis"],
@@ -340,7 +362,26 @@ def test():
                 compose_path,
             ]
             try:
-                run(*compose, "up", "-d", "--no-build", "--pull", "never")
+                # Use the shared deploy recipe with synthetic releases and
+                # already-built images. The dev preparation path needs no CI
+                # bundle or clean checkout; this fixture has nothing to build.
+                deploy_log = fixture / f"{environment}-deploy.jsonl"
+                run(
+                    "make",
+                    "deploy-dev",
+                    f"COMPOSE={shlex.join(str(arg) for arg in compose)}",
+                    f"PIN_FILE={host_pin}",
+                    f"DEPLOY_LOG={deploy_log}",
+                    "DEPLOY_IMAGES=",
+                )
+                entry = json.loads(deploy_log.read_text())
+                assert entry["images"] == {
+                    "server": images[environment],
+                    "titiler": images["titiler"],
+                    "redis": images["redis"],
+                }, entry
+                assert entry["releases"][0]["verification"] == "full", entry
+                assert entry["releases"][0]["result"] == "passed", entry
                 run(*compose, "--profile", "test", "run", "--rm", "--no-deps", "check")
             except subprocess.CalledProcessError:
                 run(*compose, "logs", "--no-color")

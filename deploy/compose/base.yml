@@ -54,7 +54,8 @@ services:
       interval: 10s
       timeout: 3s
       retries: 6
-      start_period: 20s
+      # HTTP readiness can lag worker startup on the application host.
+      start_period: 120s
     volumes:
       - ${SKOPE_RELEASE_ROOT:?run through make, which reads it from the pin}:/releases:ro
     networks:

@@ -83,7 +83,7 @@ prepare-deploy: prepare
 deploy: check-release-pin prepare-deploy ##- Deploy tested images (DEPLOY_IMAGES required for staging/prod), verify releases, wait for health, and log the deploy
 	@mkdir -p "$(DEPLOY_LOG_DIR)"
 	$(DEPLOY_RUN) python -m app.registry.verify --record $(DEPLOY_PENDING)
-	$(COMPOSE) up -d --no-build --pull never --remove-orphans --wait --wait-timeout 120
+	$(COMPOSE) up -d --no-build --pull never --remove-orphans --wait --wait-timeout 180
 	$(DEPLOY_RUN) python -m app.registry.deployment $(DEPLOY_PENDING) /deploy-state/$(notdir $(DEPLOY_LOG)) \
 		--environment $(ENVIRONMENT) \
 		--commit "$$(git rev-parse HEAD)$$(test -z "$$(git status --porcelain)" || echo -dirty)" \
