@@ -1,4 +1,3 @@
-from app.telemetry import log_event
 import logging
 import anyio
 from fastapi import (
@@ -11,9 +10,10 @@ from fastapi import (
     Header,
 )
 from fastapi.responses import StreamingResponse
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from app.config import get_settings
+from app.telemetry import log_event
 from app.registry.compose import ServedRelease, normalize_key
 from app.registry.metadata import MetadataResponse
 from app.schemas.jobs import ExtractionJobRecord, ExtractionProvenance
@@ -126,6 +126,17 @@ def _check_windows(payload, release: ServedRelease) -> None:
                     f"longer than the dataset ({count} time steps)."
                 ),
             )
+
+
+class BuildInfo(BaseModel):
+    build_id: str
+    environment: str
+
+
+@router.get("/version", response_model=BuildInfo)
+async def get_build_info():
+    """Public deployment identity for support reports; no host or storage details."""
+    return BuildInfo(build_id=settings.skope_build_id, environment=settings.environment)
 
 
 # Metadata

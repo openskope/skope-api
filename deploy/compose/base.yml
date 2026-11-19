@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: deploy/Dockerfile
+      args:
+        SKOPE_BUILD_ID: ${SKOPE_BUILD_ID:-development}
     restart: always
     stop_grace_period: 45s
     depends_on:

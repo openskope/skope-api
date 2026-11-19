@@ -423,6 +423,8 @@ def test():
             "--build-arg",
             f"ENVIRONMENT={environment}",
             "--build-arg",
+            f"SKOPE_BUILD_ID={revision}",
+            "--build-arg",
             f"REQUIREMENTS={'dev' if environment == 'dev' else 'production'}",
             "--label",
             f"{REVISION_LABEL}={revision}",

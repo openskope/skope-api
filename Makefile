@@ -1,5 +1,6 @@
 ENVIRONMENT ?= dev
 COMPOSE_PROJECT_NAME ?= skope-api
+export SKOPE_BUILD_ID ?= $(shell git describe --tags --always --dirty)
 BUILD_FLAGS ?=
 DEPLOY_IMAGES ?=
 LOCAL_BUILD ?= 0

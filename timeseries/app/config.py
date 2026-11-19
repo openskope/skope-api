@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 class Settings(BaseSettings):
     allowed_origins: List[str] = Field(default_factory=lambda: ["*"])
     environment: str = "dev"
+    skope_build_id: str = "development"
     name: str = "SKOPE API Services (development)"
     base_uri: str = "timeseries"
     max_processing_time: int = 20000  # in milliseconds

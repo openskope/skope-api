@@ -170,3 +170,7 @@ for deadlines, expiry and recovery behavior. A durable execution system remains
 necessary before offering restart-safe or resumable jobs.
 
 Backend request/job timing and sampling controls: [telemetry](docs/telemetry.md).
+
+Support reports can read `GET /version` for the image's baked-in build ID and
+environment. Browser clients can read `X-Request-ID` through CORS to correlate
+API calls with server logs.

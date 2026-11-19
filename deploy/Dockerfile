@@ -28,6 +28,9 @@ COPY deploy/settings/${ENVIRONMENT}.yml /code/config/app_settings.yml
 COPY deploy/releases/${ENVIRONMENT}.yml /code/config/releases.yml
 COPY deploy/display /code/config/display
 
+ARG SKOPE_BUILD_ID=development
+ENV SKOPE_BUILD_ID="${SKOPE_BUILD_ID}"
+
 COPY timeseries/app /code/app
 
 # Run unprivileged, as the same uid as TiTiler, so both read releases the same
