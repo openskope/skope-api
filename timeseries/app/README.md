@@ -155,8 +155,8 @@ rebuilds the TiTiler image, and both images must be built from the same commit.
 | When | Checks | Needs release data? |
 | --- | --- | --- |
 | **CI**, on every change to the display files | Referenced palettes exist; `kind` matches a stated `type`; `palette[i]` indexes in range; ranges finite with lower < upper; explicit ticks within range; numeric `order`; `map_view` keys and ranges; no unknown fields | No |
-| **Deployment**, by default, for every pinned release | Every file's size and checksum against its manifest (full byte verification) | Yes |
-| **Application-only redeploy**, with `SKIP_FULL_VERIFICATION=1` | Startup release checks below; asset contents are not hashed | Yes, overviews, manifests, and file metadata |
+| **Deployment**, by default, for every pinned release | Startup release checks below; asset contents are not hashed | Yes, overviews, manifests, and file metadata |
+| **Deployment with `FULL_VERIFICATION=1`** | Every file's size and checksum against its manifest (full byte verification) | Yes |
 | **API startup**, for every pinned release | Manifest SHA-256 matches the pin; the manifest is valid for this API; `overview.yml` checksum matches its manifest entry; the overview's release ID and declaration digest match the pin; every inventoried file exists with its recorded size; no dataset pinned twice; every pinned dataset and variable has a display entry; `type` agrees with curated categories; `default_variable` exists; `set` palettes have enough colours | Yes, overviews and manifests only |
 
 The API serves temporal datasets only; it refuses a pinned static raster
@@ -336,31 +336,32 @@ The runtime smoke test also runs the shared Make deployment recipe against
 synthetic releases, checking both verification modes, HTTP readiness, and the logged
 image IDs before testing tiles, extraction, and analysis.
 
-Full byte verification remains the default. For an application-only deployment
-using releases already fully verified on this host, explicitly request the faster
-startup checks:
+Deployments use metadata verification by default. To explicitly hash every file
+when promoting a new dataset release or checking for corruption:
 
 ```bash
-make deploy-staging SKIP_FULL_VERIFICATION=1
-make deploy-production SKIP_FULL_VERIFICATION=1
+make deploy-staging FULL_VERIFICATION=1
+make deploy-production FULL_VERIFICATION=1
 ```
 
-This still checks manifest digests and release identities, overview checksums,
-file existence and sizes, and all other startup checks. It does not read and hash
-the COG contents, so same-size asset corruption can go undetected. The deployment
-log records `verification: metadata` instead of `full`. Use the default full check
-when promoting new dataset releases. `make verify-releases ENVIRONMENT=staging`
-(or `prod`) always performs full verification, regardless of this flag.
+The default still checks manifest digests and release identities, overview
+checksums, file existence and sizes, and all other startup checks. It does not
+read and hash the COG contents, so same-size asset corruption can go undetected.
+The deployment log records `verification: metadata` or `full` for each release.
+Use `FULL_VERIFICATION=1` when promoting new dataset releases.
+`make verify-releases ENVIRONMENT=staging` (or `prod`) always performs full
+verification, regardless of this deployment flag. Boolean values for
+`FULL_VERIFICATION` are `1` (full) and `0` (metadata, the default). The old
+`SKIP_FULL_VERIFICATION` option is rejected with a migration message.
 
 The pin file selects the releases; the target takes no release argument. It:
 
 1. checks the loaded CI image selection against the clean source checkout
    (or builds fresh local images in development);
-2. by default, fully verifies every pinned release against its manifest, logging its
-   progress. This reads every byte, about an hour for a 60 GB release, and runs
-   on every deploy, including a rollback or a redeploy of the same releases,
-   unless `SKIP_FULL_VERIFICATION=1` selects the faster checks above.
-   `make verify-releases` runs the same verification on its own;
+2. checks every pinned release's metadata and file sizes against its manifest.
+   With `FULL_VERIFICATION=1`, it also hashes every asset and logs progress;
+   this reads every byte and can take about an hour for a 60 GB release.
+   `make verify-releases` runs full verification on its own;
 3. recreates changed Compose services, removing orphaned ones, with the pin's
    release root mounted read-only at `/releases` in the API and TiTiler, and
    waits up to 180 seconds for the API, Redis, and TiTiler health checks.

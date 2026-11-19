@@ -644,6 +644,8 @@ elif name == "docker" and os.environ.get("DEPLOY_TEST_FAIL") in sys.argv[1:]:
             "DEPLOY_LOG",
             "PULL",
             "SKOPE_RELEASE_ROOT",
+            "FULL_VERIFICATION",
+            "SKIP_FULL_VERIFICATION",
         ):
             self.environment.pop(name, None)
 
@@ -688,11 +690,37 @@ elif name == "docker" and os.environ.get("DEPLOY_TEST_FAIL") in sys.argv[1:]:
                 )
                 up = next(i for i, command in enumerate(docker) if "up" in command)
                 self.assertLess(verify, up)
+                self.assertIn("--metadata-only", docker[verify])
                 self.assertIn("--no-build", docker[up])
                 self.assertIn("never", docker[up])
                 self.assertTrue(
                     any("app.registry.deployment" in command for command in docker)
                 )
+
+    def test_full_verification_is_explicit_and_survives_recursive_make(self):
+        result, commands = self.invoke(
+            "deploy-staging", "LOCAL_BUILD=1", "FULL_VERIFICATION=1"
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        verify = next(
+            command for command in commands if "app.registry.verify" in command
+        )
+        self.assertNotIn("--metadata-only", verify)
+
+    def test_invalid_and_obsolete_verification_flags_fail_before_deployment(self):
+        for flag in (
+            "FULL_VERIFICATION=true",
+            "FULL_VERIFICATION=false",
+            "FULL_VERIFICATION=yes",
+            "SKIP_FULL_VERIFICATION=0",
+            "SKIP_FULL_VERIFICATION=1",
+        ):
+            with self.subTest(flag=flag):
+                self.commands.unlink(missing_ok=True)
+                result, commands = self.invoke("deploy-staging", "LOCAL_BUILD=1", flag)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("FULL_VERIFICATION", result.stderr)
+                self.assertFalse(any(command[0] == "docker" for command in commands))
 
     def test_local_mode_rejects_ambiguous_sources_and_invalid_flags_before_build(self):
         for arguments in (

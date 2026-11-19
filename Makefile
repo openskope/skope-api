@@ -7,7 +7,7 @@ LOCAL_BUILD ?= 0
 PULL ?= 1
 PR ?=
 export PR LOCAL_BUILD DEPLOY_IMAGES
-SKIP_FULL_VERIFICATION ?= 0
+export FULL_VERIFICATION ?= 0
 RUNTIME_IMAGES_DIR ?= runtime-images
 RUNTIME_REFRESH ?= 0
 export RUNTIME_IMAGES_DIR RUNTIME_REFRESH
@@ -60,9 +60,12 @@ check-release-pin: check-environment
 	@scripts/release-root.sh $(PIN_FILE) >/dev/null
 
 check-verification-mode:
-	@case "$(SKIP_FULL_VERIFICATION)" in \
+	@if [ -n "$(SKIP_FULL_VERIFICATION)" ]; then \
+		echo 'SKIP_FULL_VERIFICATION was replaced by FULL_VERIFICATION=1 or 0' >&2; exit 2; \
+	fi
+	@case "$(FULL_VERIFICATION)" in \
 	  0|1) ;; \
-	  *) echo 'SKIP_FULL_VERIFICATION must be 0 or 1' >&2; exit 2;; \
+	  *) echo 'FULL_VERIFICATION must be 0 or 1' >&2; exit 2;; \
 	esac
 
 check-deploy-source:
@@ -102,9 +105,9 @@ prepare-deploy: prepare check-deploy-source
 		echo 'set DEPLOY_IMAGES to a tested bundle selection or LOCAL_BUILD=1 to build here (see timeseries/app/README.md)' >&2; exit 2; \
 	fi
 
-deploy: check-verification-mode check-release-pin prepare-deploy ##- Deploy tested images, verify releases (SKIP_FULL_VERIFICATION=1 for metadata checks), wait for health, and log the deploy
+deploy: check-verification-mode check-release-pin prepare-deploy ##- Deploy tested images, check release metadata (FULL_VERIFICATION=1 to hash all files), wait for health, and log the deploy
 	@mkdir -p "$(DEPLOY_LOG_DIR)"
-	$(DEPLOY_RUN) python -m app.registry.verify $(if $(filter 1,$(SKIP_FULL_VERIFICATION)),--metadata-only) --record $(DEPLOY_PENDING)
+	$(DEPLOY_RUN) python -m app.registry.verify $(if $(filter 1,$(FULL_VERIFICATION)),,--metadata-only) --record $(DEPLOY_PENDING)
 	$(COMPOSE) up -d --no-build --pull never --remove-orphans --wait --wait-timeout 180
 	$(DEPLOY_RUN) python -m app.registry.deployment $(DEPLOY_PENDING) /deploy-state/$(notdir $(DEPLOY_LOG)) \
 		--environment $(ENVIRONMENT) \

@@ -546,7 +546,10 @@ def test():
                 # already-built images. The dev preparation path needs no CI
                 # bundle or clean checkout; this fixture has nothing to build.
                 deploy_log = fixture / f"{environment}-deploy.jsonl"
-                for skip_full, mode in (("0", "full"), ("1", "metadata")):
+                for full_verification, mode in (
+                    ("0", "metadata"),
+                    ("1", "full"),
+                ):
                     run(
                         "make",
                         "deploy-dev",
@@ -554,7 +557,7 @@ def test():
                         f"PIN_FILE={host_pin}",
                         f"DEPLOY_LOG={deploy_log}",
                         "DEPLOY_IMAGES=",
-                        f"SKIP_FULL_VERIFICATION={skip_full}",
+                        f"FULL_VERIFICATION={full_verification}",
                     )
                     entry = json.loads(deploy_log.read_text().splitlines()[-1])
                     assert entry["images"] == {

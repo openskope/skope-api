@@ -174,3 +174,8 @@ Backend request/job timing and sampling controls: [telemetry](docs/telemetry.md)
 Support reports can read `GET /version` for the image's baked-in build ID and
 environment. Browser clients can read `X-Request-ID` through CORS to correlate
 API calls with server logs.
+
+API deploys check release metadata by default. Add `FULL_VERIFICATION=1`
+to hash all release assets, for example
+`make deploy-staging FULL_VERIFICATION=1`. Use full verification when
+promoting new dataset releases; `make verify-releases` always hashes all assets.
