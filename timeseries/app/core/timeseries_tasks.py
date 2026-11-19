@@ -3,6 +3,7 @@ import time
 import anyio
 from fastapi import HTTPException
 
+from app.telemetry import data_quality_fields, log_event
 from app.registry.compose import ServedRelease
 from app.schemas.timeseries import TimeseriesRequest
 from app.store.jobs import JobStore
@@ -21,6 +22,7 @@ async def run_timeseries_pipeline_task(
     file_mapping: dict[str, list[int]],
     timestep_list: list[str],
 ):
+    started = time.monotonic()
     jobs = RecoverableJobs(store)
     processing_deadline = await jobs.claim(job_id, owner)
     if processing_deadline is None:
@@ -83,9 +85,30 @@ async def run_timeseries_pipeline_task(
         # Shutdown cancellation must not strand admission. If storage itself is
         # unavailable, the finite ownership lease handles recovery instead.
         with anyio.CancelScope(shield=True):
+            recorded = False
             try:
-                await jobs.finish(job_id, owner, status, **fields)
+                recorded = await jobs.finish(job_id, owner, status, **fields)
             except Exception:
                 logger.exception(
                     "Unable to record the terminal state of job %s", job_id
+                )
+            finally:
+                log_event(
+                    "extraction_finished",
+                    job_id=job_id,
+                    dataset_id=payload.dataset_id,
+                    variable_id=payload.variable_id,
+                    outcome=status,
+                    recorded=recorded,
+                    error_code=fields.get("error_code"),
+                    duration_ms=round((time.monotonic() - started) * 1000, 3),
+                    files=len(file_mapping),
+                    timesteps=len(timestep_list),
+                    **data_quality_fields(
+                        fields.get("base_series"),
+                        (
+                            series["values"]
+                            for series in fields.get("result", {}).get("series", [])
+                        ),
+                    ),
                 )

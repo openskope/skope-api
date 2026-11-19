@@ -12,6 +12,7 @@ from starlette.status import HTTP_422_UNPROCESSABLE_CONTENT
 from contextlib import asynccontextmanager
 
 from app.core.job_control import JobContractError
+from app.telemetry import RequestTimingMiddleware, log_event
 from app.config import get_settings
 from app.exceptions import TimeseriesValidationError
 from app.registry.compose import (
@@ -93,6 +94,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="SKOPE API Services", lifespan=lifespan)
+app.add_middleware(RequestTimingMiddleware)
 
 if settings.is_production:
     sentry_sdk.init(dsn=settings.sentry_dsn)
@@ -112,6 +114,7 @@ app.add_middleware(
 
 @app.exception_handler(JobContractError)
 async def job_contract_error_handler(request: Request, exc: JobContractError):
+    log_event("job_contract_error", status=exc.status, error_code=exc.code)
     return JSONResponse(
         status_code=exc.status,
         content={"detail": {"code": exc.code, "msg": exc.message}},

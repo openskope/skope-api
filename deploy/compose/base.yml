@@ -12,6 +12,10 @@ services:
         condition: service_healthy
     environment:
       REDIS_URL: redis://redis:6379
+      RASTER_CONNECT_TIMEOUT_SECONDS: ${RASTER_CONNECT_TIMEOUT_SECONDS:-5}
+      RASTER_HTTP_TIMEOUT_SECONDS: ${RASTER_HTTP_TIMEOUT_SECONDS:-15}
+      SKOPE_TELEMETRY_ENABLED: ${SKOPE_TELEMETRY_ENABLED:-true}
+      SKOPE_TELEMETRY_GET_SAMPLE_RATE: ${SKOPE_TELEMETRY_GET_SAMPLE_RATE:-0.1}
     healthcheck:
       test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/metadata', timeout=2).close()"]
       interval: 10s
@@ -46,6 +50,11 @@ services:
     image: openskope/skope-api-titiler:latest
     restart: always
     environment:
+      SKOPE_TELEMETRY_ENABLED: ${SKOPE_TELEMETRY_ENABLED:-true}
+      SKOPE_TELEMETRY_GET_SAMPLE_RATE: ${SKOPE_TELEMETRY_GET_SAMPLE_RATE:-0.1}
+      GDAL_HTTP_CONNECTTIMEOUT: ${RASTER_CONNECT_TIMEOUT_SECONDS:-5}
+      GDAL_HTTP_TIMEOUT: ${RASTER_HTTP_TIMEOUT_SECONDS:-15}
+      GDAL_HTTP_MAX_RETRY: "0"
       CPL_VSIL_CURL_ALLOWED_EXTENSIONS: .tif,.ovr
       GDAL_DISABLE_READDIR_ON_OPEN: EMPTY_DIR
       AWS_NO_SIGN_REQUEST: YES

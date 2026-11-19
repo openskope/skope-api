@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     analysis_processing_time: int = Field(default=20000, ge=1, le=60000)
     extraction_dispatch_seconds: int = Field(default=10, ge=1, le=60)
     extraction_recovery_grace_seconds: int = Field(default=5, ge=1, le=60)
+    # Per-transfer limits, not a replacement for the extraction job deadline.
+    raster_connect_timeout_seconds: int = Field(default=5, ge=1, le=20)
+    raster_http_timeout_seconds: int = Field(default=15, ge=1, le=20)
     default_max_cells: int = 1_000_000
     max_series_options: int = Field(default=10, ge=1, le=100)
     max_geometry_shapes: int = Field(default=100, ge=1, le=1_000)

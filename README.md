@@ -157,12 +157,16 @@ releases that only repackage it.
 
 ## Extraction job durability
 
-Extraction requests run as background tasks in the API worker that accepts them.
-Redis retains job status, results, and internal analysis data for 24 hours, but it
-is not an execution queue: a worker restart does not resume an in-flight job.
-Clients should treat a missing job or a job that remains nonterminal across a
-deployment as abandoned and submit a new extraction request.
+Extraction requests require an `Idempotency-Key` and run as background tasks in
+the accepting API worker. Retrying the same request with the same key recovers
+the accepted attempt. Results expire 24 hours from acceptance, with an additional
+24-hour idempotency tombstone. Redis is transient: restart/flush loses these
+records and the associated recovery guarantees.
 
-This execution model is suitable for the current short, bounded extractions. A
-separate durable worker queue is required before offering restart-safe or
-resumable jobs.
+Expired worker leases become terminal `WORKER_LOST` failures when reconciled;
+work is not automatically rerun. An explicit new attempt requires a new key.
+See the [recoverable extraction contract](docs/specs/recoverable-extraction-jobs-v1.md)
+for deadlines, expiry and recovery behavior. A durable execution system remains
+necessary before offering restart-safe or resumable jobs.
+
+Backend request/job timing and sampling controls: [telemetry](docs/telemetry.md).

@@ -3,6 +3,7 @@ import httpx
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 
+from app.telemetry import request_id
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -40,7 +41,10 @@ async def stream_tile(
 
     try:
         request = app_state.client.build_request(
-            "GET", tile_provider_url, params=params
+            "GET",
+            tile_provider_url,
+            params=params,
+            headers={"X-Request-ID": request_id.get()} if request_id.get() else {},
         )
         response = await app_state.client.send(request, stream=True)
         response.raise_for_status()

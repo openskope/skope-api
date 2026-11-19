@@ -64,6 +64,14 @@ lease to terminal `FAILED / WORKER_LOST`; admission also discards expired leases
 A delayed worker cannot claim after its dispatch deadline, and a stale owner
 cannot publish results after lease expiry or terminal completion.
 
+Raster HTTP transfers have a 5-second connection limit and a 15-second total
+transfer limit, including response bodies, with automatic GDAL retries disabled.
+These are configurable as `raster_connect_timeout_seconds` and
+`raster_http_timeout_seconds` (or their uppercase environment names); Compose applies the same limits to
+TiTiler. A chunk can
+involve multiple transfers, so these are not a hard wall-clock bound on a chunk
+or on native I/O. Cancellation is checked before and after each chunk read.
+
 Extraction retains its cooperative raster-chunk cancellation. An OS-suspended
 worker or uninterruptible native I/O is not physically killed by a Redis lease;
 fencing prevents its late publication. There is no automatic re-execution of

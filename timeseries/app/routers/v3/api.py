@@ -1,3 +1,4 @@
+from app.telemetry import log_event
 import logging
 import anyio
 from fastapi import (
@@ -228,6 +229,7 @@ async def create_timeseries_job(
     # registry, and even when no capacity is available for new work.
     previous = await jobs.lookup(job_id, fingerprint)
     if previous:
+        log_event("extraction_submission", job_id=job_id, recovered=True)
         return accepted(previous.record)
 
     # Validate dataset and variable IDs against the registry before accepting the job
@@ -315,6 +317,7 @@ async def create_timeseries_job(
                 "SCHEDULING_FAILED",
                 "The extraction could not be scheduled. Start a new attempt.",
             ) from exc
+    log_event("extraction_submission", job_id=job_id, recovered=not reservation.created)
     return accepted(reservation.record)
 
 
