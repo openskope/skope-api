@@ -206,12 +206,46 @@ make deploy-staging
 make deploy-production
 ```
 
-This requires host `python3`, Docker Compose, and the GitHub CLI (`gh`)
+To deploy an open pull request to the shared staging environment:
+
+```bash
+make deploy-staging PR=69
+```
+
+Run this from a clean checkout containing the PR deployment tooling. It selects
+the latest PR CI run for the current head, requires that run to have succeeded,
+and downloads its tested, scanned image bundle. CI tests GitHub's temporary
+merge commit, so the command creates a detached checkout of that exact commit
+under the bundle cache's `checkouts/` directory. It leaves the operator's branch
+unchanged. A stale base/merge, failed or unfinished latest run, expired artifact,
+or mismatched bundle stops deployment; it never substitutes older passing work
+or builds images on the host. A PR updated during bundle selection must be
+selected again. Older PR runs without archived images need new CI after image
+archiving is enabled.
+
+PR deployments replace the shared staging service; they do not create preview
+environments. They run the PR's deployment configuration on the staging host,
+so select only PR code you trust to run there. CI uses the normal read-only
+`pull_request` workflow, with no deployment credentials or `pull_request_target`.
+`PR` cannot be combined with `DEPLOY_IMAGES` or used for production. Bundles
+marked as PR builds are also rejected by explicit production image selection.
+After merging, use a successful default-branch bundle for production.
+
+Keep the detached checkout while its deployment is active: Compose references
+its files. The normal deployment log remains at `deploy-state/staging.jsonl`
+in the operator's checkout (or `DEPLOY_LOG`), with a companion `staging-ci.jsonl`
+recording the PR, head and tested merge commits, CI run/attempt, bundle path,
+checkout path, and exact image IDs after a successful deploy. Retain the bundle
+and checkout needed for rollback. To inspect the deployed configuration, use
+the recorded checkout; ordinary `make logs ENVIRONMENT=staging` still addresses
+the same Compose project.
+
+Deployment requires host `python3`, Docker Compose, and the GitHub CLI (`gh`)
 authenticated with permission to read the repository's Actions artifacts.
-It finds the newest successful `test.yml` run for that exact commit with an
-unexpired bundle from its current attempt, downloads the bundle, loads its
-images, and runs the deployment checks below. It never switches commits or
-builds staging or production images locally. A missing bundle fails with
+Without `PR`, it finds the newest successful `test.yml` run for the checkout's
+exact commit with an unexpired bundle from its current attempt, downloads the
+bundle, loads its images, and runs the deployment checks below. It never switches
+commits or builds staging or production images locally. A missing bundle fails with
 instructions to run CI or select an existing local bundle explicitly.
 
 Bundles are cached outside the checkout under
@@ -225,16 +259,17 @@ Automatic selection requires GitHub access even for a cached bundle. For offline
 deployment or rollback, pass its `images-staging.json` or `images-prod.json` as
 `DEPLOY_IMAGES`.
 
-Automatic selection uses the newest available successful bundle for the commit.
+Without `PR`, automatic selection uses the newest available successful bundle
+for the commit.
 If CI rebuilt that commit after staging was tested, production may select a
 different bundle. To promote the exact staging-tested bundle, explicitly select
 that bundle's `images-prod.json` using `DEPLOY_IMAGES`.
 
 For explicit bundle selection in either environment, download the
-`runtime-images-<run>-<attempt>` artifact from a successful default-branch or
-manually dispatched CI run for the selected commit. Pull requests run the checks
-without retaining large image archives. Extract the artifact outside the checkout
-and load its images on the application host:
+`runtime-images-<run>-<attempt>` artifact from a successful default-branch,
+manually dispatched, or (staging only) PR CI run for the selected tested commit.
+Pull requests retain their tested images for staging. Extract the artifact
+outside the checkout and load its images on the application host:
 
 ```bash
 docker load --input /srv/apps/image-bundles/<run>/images.tar.gz

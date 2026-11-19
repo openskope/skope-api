@@ -25,10 +25,10 @@ def now():
     return datetime.now(timezone.utc).isoformat()
 
 
-def run(*args, capture=False):
+def run(*args, capture=False, cwd=None):
     result = subprocess.run(
         [str(arg) for arg in args],
-        cwd=ROOT,
+        cwd=ROOT if cwd is None else cwd,
         check=True,
         stdout=subprocess.PIPE if capture else None,
         text=True,
@@ -75,6 +75,8 @@ def clean_revision():
 def bundle_images(path, environment, revision):
     images = selection_images(json.loads(path.read_text()), environment, revision)
     manifest = json.loads((path.parent / "manifest.json").read_text())
+    if environment == "prod" and manifest.get("ci", {}).get("event") == "pull_request":
+        raise ValueError("PR image bundles may only be deployed to staging")
     approved = scanned_images(manifest)
     if manifest["revision"] != revision:
         raise ValueError("scan manifest was built from a different source revision")
@@ -118,6 +120,61 @@ def github_records(endpoint, collection):
     return [json.loads(line) for line in output.splitlines() if line]
 
 
+def github_object(endpoint):
+    return json.loads(run("gh", "api", endpoint, capture=True))
+
+
+def download_bundle(workflow, repository, cache, environment, revision):
+    run_id = workflow["id"]
+    name = f"runtime-images-{run_id}-{workflow['run_attempt']}"
+    artifacts = github_records(
+        f"repos/{repository}/actions/runs/{run_id}/artifacts?per_page=100",
+        "artifacts",
+    )
+    artifact = next(
+        (item for item in artifacts if item["name"] == name and not item["expired"]),
+        None,
+    )
+    if artifact is None:
+        return None
+    destination = cache / repository / f"{name}-{artifact['id']}"
+    if not destination.is_dir():
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        # Failed or interrupted downloads never become cached bundles.
+        with tempfile.TemporaryDirectory(
+            prefix=".download-", dir=destination.parent
+        ) as directory:
+            download = Path(directory) / "bundle"
+            run(
+                "gh",
+                "run",
+                "download",
+                run_id,
+                "--repo",
+                repository,
+                "--name",
+                name,
+                "--dir",
+                download,
+            )
+            bundle_images(
+                download / f"images-{environment}.json", environment, revision
+            )
+            if not (download / "images.tar.gz").is_file():
+                raise ValueError("CI bundle is missing images.tar.gz")
+            download.rename(destination)
+    else:
+        # Cached bundles must still contain the tested images and archive.
+        bundle_images(destination / f"images-{environment}.json", environment, revision)
+        if not (destination / "images.tar.gz").is_file():
+            raise ValueError("cached CI bundle is missing images.tar.gz")
+    print(
+        f"Using {repository} CI run {run_id}, attempt {workflow['run_attempt']}",
+        flush=True,
+    )
+    return destination
+
+
 def ci_bundle(revision, repository, cache, environment):
     runs = github_records(
         f"repos/{repository}/actions/workflows/test.yml/runs"
@@ -129,53 +186,11 @@ def ci_bundle(revision, repository, cache, environment):
             continue
         if workflow["event"] not in ("push", "schedule", "workflow_dispatch"):
             continue
-        run_id = workflow["id"]
-        name = f"runtime-images-{run_id}-{workflow['run_attempt']}"
-        artifacts = github_records(
-            f"repos/{repository}/actions/runs/{run_id}/artifacts?per_page=100",
-            "artifacts",
+        destination = download_bundle(
+            workflow, repository, cache, environment, revision
         )
-        artifact = next(
-            (
-                item
-                for item in artifacts
-                if item["name"] == name and not item["expired"]
-            ),
-            None,
-        )
-        if artifact is None:
-            continue
-        destination = cache / repository / f"{name}-{artifact['id']}"
-        if not destination.is_dir():
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            # Failed or interrupted downloads never become cached bundles.
-            with tempfile.TemporaryDirectory(
-                prefix=".download-", dir=destination.parent
-            ) as directory:
-                download = Path(directory) / "bundle"
-                run(
-                    "gh",
-                    "run",
-                    "download",
-                    run_id,
-                    "--repo",
-                    repository,
-                    "--name",
-                    name,
-                    "--dir",
-                    download,
-                )
-                bundle_images(
-                    download / f"images-{environment}.json", environment, revision
-                )
-                if not (download / "images.tar.gz").is_file():
-                    raise ValueError("CI bundle is missing images.tar.gz")
-                download.rename(destination)
-        print(
-            f"Using {repository} CI run {run_id}, attempt {workflow['run_attempt']}",
-            flush=True,
-        )
-        return destination
+        if destination is not None:
+            return destination
     raise ValueError(
         f"no retained successful CI bundle for {revision} in {repository}; "
         "run test.yml for this commit, or supply DEPLOY_IMAGES for a retained local bundle"
@@ -183,6 +198,11 @@ def ci_bundle(revision, repository, cache, environment):
 
 
 def deploy_ci(environment):
+    pr_number = os.environ.get("PR", "")
+    if pr_number and (environment != "staging" or os.environ.get("DEPLOY_IMAGES")):
+        raise ValueError(
+            "PR selection is staging-only and cannot be combined with DEPLOY_IMAGES"
+        )
     revision = clean_revision()
     prefix = "STAGING" if environment == "staging" else "PRODUCTION"
     repository = os.environ.get(f"{prefix}_CI_REPOSITORY", "openskope/skope-api")
@@ -197,11 +217,166 @@ def deploy_ci(environment):
     )
     if cache == ROOT or ROOT in cache.parents:
         raise ValueError(f"{prefix}_BUNDLES_DIR must be outside the source checkout")
+    if pr_number:
+        deploy_pr(pr_number, repository, cache)
+        return
     bundle = ci_bundle(revision, repository, cache, environment)
     selection = bundle / f"images-{environment}.json"
     bundle_images(selection, environment, revision)
     run("docker", "load", "--input", bundle / "images.tar.gz")
     run("make", "deploy", f"ENVIRONMENT={environment}", f"DEPLOY_IMAGES={selection}")
+
+
+def current_pr(repository, number):
+    pr = github_object(f"repos/{repository}/pulls/{number}")
+    if (
+        pr["state"] != "open"
+        or not pr.get("merge_commit_sha")
+        or not pr.get("mergeable")
+    ):
+        raise ValueError(
+            "PR must be open and mergeable; retry if GitHub is still computing its merge"
+        )
+    if pr["base"]["repo"]["full_name"] != repository:
+        raise ValueError("PR belongs to a different base repository")
+    return pr
+
+
+def pr_workflow(repository, head):
+    runs = github_records(
+        f"repos/{repository}/actions/workflows/test.yml/runs"
+        f"?head_sha={head}&event=pull_request&per_page=100",
+        "workflow_runs",
+    )
+    # Do not silently fall back to an older successful attempt after a failed rerun.
+    workflow = next(
+        (
+            item
+            for item in runs
+            if item["event"] == "pull_request" and item["head_sha"] == head
+        ),
+        None,
+    )
+    if (
+        workflow is None
+        or workflow["status"] != "completed"
+        or workflow["conclusion"] != "success"
+    ):
+        raise ValueError(
+            "the latest CI run for this PR head must complete successfully"
+        )
+    return workflow
+
+
+def pr_checkout(repository, number, revision, cache):
+    checkout = cache / "checkouts" / repository / revision
+    if not checkout.exists():
+        checkout.parent.mkdir(parents=True, exist_ok=True)
+        run(
+            "git",
+            "fetch",
+            "--no-tags",
+            f"https://github.com/{repository}.git",
+            f"refs/pull/{number}/merge",
+        )
+        if run("git", "rev-parse", "FETCH_HEAD", capture=True) != revision:
+            raise ValueError("PR merge changed while fetching; rerun deploy-staging")
+        run("git", "worktree", "add", "--detach", checkout, revision)
+    if run("git", "rev-parse", "HEAD", capture=True, cwd=checkout) != revision or run(
+        "git", "status", "--porcelain", capture=True, cwd=checkout
+    ):
+        raise ValueError(
+            f"PR deployment checkout is dirty or has the wrong revision: {checkout}"
+        )
+    # Keep this directory: Compose references its configuration and bind mounts.
+    return checkout
+
+
+def deploy_pr(number, repository, cache):
+    if not re.fullmatch(r"[1-9][0-9]*", number):
+        raise ValueError("PR must be a positive pull request number")
+    if not re.fullmatch(
+        r"[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*", repository
+    ):
+        raise ValueError("CI repository must use owner/repo form")
+    pr = current_pr(repository, number)
+    revision = pr["merge_commit_sha"]
+    if not re.fullmatch(r"[0-9a-f]{40}", revision):
+        raise ValueError("PR has an invalid merge revision")
+    workflow = pr_workflow(repository, pr["head"]["sha"])
+    bundle = download_bundle(workflow, repository, cache, "staging", revision)
+    if bundle is None:
+        raise ValueError(
+            "PR CI has no retained image bundle; rerun CI with PR image archiving enabled"
+        )
+    selection = bundle / "images-staging.json"
+    images = bundle_images(selection, "staging", revision)
+    manifest = json.loads((bundle / "manifest.json").read_text())
+    expected_ci = {
+        "repository": repository,
+        "run_id": workflow["id"],
+        "run_attempt": workflow["run_attempt"],
+        "event": "pull_request",
+        "pr": int(number),
+        "head_sha": pr["head"]["sha"],
+        "base_sha": pr["base"]["sha"],
+    }
+    if manifest.get("ci") != expected_ci:
+        raise ValueError("bundle CI provenance does not match the current PR and run")
+    # GitHub may update a PR while a large image archive is downloading.
+    latest = current_pr(repository, number)
+    if (latest["head"]["sha"], latest["merge_commit_sha"]) != (
+        pr["head"]["sha"],
+        revision,
+    ):
+        raise ValueError("PR changed while selecting its bundle; rerun deploy-staging")
+    latest_run = pr_workflow(repository, pr["head"]["sha"])
+    if (latest_run["id"], latest_run["run_attempt"]) != (
+        workflow["id"],
+        workflow["run_attempt"],
+    ):
+        raise ValueError(
+            "PR CI changed while selecting its bundle; rerun deploy-staging"
+        )
+    checkout = pr_checkout(repository, number, revision, cache)
+    log = Path(
+        os.environ.get("DEPLOY_LOG", ROOT / "deploy-state/staging.jsonl")
+    ).resolve()
+    print(
+        f"Deploying {repository} PR #{number} at tested merge {revision} from {checkout}",
+        flush=True,
+    )
+    run("docker", "load", "--input", bundle / "images.tar.gz")
+    run(
+        "make",
+        "deploy",
+        "ENVIRONMENT=staging",
+        "PR=",
+        f"DEPLOY_IMAGES={selection}",
+        f"DEPLOY_LOG={log}",
+        cwd=checkout,
+    )
+    # Link the normal deployment log to CI without requiring changes in the PR image.
+    log.parent.mkdir(parents=True, exist_ok=True)
+    with log.with_name(log.stem + "-ci.jsonl").open("a") as stream:
+        stream.write(
+            json.dumps(
+                {
+                    "deployed_at": now(),
+                    "environment": "staging",
+                    "repository": repository,
+                    "pr": int(number),
+                    "head_sha": pr["head"]["sha"],
+                    "commit": revision,
+                    "run_id": workflow["id"],
+                    "run_attempt": workflow["run_attempt"],
+                    "bundle": str(bundle),
+                    "checkout": str(checkout),
+                    "images": images,
+                }
+            )
+            + "\n"
+        )
 
 
 def test():
@@ -491,6 +666,19 @@ def scan():
 def export():
     manifest = json.loads((OUTPUT / "manifest.json").read_text())
     images = sorted(set(scanned_images(manifest).values()))
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
+        pr = event.get("pull_request")
+        manifest["ci"] = {
+            "repository": os.environ["GITHUB_REPOSITORY"],
+            "run_id": int(os.environ["GITHUB_RUN_ID"]),
+            "run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+            "event": os.environ["GITHUB_EVENT_NAME"],
+            "pr": event["number"] if pr else None,
+            "head_sha": pr["head"]["sha"] if pr else None,
+            "base_sha": pr["base"]["sha"] if pr else None,
+        }
+        write_json(OUTPUT / "manifest.json", manifest)
     partial = OUTPUT / "images.tar.gz.partial"
     try:
         with gzip.open(partial, "wb", compresslevel=1) as archive:

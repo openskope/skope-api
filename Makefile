@@ -2,6 +2,8 @@ ENVIRONMENT ?= dev
 COMPOSE_PROJECT_NAME ?= skope-api
 BUILD_FLAGS ?=
 DEPLOY_IMAGES ?=
+PR ?=
+export PR
 SKIP_FULL_VERIFICATION ?= 0
 RUNTIME_IMAGES_DIR ?= runtime-images
 RUNTIME_REFRESH ?= 0
@@ -73,6 +75,7 @@ verify-releases: check-release-pin ##- Fully verify the pinned releases' bytes (
 # outside git. `git clean -x` deletes it, so point DEPLOY_LOG elsewhere where
 # that matters. The API image runs as the calling user, so the files stay theirs.
 DEPLOY_LOG ?= deploy-state/$(ENVIRONMENT).jsonl
+export DEPLOY_LOG
 DEPLOY_LOG_DIR = $(abspath $(dir $(DEPLOY_LOG)))
 DEPLOY_PENDING = /deploy-state/.pending-$(ENVIRONMENT).json
 DEPLOY_RUN = $(COMPOSE) run --rm --no-deps --pull never --user "$(SKOPE_OPERATOR_UID):$(SKOPE_OPERATOR_GID)" \
@@ -101,13 +104,15 @@ deploy-dev: override ENVIRONMENT=dev
 deploy-dev: deploy ##- Build and deploy the local development environment
 
 deploy-staging: override ENVIRONMENT=staging
-deploy-staging: check-verification-mode ##- Download and deploy tested CI images on the staging application host
+deploy-staging: check-verification-mode ##- Deploy tested CI images on staging (PR=69 selects a pull request)
 
 deploy-production: override ENVIRONMENT=prod
 deploy-production: check-verification-mode ##- Download and deploy tested CI images on the production application host
 
 deploy-staging deploy-production:
-	@if [ -n "$(DEPLOY_IMAGES)" ]; then \
+	@if [ -n "$$PR" ]; then \
+		python3 scripts/runtime-images.py $@; \
+	elif [ -n "$(DEPLOY_IMAGES)" ]; then \
 		$(MAKE) deploy ENVIRONMENT=$(ENVIRONMENT); \
 	else \
 		python3 scripts/runtime-images.py $@; \

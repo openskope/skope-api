@@ -51,6 +51,8 @@ for deploying or rolling back with the exact images that passed CI.
 On the matching application host, `make deploy-staging` or `make deploy-production`
 automatically downloads and loads a successful CI bundle for the checked-out
 commit (requires authenticated `gh`).
+Use `make deploy-staging PR=69` to deploy a pull request's tested merge commit
+and CI images to shared staging without changing the operator's branch.
 
 ## Dataset releases
 
