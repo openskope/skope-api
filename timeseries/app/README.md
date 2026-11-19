@@ -509,3 +509,11 @@ rollback target.
 
 Promotion, mounts, and file permissions are in the dataset release
 specification, §14 (TXN-001–018).
+
+
+### Recoverable extraction submissions
+
+See [Recoverable extraction jobs v1](../../docs/specs/recoverable-extraction-jobs-v1.md)
+for idempotency headers, source identity, shared admission, lifecycle/expiry,
+structured failures, browser deadlines and the future Temporal transition.
+Redis remains transient; its loss also loses duplicate-submission protection.

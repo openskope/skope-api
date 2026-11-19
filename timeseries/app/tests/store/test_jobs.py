@@ -131,3 +131,43 @@ async def test_redis_full_success_payload(redis_job_store):
     }
     await redis_job_store.update_job("job-007", payload)
     assert await redis_job_store.get_job_status("job-007") == payload
+
+
+async def test_filesystem_lock_wait_honors_cancellation(fs_job_store):
+    import fcntl
+    import anyio
+
+    called = []
+    lock_path = os.path.join(fs_job_store.directory, ".admission.lock")
+    with open(lock_path, "a") as held:
+        fcntl.flock(held, fcntl.LOCK_EX)
+        started = time.monotonic()
+        with pytest.raises(TimeoutError):
+            with anyio.fail_after(0.05):
+                await fs_job_store.atomic_extraction(
+                    "waiting", lambda state: called.append(True)
+                )
+        assert time.monotonic() - started < 1
+    assert called == []
+    await fs_job_store.atomic_extraction("waiting", lambda state: called.append(True))
+    assert called == [True]
+
+
+async def test_admission_changes_do_not_extend_result_ttl(redis_job_store):
+    await redis_job_store.update_job("completed", {"status": "SUCCESS", "result": {}})
+    await redis_job_store._client.pexpire("job:completed", 20_000)
+    await redis_job_store.atomic_extraction(
+        "completed", lambda state: state["active"].update(other=time.time() + 60)
+    )
+    assert 0 < await redis_job_store._client.pttl("job:completed") <= 20_000
+
+
+async def test_admission_changes_do_not_touch_local_result_retention(fs_job_store):
+    await fs_job_store.update_job("completed", {"status": "SUCCESS"})
+    path = os.path.join(fs_job_store.directory, "completed.json")
+    old = time.time() - 25 * 3600
+    os.utime(path, (old, old))
+    await fs_job_store.atomic_extraction(
+        "completed", lambda state: state["active"].update(other=time.time() + 60)
+    )
+    assert os.stat(path).st_mtime == old

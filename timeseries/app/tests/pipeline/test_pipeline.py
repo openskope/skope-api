@@ -8,6 +8,7 @@ client.post() returns only after the task has written its final status.
 """
 
 import time
+import uuid
 from dataclasses import replace
 
 import pytest
@@ -15,7 +16,7 @@ from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
 from app.tests.pipeline.conftest import SINGLE_CELL_POLYGON
-from app.core.job_control import ExtractionJobController, get_job_controller
+from app.core.job_control import RecoverableJobs
 from app.schemas.jobs import ExtractionJobRecord
 
 EXTRACT_URL = "/timeseries/extract"
@@ -80,7 +81,9 @@ def _analyze_payload(extraction_id: str, **overrides) -> dict:
 def _do_extract(client, dataset_id: str, gte: str, lte: str, **overrides) -> str:
     """POST /extract and return the job_id. Asserts 202."""
     resp = client.post(
-        EXTRACT_URL, json=_extract_payload(dataset_id, gte, lte, **overrides)
+        EXTRACT_URL,
+        json=_extract_payload(dataset_id, gte, lte, **overrides),
+        headers={"Idempotency-Key": uuid.uuid4().hex},
     )
     assert resp.status_code == 202, resp.text
     job_id = resp.json()["job_id"]
@@ -132,7 +135,7 @@ def test_status_keeps_null_statistics_and_lists_only_set_fields(pipeline_client)
     )
     job = _get_status(pipeline_client, job_id)
 
-    assert set(job) == {"status", "result"}
+    assert set(job) == {"status", "result", "lifecycle"}
     assert job["result"]["summary_stats"][0]["stdev"] is None
 
 
@@ -174,18 +177,21 @@ def test_extract_null_range_uses_dataset_period(pipeline_client):
 
 
 @pytest.mark.integration
-def test_extract_rejected_when_worker_is_at_capacity(pipeline_client):
-    controller = ExtractionJobController(limit=1)
-    assert controller.try_acquire()
-    pipeline_client.app.dependency_overrides[get_job_controller] = lambda: controller
+def test_extract_rejected_when_worker_is_at_capacity(pipeline_client, job_store):
+    pipeline_client.portal.call(
+        job_store.atomic_extraction,
+        "occupied",
+        lambda state: state["active"].update(occupied=time.time() + 60),
+    )
 
     response = pipeline_client.post(
-        EXTRACT_URL, json=_extract_payload("test_annual", "0001", "0005")
+        EXTRACT_URL,
+        json=_extract_payload("test_annual", "0001", "0005"),
+        headers={"Idempotency-Key": uuid.uuid4().hex},
     )
 
     assert response.status_code == 503
     assert response.headers["retry-after"] == "5"
-    controller.release()
 
 
 @pytest.mark.integration
@@ -204,7 +210,7 @@ def test_extract_processing_deadline_is_enforced(pipeline_client):
 
 
 @pytest.mark.integration
-def test_extract_stops_reading_at_its_deadline(pipeline_client, monkeypatch):
+def test_extract_stops_reading_at_its_deadline(pipeline_client, monkeypatch, job_store):
     # One band per read, each taking longer than the deadline. The release's
     # 5 bands sit in 3 files read in parallel, so a stopped job reads at most
     # one band per file; a job that runs on reads all 5.
@@ -220,8 +226,6 @@ def test_extract_stops_reading_at_its_deadline(pipeline_client, monkeypatch):
     monkeypatch.setattr(
         "app.core.timeseries_processing.generate_band_chunks", slow_chunks
     )
-    controller = ExtractionJobController(limit=1)
-    pipeline_client.app.dependency_overrides[get_job_controller] = lambda: controller
 
     job_id = _do_extract(
         pipeline_client,
@@ -233,7 +237,12 @@ def test_extract_stops_reading_at_its_deadline(pipeline_client, monkeypatch):
 
     assert _get_status(pipeline_client, job_id)["status"] == "TIMED_OUT"
     assert len(reads) <= 3
-    assert controller.active == 0
+    assert (
+        pipeline_client.portal.call(
+            job_store.atomic_extraction, "inspect", lambda state: state["active"]
+        )
+        == {}
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -243,7 +252,9 @@ def test_extract_stops_reading_at_its_deadline(pipeline_client, monkeypatch):
 @pytest.mark.integration
 def test_extract_unknown_dataset_returns_404(pipeline_client):
     resp = pipeline_client.post(
-        EXTRACT_URL, json=_extract_payload("nonexistent-ds", "0001", "0005")
+        EXTRACT_URL,
+        json=_extract_payload("nonexistent-ds", "0001", "0005"),
+        headers={"Idempotency-Key": uuid.uuid4().hex},
     )
     assert resp.status_code == 404
 
@@ -252,7 +263,9 @@ def test_extract_unknown_dataset_returns_404(pipeline_client):
 def test_extract_unknown_variable_returns_404(pipeline_client):
     payload = _extract_payload("test_annual", "0001", "0005")
     payload["variable_id"] = "no-such-var"
-    resp = pipeline_client.post(EXTRACT_URL, json=payload)
+    resp = pipeline_client.post(
+        EXTRACT_URL, json=payload, headers={"Idempotency-Key": uuid.uuid4().hex}
+    )
     assert resp.status_code == 404
 
 
@@ -399,13 +412,28 @@ async def test_job_lifecycle_keeps_private_release_provenance(
     pipeline_client, job_store, monkeypatch
 ):
     written = []
-    update = job_store.update_job
+    atomic = job_store.atomic_extraction
 
-    async def capture(job_id, data):
-        written.append(ExtractionJobRecord.model_validate(data))
-        await update(job_id, data)
+    async def capture(job_id, change):
+        def observed(state):
+            result = change(state)
+            meta = state["meta"]
+            if meta and (not written or written[-1].status != meta["status"]):
+                written.append(
+                    ExtractionJobRecord.model_validate(
+                        {
+                            "schema_version": "1.0.0",
+                            "provenance": meta["provenance"],
+                            "status": meta["status"],
+                            **(state["data"] or {}),
+                        }
+                    )
+                )
+            return result
 
-    monkeypatch.setattr(job_store, "update_job", capture)
+        return await atomic(job_id, observed)
+
+    monkeypatch.setattr(job_store, "atomic_extraction", capture)
     job_id = _do_extract(pipeline_client, "test_annual", "0001", "0005")
     assert [record.status for record in written] == ["PENDING", "PROCESSING", "SUCCESS"]
     release = pipeline_client.app.state.registry.get("test_annual")
@@ -416,7 +444,11 @@ async def test_job_lifecycle_keeps_private_release_provenance(
             record.provenance.declaration_digest == release.overview.declaration_digest
         )
         assert record.provenance.precision == "year"
-    assert set(_get_status(pipeline_client, job_id)) == {"status", "result"}
+    assert set(_get_status(pipeline_client, job_id)) == {
+        "status",
+        "result",
+        "lifecycle",
+    }
 
 
 @pytest.mark.integration
@@ -439,7 +471,7 @@ def test_analyze_rejects_a_previous_source_release(
     response = pipeline_client.post(ANALYZE_URL, json=_analyze_payload(job_id))
 
     assert response.status_code == 410
-    assert "source release has changed" in response.json()["detail"]
+    assert "source release has changed" in response.json()["detail"]["msg"]
 
 
 @pytest.mark.integration
@@ -468,7 +500,7 @@ async def test_analyze_requires_a_supported_job_record(
     response = pipeline_client.post(ANALYZE_URL, json=_analyze_payload(job_id))
 
     assert response.status_code == 410
-    assert "incompatible" in response.json()["detail"]
+    assert "incompatible" in response.json()["detail"]["msg"]
 
 
 @pytest.mark.integration
@@ -525,6 +557,7 @@ def test_extract_refuses_a_window_longer_than_the_dataset(pipeline_client):
             "0005",
             transform={"type": "ZScoreMovingInterval", "width": 5},
         ),
+        headers={"Idempotency-Key": uuid.uuid4().hex},
     )
 
     assert resp.status_code == 422
@@ -602,7 +635,9 @@ def test_tile_rejects_unknown_and_malformed_timesteps(
 @pytest.mark.integration
 def test_extract_range_that_selects_nothing_is_rejected(pipeline_client):
     resp = pipeline_client.post(
-        EXTRACT_URL, json=_extract_payload("test_annual", "0010", "0020")
+        EXTRACT_URL,
+        json=_extract_payload("test_annual", "0010", "0020"),
+        headers={"Idempotency-Key": uuid.uuid4().hex},
     )
 
     assert resp.status_code == 422
@@ -612,7 +647,9 @@ def test_extract_range_that_selects_nothing_is_rejected(pipeline_client):
 @pytest.mark.integration
 def test_extract_malformed_range_is_rejected(pipeline_client):
     resp = pipeline_client.post(
-        EXTRACT_URL, json=_extract_payload("test_annual", "0002-06-01", "0004")
+        EXTRACT_URL,
+        json=_extract_payload("test_annual", "0002-06-01", "0004"),
+        headers={"Idempotency-Key": uuid.uuid4().hex},
     )
 
     assert resp.status_code == 422
@@ -646,7 +683,9 @@ def test_invalid_calendar_ranges_return_422(
         payload = _analyze_payload(job_id, **overrides)
         url = ANALYZE_URL
 
-    response = pipeline_client.post(url, json=payload)
+    response = pipeline_client.post(
+        url, json=payload, headers={"Idempotency-Key": uuid.uuid4().hex}
+    )
 
     assert response.status_code == 422, response.text
     assert "not a valid date" in response.json()["detail"]
@@ -735,3 +774,162 @@ def test_metadata_serves_schema_1_0_0_in_display_order(pipeline_client):
     assert monthly["time"]["origin"] == "0001-01"
     assert monthly["time"]["end"] == "0005-12"
     assert monthly["variables"][0]["display"]["range"] == [1, 60]
+
+
+@pytest.mark.integration
+def test_lost_acceptance_response_recovers_the_same_job_even_at_capacity(
+    pipeline_client, job_store, monkeypatch
+):
+    from app.core.timeseries_tasks import execute_timeseries_job
+
+    calls = []
+
+    async def tracked(**kwargs):
+        calls.append(True)
+        return await execute_timeseries_job(**kwargs)
+
+    monkeypatch.setattr("app.core.timeseries_tasks.execute_timeseries_job", tracked)
+    headers = {"Idempotency-Key": "lost-acceptance"}
+    payload = _extract_payload("test_annual", "0001", "0005")
+    original = pipeline_client.post(EXTRACT_URL, json=payload, headers=headers)
+    assert original.status_code == 202
+    pipeline_client.portal.call(
+        job_store.atomic_extraction,
+        "occupied",
+        lambda state: state["active"].update(occupied=time.time() + 60),
+    )
+    retry = pipeline_client.post(EXTRACT_URL, json=payload, headers=headers)
+    assert retry.status_code == 202
+    assert retry.json()["job_id"] == original.json()["job_id"]
+    assert len(calls) == 1
+    assert "owner" not in retry.text and "fingerprint" not in retry.text
+    conflict = pipeline_client.post(
+        EXTRACT_URL, json={**payload, "zonal_statistic": "median"}, headers=headers
+    )
+    assert conflict.status_code == 409
+    assert conflict.json()["detail"]["code"] == "IDEMPOTENCY_CONFLICT"
+
+
+@pytest.mark.integration
+def test_recovery_keeps_accepted_release_but_new_submissions_check_source(
+    pipeline_client, monkeypatch
+):
+    release = pipeline_client.app.state.registry.get("test_annual")
+    headers = {
+        "Idempotency-Key": "release-bound",
+        "X-Skope-Release-Id": release.overview.release_id,
+        "X-Skope-Declaration-Digest": release.overview.declaration_digest,
+    }
+    payload = _extract_payload("test_annual", "0001", "0005")
+    first = pipeline_client.post(EXTRACT_URL, json=payload, headers=headers)
+    assert first.status_code == 202
+    monkeypatch.setitem(
+        pipeline_client.app.state.registry.releases,
+        "test_annual",
+        replace(
+            release,
+            overview=release.overview.model_copy(
+                update={"declaration_digest": "a" * 64}
+            ),
+        ),
+    )
+    recovered = pipeline_client.post(EXTRACT_URL, json=payload, headers=headers)
+    assert recovered.status_code == 202
+    assert recovered.json()["job_id"] == first.json()["job_id"]
+    fresh = pipeline_client.post(
+        EXTRACT_URL,
+        json=payload,
+        headers={**headers, "Idempotency-Key": "fresh-release"},
+    )
+    assert fresh.status_code == 409
+    assert fresh.json()["detail"]["code"] == "SOURCE_CHANGED"
+
+
+@pytest.mark.integration
+def test_scheduling_failure_remains_bound_to_its_key_and_releases_admission(
+    pipeline_client, monkeypatch
+):
+    from fastapi import BackgroundTasks
+
+    def broken(*args, **kwargs):
+        raise RuntimeError("scheduler unavailable")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(BackgroundTasks, "add_task", broken)
+        failure = pipeline_client.post(
+            EXTRACT_URL,
+            json=_extract_payload("test_annual", "0001", "0005"),
+            headers={"Idempotency-Key": "schedule-failure"},
+        )
+        assert failure.status_code == 503
+        assert failure.json()["detail"]["code"] == "SCHEDULING_FAILED"
+        assert "retry-after" not in failure.headers
+    recovered = pipeline_client.post(
+        EXTRACT_URL,
+        json=_extract_payload("test_annual", "0001", "0005"),
+        headers={"Idempotency-Key": "schedule-failure"},
+    )
+    assert recovered.status_code == 202
+    job = _get_status(pipeline_client, recovered.json()["job_id"])
+    assert job["status"] == "FAILED" and job["error_code"] == "SCHEDULING_FAILED"
+    _do_extract(pipeline_client, "test_annual", "0001", "0005")
+
+
+@pytest.mark.integration
+def test_retry_after_is_visible_to_browser_clients(pipeline_client, job_store):
+    pipeline_client.portal.call(
+        job_store.atomic_extraction,
+        "occupied",
+        lambda state: state["active"].update(occupied=time.time() + 60),
+    )
+    response = pipeline_client.post(
+        EXTRACT_URL,
+        json=_extract_payload("test_annual", "0001", "0005"),
+        headers={"Origin": "https://example.test", "Idempotency-Key": uuid.uuid4().hex},
+    )
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "CAPACITY_EXHAUSTED"
+    assert "Retry-After" in response.headers["access-control-expose-headers"]
+
+
+@pytest.mark.integration
+def test_openapi_declares_submission_analysis_and_structured_errors(pipeline_client):
+    paths = pipeline_client.app.openapi()["paths"]
+    assert paths[EXTRACT_URL]["post"]["responses"]["202"]["content"][
+        "application/json"
+    ]["schema"]["$ref"].endswith("/ExtractionAcceptedResponse")
+    assert paths[ANALYZE_URL]["post"]["responses"]["200"]["content"][
+        "application/json"
+    ]["schema"]["$ref"].endswith("/TimeseriesResponse")
+    assert paths[EXTRACT_URL]["post"]["responses"]["409"]["content"][
+        "application/json"
+    ]["schema"]["$ref"].endswith("/JobErrorResponse")
+
+
+@pytest.mark.integration
+def test_extract_requires_an_idempotency_key_before_accepting_work(pipeline_client):
+    response = pipeline_client.post(
+        EXTRACT_URL, json=_extract_payload("test_annual", "0001", "0005")
+    )
+    assert response.status_code == 422
+    assert any(
+        item["loc"] == ["header", "Idempotency-Key"]
+        for item in response.json()["detail"]
+    )
+    operation = pipeline_client.app.openapi()["paths"][EXTRACT_URL]["post"]
+    key = next(
+        parameter
+        for parameter in operation["parameters"]
+        if parameter["name"] == "Idempotency-Key"
+    )
+    assert key["required"] is True
+
+
+@pytest.mark.integration
+def test_analysis_documents_coordination_unavailability(pipeline_client):
+    response = pipeline_client.app.openapi()["paths"][ANALYZE_URL]["post"]["responses"][
+        "503"
+    ]
+    assert response["content"]["application/json"]["schema"]["$ref"].endswith(
+        "/JobErrorResponse"
+    )

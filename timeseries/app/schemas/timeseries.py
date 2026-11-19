@@ -206,6 +206,33 @@ class JobStatus(str, Enum):
     timed_out = "TIMED_OUT"
 
 
+class JobLifecycle(BaseModel):
+    accepted_at: float
+    dispatch_deadline: float
+    processing_deadline: float
+    expires_at: float
+    key_expires_at: float
+    started_at: float | None = None
+    finished_at: float | None = None
+
+
+class ExtractionAcceptedResponse(BaseModel):
+    job_id: str
+    status: Literal["accepted"] = "accepted"
+    lifecycle: JobLifecycle
+    release_id: str
+    declaration_digest: str
+
+
+class JobErrorDetail(BaseModel):
+    code: str
+    msg: str
+
+
+class JobErrorResponse(BaseModel):
+    detail: JobErrorDetail
+
+
 class JobStatusResponse(BaseModel):
     """What a client sees of an extraction job. The stored job also keeps the
     base series for /analyze, which is internal and never listed here."""
@@ -213,6 +240,8 @@ class JobStatusResponse(BaseModel):
     status: JobStatus
     result: Optional[TimeseriesResponse] = None
     error: Optional[str] = None
+    error_code: str | None = None
+    lifecycle: JobLifecycle | None = None
 
 
 # ---------------------------
