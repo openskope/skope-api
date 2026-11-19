@@ -6,6 +6,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -585,6 +586,151 @@ class PRDeploymentTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "positive pull request number"):
                 runtime.deploy_pr(number, self.repository, self.cache)
         self.pr_mock.assert_not_called()
+
+
+class LocalDeploymentMakeTests(unittest.TestCase):
+    """Exercise the real Make entrypoints without contacting Docker or GitHub."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        source = Path(__file__).resolve().parents[1]
+        shutil.copy(source / "Makefile", self.root / "Makefile")
+        (self.root / "scripts").mkdir()
+        shutil.copy(
+            source / "scripts/release-root.sh", self.root / "scripts/release-root.sh"
+        )
+        pins = self.root / "deploy/releases"
+        pins.mkdir(parents=True)
+        for environment in ("staging", "prod"):
+            (pins / f"{environment}.yml").write_text(f"release_root: {self.root}\n")
+        self.commands = self.root / "commands.jsonl"
+        self.bin = self.root / "bin"
+        self.bin.mkdir()
+        stub = """#!/usr/bin/env python3
+import json, os, sys
+from pathlib import Path
+name = Path(sys.argv[0]).name
+with open(os.environ["DEPLOY_TEST_COMMANDS"], "a") as stream:
+    stream.write(json.dumps([name, *sys.argv[1:]]) + "\\n")
+if name == "git" and sys.argv[1:3] == ["status", "--porcelain"]:
+    print(os.environ.get("DEPLOY_TEST_DIRTY", ""), end="")
+elif name == "git" and sys.argv[1:3] == ["rev-parse", "HEAD"]:
+    print("a" * 40)
+elif name == "gh":
+    sys.exit("GitHub is unavailable")
+elif name == "docker" and os.environ.get("DEPLOY_TEST_FAIL") in sys.argv[1:]:
+    sys.exit(1)
+"""
+        for name in ("git", "docker", "gh"):
+            path = self.bin / name
+            path.write_text(stub)
+            path.chmod(0o755)
+        # CI selection is observable without actually downloading anything.
+        (self.root / "scripts/runtime-images.py").write_text(stub)
+        self.environment = dict(
+            os.environ,
+            PATH=f"{self.bin}:{os.environ['PATH']}",
+            DEPLOY_TEST_COMMANDS=str(self.commands),
+        )
+        for name in (
+            "MAKEFLAGS",
+            "MFLAGS",
+            "MAKELEVEL",
+            "PR",
+            "LOCAL_BUILD",
+            "DEPLOY_IMAGES",
+            "DEPLOY_LOG",
+            "PULL",
+            "SKOPE_RELEASE_ROOT",
+        ):
+            self.environment.pop(name, None)
+
+    def invoke(self, *arguments):
+        result = subprocess.run(
+            ["make", *arguments],
+            cwd=self.root,
+            env=self.environment,
+            capture_output=True,
+            text=True,
+        )
+        commands = (
+            [json.loads(line) for line in self.commands.read_text().splitlines()]
+            if self.commands.exists()
+            else []
+        )
+        return result, commands
+
+    def test_local_staging_and_production_build_verify_and_deploy_without_github(self):
+        for target, environment in (
+            ("deploy-staging", "staging"),
+            ("deploy-production", "prod"),
+        ):
+            with self.subTest(target=target):
+                self.commands.unlink(missing_ok=True)
+                result, commands = self.invoke(target, "LOCAL_BUILD=1", "PULL=0")
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertFalse(
+                    any(
+                        command[0] in ("gh", "runtime-images.py")
+                        for command in commands
+                    )
+                )
+                docker = [command for command in commands if command[0] == "docker"]
+                build = next(command for command in docker if "build" in command)
+                self.assertIn(f"deploy/compose/{environment}.yml", build)
+                self.assertNotIn("--pull", build)
+                verify = next(
+                    i
+                    for i, command in enumerate(docker)
+                    if "app.registry.verify" in command
+                )
+                up = next(i for i, command in enumerate(docker) if "up" in command)
+                self.assertLess(verify, up)
+                self.assertIn("--no-build", docker[up])
+                self.assertIn("never", docker[up])
+                self.assertTrue(
+                    any("app.registry.deployment" in command for command in docker)
+                )
+
+    def test_local_mode_rejects_ambiguous_sources_and_invalid_flags_before_build(self):
+        for arguments in (
+            ("LOCAL_BUILD=1", "PR=69"),
+            ("LOCAL_BUILD=1", "DEPLOY_IMAGES=/tmp/images.json"),
+            ("LOCAL_BUILD=yes",),
+        ):
+            result, commands = self.invoke("deploy-staging", *arguments)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertFalse(any(command[0] == "docker" for command in commands))
+
+    def test_local_mode_rejects_dirty_source_before_build(self):
+        self.environment["DEPLOY_TEST_DIRTY"] = " M app/main.py"
+        result, commands = self.invoke("deploy-staging", "LOCAL_BUILD=1")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("clean checkout", result.stderr)
+        self.assertFalse(any(command[0] == "docker" for command in commands))
+
+    def test_default_mode_keeps_ci_selection_instead_of_building_locally(self):
+        result, commands = self.invoke("deploy-staging")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(["runtime-images.py", "deploy-staging"], commands)
+        self.assertFalse(any(command[0] == "docker" for command in commands))
+
+    def test_failed_local_build_or_release_verification_never_replaces_services(self):
+        for failure in ("build", "app.registry.verify"):
+            with self.subTest(failure=failure):
+                self.commands.unlink(missing_ok=True)
+                self.environment["DEPLOY_TEST_FAIL"] = failure
+                result, commands = self.invoke("deploy-staging", "LOCAL_BUILD=1")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(
+                    any(
+                        "up" in command
+                        for command in commands
+                        if command[0] == "docker"
+                    )
+                )
 
 
 if __name__ == "__main__":

@@ -294,6 +294,35 @@ bundle locally, run the checks above followed by `make export-runtime-images`.
 Bundles built from a dirty checkout are marked `-dirty` and cannot be deployed
 to staging or production.
 
+### Deploy when GitHub is unavailable
+
+Prefer a retained, previously tested bundle: load its `images.tar.gz` with
+`docker load`, then use `make deploy-staging DEPLOY_IMAGES=/absolute/path/images-staging.json`
+(or the production target and `images-prod.json`). This does not contact GitHub;
+the checkout must still match the bundle's source commit.
+
+If a new local build is needed, use a clean checkout of the source to deploy:
+
+```bash
+make deploy-staging LOCAL_BUILD=1
+make deploy-production LOCAL_BUILD=1
+```
+
+Choose the target for the host being deployed. This explicit fallback builds
+the API, TiTiler, and Redis locally without GitHub CLI or Actions. It does not
+claim those images passed CI tests or scanning; run the applicable local tests
+before deployment. Release verification, health checks, and the normal deployment
+log (including commit and actual image IDs) still run. A failed build or release
+verification stops before service replacement. `LOCAL_BUILD=1` cannot be combined
+with `PR` or `DEPLOY_IMAGES`: check out the intended source locally first.
+Failed CI discovery never triggers this fallback automatically.
+
+Builds normally refresh base images. Add `PULL=0` to use cached bases when their
+registry is also unavailable (TiTiler's base is hosted on GHCR). Local builds
+can still need container registries and package repositories for missing layers
+and dependencies; this is not a guarantee of a fully offline build. Keep a
+known-good image bundle on each host for outages affecting those services too.
+
 TiTiler follows upstream `latest`; Python and Redis follow their existing
 version-scoped tags. The Dockerfiles upgrade installed OS packages while
 building the API (Debian), TiTiler (Wolfi), and Redis (Alpine) replacement

@@ -53,6 +53,9 @@ automatically downloads and loads a successful CI bundle for the checked-out
 commit (requires authenticated `gh`).
 Use `make deploy-staging PR=69` to deploy a pull request's tested merge commit
 and CI images to shared staging without changing the operator's branch.
+If GitHub is unavailable, use `make deploy-staging LOCAL_BUILD=1` (or
+`make deploy-production LOCAL_BUILD=1`) from a clean local checkout. This builds
+on the application host and retains release verification and deployment logging.
 
 ## Dataset releases
 

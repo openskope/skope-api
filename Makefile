@@ -2,8 +2,10 @@ ENVIRONMENT ?= dev
 COMPOSE_PROJECT_NAME ?= skope-api
 BUILD_FLAGS ?=
 DEPLOY_IMAGES ?=
+LOCAL_BUILD ?= 0
+PULL ?= 1
 PR ?=
-export PR
+export PR LOCAL_BUILD DEPLOY_IMAGES
 SKIP_FULL_VERIFICATION ?= 0
 RUNTIME_IMAGES_DIR ?= runtime-images
 RUNTIME_REFRESH ?= 0
@@ -31,7 +33,7 @@ TEST_COMPOSE = SKOPE_RELEASE_ROOT=$(CURDIR)/timeseries/app/tests/registry/data \
 	-f deploy/compose/base.yml \
 	-f deploy/compose/dev.yml
 
-.PHONY: help check-environment check-verification-mode check-release-pin verify-releases prepare prepare-release prepare-deploy config build deploy \
+.PHONY: help check-environment check-verification-mode check-deploy-source check-release-pin verify-releases prepare prepare-release prepare-deploy config build deploy \
 	deploy-dev deploy-staging deploy-production down restart logs ps ingest release release-fetch release-pin \
 	preflight-legacy-data migrate-legacy-data test test-api test-ingest test-runtime scan-runtime-images export-runtime-images maintenance-candidate
 
@@ -44,6 +46,7 @@ help:   ##- Instructions for using this Makefile.
 	@sed -e '/#\{2\}-/!d; s/\\$$//; s/:[^#\t]*/:/; s/#\{2\}- *//' $(MAKEFILE_LIST)
 
 check-environment:
+	@case "$(PULL)" in 0|1) ;; *) echo 'PULL must be 0 or 1' >&2; exit 2;; esac
 	@case "$(ENVIRONMENT)" in \
 	  dev|staging|prod) ;; \
 	  *) echo "ENVIRONMENT must be dev, staging, or prod (got '$(ENVIRONMENT)')" 1>&2; exit 2;; \
@@ -61,12 +64,20 @@ check-verification-mode:
 	  *) echo 'SKIP_FULL_VERIFICATION must be 0 or 1' >&2; exit 2;; \
 	esac
 
+check-deploy-source:
+	@case "$$LOCAL_BUILD" in 0|1) ;; *) echo 'LOCAL_BUILD must be 0 or 1' >&2; exit 2;; esac
+	@if [ "$$LOCAL_BUILD" = 1 ]; then \
+		test -z "$$PR$$DEPLOY_IMAGES" || { echo 'LOCAL_BUILD cannot be combined with PR or DEPLOY_IMAGES' >&2; exit 2; }; \
+		status=$$(git status --porcelain) || exit $$?; \
+		test -z "$$status" || { echo 'deploy local images from a clean checkout' >&2; exit 2; }; \
+	fi
+
 config: check-environment ##- Render and validate the selected Compose configuration
 	@$(COMPOSE) config
 
 build: prepare ##- Build the selected environment's images
 	@$(COMPOSE) config --quiet
-	$(COMPOSE) build --pull
+	$(COMPOSE) build $(if $(filter 1,$(PULL)),--pull)
 
 verify-releases: check-release-pin ##- Fully verify the pinned releases' bytes (promotion, TXN-011)
 	$(COMPOSE) run --rm --no-deps server python -m app.registry.verify
@@ -81,13 +92,13 @@ DEPLOY_PENDING = /deploy-state/.pending-$(ENVIRONMENT).json
 DEPLOY_RUN = $(COMPOSE) run --rm --no-deps --pull never --user "$(SKOPE_OPERATOR_UID):$(SKOPE_OPERATOR_GID)" \
 	-v "$(DEPLOY_LOG_DIR)":/deploy-state server
 
-prepare-deploy: prepare
+prepare-deploy: prepare check-deploy-source
 	@if [ -n "$(DEPLOY_IMAGES)" ]; then \
 		python3 scripts/runtime-images.py check "$(DEPLOY_IMAGES)" "$(ENVIRONMENT)"; \
-	elif [ "$(ENVIRONMENT)" = dev ]; then \
-		$(MAKE) build ENVIRONMENT=dev; \
+	elif [ "$(ENVIRONMENT)" = dev ] || [ "$$LOCAL_BUILD" = 1 ]; then \
+		$(MAKE) build ENVIRONMENT=$(ENVIRONMENT); \
 	else \
-		echo 'set DEPLOY_IMAGES to the tested CI bundle selection for this environment (see timeseries/app/README.md)' >&2; exit 2; \
+		echo 'set DEPLOY_IMAGES to a tested bundle selection or LOCAL_BUILD=1 to build here (see timeseries/app/README.md)' >&2; exit 2; \
 	fi
 
 deploy: check-verification-mode check-release-pin prepare-deploy ##- Deploy tested images, verify releases (SKIP_FULL_VERIFICATION=1 for metadata checks), wait for health, and log the deploy
@@ -104,13 +115,15 @@ deploy-dev: override ENVIRONMENT=dev
 deploy-dev: deploy ##- Build and deploy the local development environment
 
 deploy-staging: override ENVIRONMENT=staging
-deploy-staging: check-verification-mode ##- Deploy tested CI images on staging (PR=69 selects a pull request)
+deploy-staging: check-verification-mode check-deploy-source ##- Deploy staging (PR=69 selects CI work; LOCAL_BUILD=1 builds here)
 
 deploy-production: override ENVIRONMENT=prod
-deploy-production: check-verification-mode ##- Download and deploy tested CI images on the production application host
+deploy-production: check-verification-mode check-deploy-source ##- Deploy production CI images (LOCAL_BUILD=1 builds here)
 
 deploy-staging deploy-production:
-	@if [ -n "$$PR" ]; then \
+	@if [ "$$LOCAL_BUILD" = 1 ]; then \
+		$(MAKE) deploy ENVIRONMENT=$(ENVIRONMENT); \
+	elif [ -n "$$PR" ]; then \
 		python3 scripts/runtime-images.py $@; \
 	elif [ -n "$(DEPLOY_IMAGES)" ]; then \
 		$(MAKE) deploy ENVIRONMENT=$(ENVIRONMENT); \
