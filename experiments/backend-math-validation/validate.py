@@ -40,6 +40,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+import uuid
 
 import numpy as np
 import rasterio
@@ -78,11 +79,13 @@ RANGES = [None, ("0350", "0700"), ("1500", "1600")]
 # HTTP
 
 
-def _post(api: str, path: str, body: dict) -> tuple[int, dict]:
+def _post(
+    api: str, path: str, body: dict, *, headers: dict[str, str] | None = None
+) -> tuple[int, dict]:
     request = urllib.request.Request(
         f"{api}{path}",
         data=json.dumps(body).encode(),
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json", **(headers or {})},
         method="POST",
     )
     try:
@@ -110,8 +113,9 @@ def extract(api: str, dataset: str, variable: str, geometry: dict) -> dict:
         ],
         "time_range": None,
     }
+    headers = {"Idempotency-Key": str(uuid.uuid4())}
     for _ in range(60):
-        status, job = _post(api, "/timeseries/extract", body)
+        status, job = _post(api, "/timeseries/extract", body, headers=headers)
         if status != 503:
             break
         time.sleep(5)
