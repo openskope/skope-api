@@ -497,12 +497,12 @@ in the STAC Collection, including SKOPE-specific fields under the `skope:`
 prefix (Section 10), and the generated `overview.yml` (Section 15) gives a human
 reader that content in one flat file without walking the catalog.
 
-## 8. Current metadata migration
+## 8. Legacy metadata migration
 
 The following mapping covers every dataset and variable field of the legacy
-registry, `timeseries/metadata.yml` (now removed). The migration compiler consumes these fields as
-review evidence; the new `/metadata` serializer does not reproduce the old
-shape.
+registry, `timeseries/metadata.yml` (now removed). Each dataset's `curated.yml`
+was written from these fields after review; the new `/metadata` serializer does
+not reproduce the old shape.
 
 ### 8.1 Dataset fields
 
@@ -1756,9 +1756,8 @@ removed after their measurements and toolchain identity are recorded.
    apply per-variable encodings, embed statistics and overviews, reopen bytes,
    and run benchmark experiments.
 4. **Dataset-level STAC.** Emit one Collection per dataset with aligned Items,
-   pinned extensions, and SKOPE metadata. The current pipeline emits Projection
-   1.1 `proj:epsg` through rio-stac 0.12, and its metadata and STAC builders
-   read that field directly; both move to Projection 2.0 `proj:code`.
+   pinned extensions, and SKOPE metadata. Projection uses version 2.0
+   `proj:code`, not the legacy pipeline's Projection 1.1 `proj:epsg`.
 5. **Derived time-to-band rule.** Generate the rule only from finalized STAC,
    verify it against actual Band names and COG band counts, and prove correct
    internal tile and extraction resolution.

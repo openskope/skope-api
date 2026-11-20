@@ -371,9 +371,9 @@ Per variable:
 
 SKOPE UI is the only supported API consumer, so the API and UI move to this
 specification in one breaking, coordinated cutover with no compatibility period.
-Today the registries store `region.center` latitude first, the tile route names
-its timestep `year`, and SKOPE UI scales `max` by `COLOR_MAX_PCT`; DISP-006,
-PROTO-006, and PROTO-003 replace those behaviors.
+The application production still runs stores `region.center` latitude first,
+names the tile route's timestep `year`, and has SKOPE UI scale `max` by
+`COLOR_MAX_PCT`; DISP-006, PROTO-006, and PROTO-003 replace those behaviors.
 
 - **CUT-001:** The API and SKOPE UI MUST pass the complete staging acceptance
   suite as a pair before production, MUST be deployed as one recorded change,
