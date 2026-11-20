@@ -39,7 +39,7 @@ def test_paleocar_shaped_axis():
     assert [layout.locate(i) for i in range(axis.count)] == sorted(layout.locate(i) for i in range(axis.count))
 
 
-@pytest.mark.parametrize("key", ["103", "01030", "0103-01", "abcd", "0000"])
+@pytest.mark.parametrize("key", ["103", "01030", "0103-01", "abcd", "0000", ""])
 def test_malformed_keys(key):
     axis = Axis.regular("0103", "P1Y", "2000", "year")
     with pytest.raises(MalformedTimestep):

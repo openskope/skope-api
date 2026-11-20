@@ -278,6 +278,7 @@ def test_fixed_zscore_of_a_constant_reference_is_null():
     actual = apply_zscore_transform(series, ZScoreFixedInterval(time_range=None))
 
     assert actual.isna().all()
+    assert list(actual.index) == list(series.index)
 
 
 def test_fixed_zscore_needs_two_reference_values():

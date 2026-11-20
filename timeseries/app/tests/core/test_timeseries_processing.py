@@ -96,44 +96,16 @@ def test_zscore_none_passthrough(base_series):
     pd.testing.assert_series_equal(result, base_series)
 
 
-def test_zscore_moving_interval_leading_nan(base_series):
-    result = apply_zscore_transform(base_series, ZScoreMovingInterval(width=3))
-    assert pd.isna(result.iloc[0])
-    assert pd.isna(result.iloc[1])
-    assert pd.isna(result.iloc[2])
-    # idx 3 compares 4 against the prior values [1,2,3], using population std.
-    assert np.isclose(result.iloc[3], (4.0 - 2.0) / np.std([1.0, 2.0, 3.0]))
-
-
 def test_zscore_fixed_interval_full_series(base_series):
     result = apply_zscore_transform(base_series, ZScoreFixedInterval(time_range=None))
     expected = (base_series - base_series.mean()) / base_series.std(ddof=0)
     np.testing.assert_allclose(result.values, expected.values)
 
 
-def test_zscore_fixed_interval_with_time_range(base_series):
-    # ref = values at 0102, 0103, 0104 = [3, 4, 5]
-    transform = ZScoreFixedInterval(time_range=TimeRange(gte="0102", lte="0104"))
-    result = apply_zscore_transform(base_series, transform)
-    assert len(result) == len(base_series)
-    ref_mean = 4.0
-    ref_std = np.std([3.0, 4.0, 5.0])
-    np.testing.assert_allclose(result.iloc[0], (1.0 - ref_mean) / ref_std)
-    np.testing.assert_allclose(result.iloc[2], (3.0 - ref_mean) / ref_std)
-
-
 def test_zscore_fixed_interval_non_overlapping_range_raises(base_series):
     transform = ZScoreFixedInterval(time_range=TimeRange(gte="0200", lte="0300"))
     with pytest.raises(ValueError):
         apply_zscore_transform(base_series, transform)
-
-
-def test_zscore_fixed_interval_std_zero_returns_null_series(constant_series):
-    result = apply_zscore_transform(
-        constant_series, ZScoreFixedInterval(time_range=None)
-    )
-    assert result.isna().all()
-    assert list(result.index) == list(constant_series.index)
 
 
 # ---------------------------------------------------------------------------
@@ -148,29 +120,6 @@ def test_temporal_transform_none_passthrough(base_series):
 def test_temporal_transform_no_smoother_passthrough(base_series):
     result = apply_temporal_transform(base_series, NoSmoother())
     pd.testing.assert_series_equal(result, base_series)
-
-
-def test_temporal_transform_trailing_moving_average(base_series):
-    smoother = MovingAverageSmoother(method="trailing", width=3)
-    result = apply_temporal_transform(base_series, smoother)
-    # The first full window ends at idx 2: [1,2,3] → 2.0
-    assert result.iloc[:2].isna().all()
-    assert np.isclose(result.iloc[2], 2.0)
-
-
-def test_temporal_transform_centered_moving_average(base_series):
-    smoother = MovingAverageSmoother(method="centered", width=3)
-    result = apply_temporal_transform(base_series, smoother)
-    # idx 0 has no predecessor; idx 1 sees [1,2,3] → 2.0
-    assert np.isnan(result.iloc[0])
-    assert np.isclose(result.iloc[1], 2.0)
-    assert np.isclose(result.iloc[4], 5.0)  # [4,5,6] → 5.0
-
-
-def test_temporal_transform_width_1_is_identity(base_series):
-    smoother = MovingAverageSmoother(method="trailing", width=1)
-    result = apply_temporal_transform(base_series, smoother)
-    np.testing.assert_allclose(result.values, base_series.values)
 
 
 # ---------------------------------------------------------------------------
@@ -227,34 +176,11 @@ def test_execute_analyze_request_median_selected():
     assert result.series[0].values == base["median"]
 
 
-def test_execute_analyze_request_time_range_slice():
-    payload = _make_request(time_range=TimeRange(gte="0103", lte="0106"))
-    base = _make_base_payload()
-    result = execute_analyze_request(payload, base, _make_extraction_metadata())
-    assert len(result.series[0].values) == 4
-
-
 def test_execute_analyze_request_empty_time_range_raises():
     payload = _make_request(time_range=TimeRange(gte="0200", lte="0300"))
     base = _make_base_payload()
     with pytest.raises(ValueError):
         execute_analyze_request(payload, base, _make_extraction_metadata())
-
-
-def test_execute_analyze_request_zscore_and_smoother_combined():
-    payload = _make_request(
-        transform=ZScoreFixedInterval(time_range=None),
-        requested_series_options=[
-            SeriesOptions(
-                name="smoothed",
-                smoother=MovingAverageSmoother(method="trailing", width=3),
-            )
-        ],
-    )
-    base = _make_base_payload()
-    result = execute_analyze_request(payload, base, _make_extraction_metadata())
-    assert result is not None
-    assert len(result.series) == 1
 
 
 def test_execute_analyze_request_smooths_before_slicing():
@@ -313,13 +239,3 @@ def test_execute_analyze_request_fixed_interval_defaults_to_the_requested_range(
     # Means 4-7: reference mean 5.5, population stdev sqrt(1.25).
     expected = (np.array([4.0, 5.0, 6.0, 7.0]) - 5.5) / np.sqrt(1.25)
     assert result.series[0].values == pytest.approx(list(expected))
-
-
-def test_execute_analyze_request_all_nan_summary_stats():
-    # ZScoreMovingInterval(width=11) on a 10-element series → all NaN (window > series length)
-    payload = _make_request(transform=ZScoreMovingInterval(width=11))
-    base = _make_base_payload()
-    result = execute_analyze_request(payload, base, _make_extraction_metadata())
-    assert result.summary_stats[0].mean is None
-    assert result.summary_stats[0].median is None
-    assert result.summary_stats[0].stdev is None

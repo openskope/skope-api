@@ -110,20 +110,3 @@ def base_series():
     ]
     values = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
     return pd.Series(values, index=index)
-
-
-@pytest.fixture
-def constant_series():
-    index = [
-        "0100",
-        "0101",
-        "0102",
-        "0103",
-        "0104",
-        "0105",
-        "0106",
-        "0107",
-        "0108",
-        "0109",
-    ]
-    return pd.Series([5.0] * 10, index=index)

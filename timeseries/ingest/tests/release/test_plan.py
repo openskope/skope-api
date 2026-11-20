@@ -1,5 +1,7 @@
 """The two build states (AT-014; OBS-012, OBS-013)."""
 
+import dataclasses
+
 import pytest
 
 from skope_release.findings import Report
@@ -23,8 +25,8 @@ def test_states_are_issued_only_by_their_stage(temporal_dataset):
         ValidatedBuildPlan(**{**plan.__dict__, "_issuer": object()})
     with pytest.raises(StateError):
         FinalObservation(**{name: None for name in FinalObservation.__dataclass_fields__})
-    with pytest.raises(Exception):
-        plan.release_id = "changed"  # frozen
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        plan.release_id = "changed"
 
 
 def test_stages_accept_only_their_input_state(temporal_dataset):
