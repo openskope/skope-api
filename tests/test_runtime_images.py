@@ -369,7 +369,7 @@ class PRDeploymentTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
-        self.cache = Path(self.temporary.name)
+        self.cache = Path(self.temporary.name).resolve()
         self.revision = "a" * 40
         self.head = "b" * 40
         self.base = "c" * 40
