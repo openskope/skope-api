@@ -14,11 +14,8 @@ import pytest
 import rasterio
 from rasterio.transform import from_origin
 
-from app.core.timeseries_processing import (
-    execute_analyze_request,
-    execute_timeseries_job,
-    summarize_series,
-)
+from app.core.analysis import execute_analyze_request, summarize_series
+from app.core.zonal_stats import execute_timeseries_job
 from app.schemas.timeseries import (
     NoSmoother,
     NoTransform,

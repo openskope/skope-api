@@ -44,7 +44,7 @@ def _capture_tile(monkeypatch):
         captured.update(kwargs)
         return Response(content=b"tile", media_type="image/png")
 
-    monkeypatch.setattr("app.routers.v3.api.stream_tile", fake_stream_tile)
+    monkeypatch.setattr("app.routers.api.stream_tile", fake_stream_tile)
     return captured
 
 
@@ -212,9 +212,7 @@ def test_extract_stops_reading_at_its_deadline(pipeline_client, monkeypatch, job
             time.sleep(0.3)
             reads.append(band)
 
-    monkeypatch.setattr(
-        "app.core.timeseries_processing.generate_band_chunks", slow_chunks
-    )
+    monkeypatch.setattr("app.core.zonal_stats.generate_band_chunks", slow_chunks)
 
     job_id = _do_extract(
         pipeline_client,

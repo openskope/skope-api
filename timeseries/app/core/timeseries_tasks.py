@@ -7,7 +7,7 @@ from app.telemetry import data_quality_fields, log_event
 from app.registry.compose import ServedRelease
 from app.schemas.timeseries import TimeseriesRequest
 from app.store.jobs import JobStore
-from app.core.timeseries_processing import execute_timeseries_job
+from app.core.zonal_stats import execute_timeseries_job
 from app.core.job_control import RecoverableJobs
 
 logger = logging.getLogger(__name__)

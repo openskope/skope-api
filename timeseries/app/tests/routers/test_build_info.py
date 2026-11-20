@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.routers.v3.api import router, settings
+from app.routers.api import router, settings
 
 
 def test_support_build_info_does_not_need_registry_or_job_store(monkeypatch):

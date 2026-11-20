@@ -10,7 +10,7 @@ one-band `vrt://` view of the file; `direct` tiles open the file itself, as the
 API asks TiTiler today, and rio-tiler's warp then reads every band in the file.
 
 Extraction: the API's read loop over a polygon (mirrored from
-`app.core.timeseries_processing`; `parity` checks the mirror against the real
+`app.core.zonal_stats`; `parity` checks the mirror against the real
 function inside the API image). Needs only numpy and rasterio.
 
 Every measurement runs in a fresh process, so peak memory is per operation and
@@ -168,7 +168,7 @@ def _coords(geometry: dict):
 
 
 def extract_file(uri: str, bands: list[int], window: Window, mask: np.ndarray, chunk_size: int):
-    """Mirror of `extract_summarystat_timeseries` (app/core/timeseries_processing.py)."""
+    """Mirror of `extract_summarystat_timeseries` (app/core/zonal_stats.py)."""
     means, medians = [], []
     with rasterio.Env(**API_ENV), rasterio.open(uri) as src:
         for i in range(0, len(bands), chunk_size):
@@ -432,7 +432,7 @@ def run(args) -> None:
 def parity(args) -> None:
     """The mirror against the API's own function, on one variant (run inside the API image, cwd /code)."""
     sys.path.insert(0, os.getcwd())
-    from app.core.timeseries_processing import extract_summarystat_timeseries
+    from app.core.zonal_stats import extract_summarystat_timeseries
 
     variant = sorted(p.parent for p in Path(args.variants).glob("*/meta.json"))[0]
     uri, bands = file_mapping(variant, None)[0]

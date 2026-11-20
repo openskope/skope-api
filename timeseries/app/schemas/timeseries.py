@@ -289,9 +289,7 @@ class TimeseriesRequest(SeriesOptionsRequest):
 
 
 class TimeseriesAnalyzeRequest(SeriesOptionsRequest):
-    extraction_id: str = Field(
-        ..., description="Job ID from POST /v3/timeseries/extract"
-    )
+    extraction_id: str = Field(..., description="Job ID from POST /timeseries/extract")
     zonal_statistic: ZonalStatistic = ZonalStatistic.mean
     transform: Transform
     time_range: Optional[TimeRange] = None
