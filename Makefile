@@ -14,9 +14,6 @@ export RUNTIME_IMAGES_DIR RUNTIME_REFRESH
 # Bind-mounted source and generated files belong to the invoking operator.
 export SKOPE_OPERATOR_UID := $(shell id -u)
 export SKOPE_OPERATOR_GID := $(shell id -g)
-LEGACY_DATA_ROOT ?= /srv/ingest/incoming/skope
-MIGRATED_DATA_ROOT ?= timeseries/ingest/output/legacy-migration
-MIGRATION_SCRATCH_ROOT ?= timeseries/ingest/output/legacy-migration-scratch
 COMPOSE = docker compose --project-name $(COMPOSE_PROJECT_NAME) \
 	--project-directory . \
 	-f deploy/compose/base.yml \
@@ -35,8 +32,8 @@ TEST_COMPOSE = SKOPE_RELEASE_ROOT=$(CURDIR)/timeseries/app/tests/registry/data \
 	-f deploy/compose/dev.yml
 
 .PHONY: help check-environment check-verification-mode check-deploy-source check-release-pin verify-releases prepare prepare-release prepare-deploy config build deploy \
-	deploy-dev deploy-staging deploy-production down restart logs ps ingest release release-fetch release-pin \
-	preflight-legacy-data migrate-legacy-data test test-api test-ingest test-runtime scan-runtime-images export-runtime-images maintenance-candidate
+	deploy-dev deploy-staging deploy-production down restart logs ps release release-fetch release-pin \
+	test test-api test-ingest test-runtime scan-runtime-images export-runtime-images maintenance-candidate
 
 # Make 'help' the default target if someone just types `make`
 .DEFAULT_GOAL := help
@@ -147,11 +144,6 @@ logs: check-environment ##- Follow logs for the selected environment
 ps: check-environment ##- Show service status for the selected environment
 	$(COMPOSE) ps
 
-ingest: prepare ##- Build and run the local COG/STAC ingest pipeline container
-	@mkdir -p cog-input timeseries/ingest/output
-	$(COMPOSE) --profile ingest build ingest
-	$(COMPOSE) --profile ingest run --rm ingest
-
 RELEASE_ROOT ?= ./timeseries/ingest/output/releases
 RELEASE_AUDIT_ROOT ?= ./timeseries/ingest/output/audit
 RELEASE_SOURCE_MIRROR ?= ./cog-input
@@ -183,18 +175,6 @@ release-pin: prepare-release ##- Show the edits that pin a release, e.g. make re
 		-v "$(abspath $(MANIFEST))":/pin/release-manifest.json:ro \
 		release --datasets /pin/datasets pin /pin/release-manifest.json \
 		--env $(PIN_ENV) --pins /pin/releases $(if $(WRITE),--write)
-
-preflight-legacy-data: ##- Validate all legacy migration inputs without creating output
-	MIGRATION_PREFLIGHT_ONLY=true ./scripts/migrate-legacy-datasets.sh \
-		"$(LEGACY_DATA_ROOT)" \
-		"$(MIGRATED_DATA_ROOT)" \
-		"$(MIGRATION_SCRATCH_ROOT)"
-
-migrate-legacy-data: ##- Preflight and transform legacy cubes into dataset packages
-	./scripts/migrate-legacy-datasets.sh \
-		"$(LEGACY_DATA_ROOT)" \
-		"$(MIGRATED_DATA_ROOT)" \
-		"$(MIGRATION_SCRATCH_ROOT)"
 
 ##
 ## Testing

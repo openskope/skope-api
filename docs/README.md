@@ -15,6 +15,5 @@ This folder holds the reference material behind them:
 | [`specs/dataset-release-v1.md`](specs/dataset-release-v1.md) | The rules for building and publishing a release; requirement IDs such as OBS-011 |
 | [`specs/release-consumption-v1.md`](specs/release-consumption-v1.md) | The rules for serving releases: pins, display files, `/metadata`; requirement IDs such as PIN-004 |
 | [`experiments/`](experiments/) | Experiment reports that decisions rest on, such as the PaleoCAR v3 COG encoding |
-| [`data-preparation.md`](data-preparation.md) | The legacy dataset pipeline, proposed for deletion |
 
 Decisions and their reasons are in [`.agents/decisions/`](../.agents/decisions/).

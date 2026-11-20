@@ -16,7 +16,7 @@ requirement IDs such as OBS-011 refer to it.
 Run every command from the repository root. Each one rebuilds its image
 first.
 
-Make runs ingest, release commands, and tests with the invoking user's UID/GID.
+Make runs release commands and tests with the invoking user's UID/GID.
 It creates output, audit, and source-mirror directories before mounting them,
 so generated files belong to the operator. These directories must be writable
 by that user; existing files owned by another account are not changed
@@ -440,8 +440,3 @@ version's Collection with `predecessor-version`.
 | `src/skope_release/timeaxis.py` | The time-to-band rule, copied into the API as `timeseries/app/vendor/timeaxis.py` |
 | `src/skope_release/models.py`, `schemas/` | Typed models for every document, and their JSON Schemas |
 | `tests/release/` | The release tool's tests |
-
-`src/cog_stac_pipeline/`, `make ingest`, and `make migrate-legacy-data` are the
-legacy pipeline, proposed for deletion; see
-[docs/data-preparation.md](../../docs/data-preparation.md). Do not use them for a
-new dataset.

@@ -73,33 +73,6 @@ services:
       # Titiler is ONLY on the internal network.
       - internal_geospatial_net
 
-  ingest:
-    user: "${SKOPE_OPERATOR_UID:?run through make}:${SKOPE_OPERATOR_GID:?run through make}"
-    build:
-      context: .
-      dockerfile: deploy/Dockerfile.ingest
-      target: runtime
-    image: openskope/skope-api-ingest:latest
-    profiles:
-      - ingest
-    environment:
-      AWS_NO_SIGN_REQUEST: YES
-      CPL_VSIL_CURL_ALLOWED_EXTENSIONS: .tif,.ovr
-      DATASET_NAME: paleocar_v3
-      DATASET_START_DATETIME: "0103-01-01T00:00:00+00:00"
-      DATASET_TIME_DELTA: '{"years": 1}'
-      GDAL_DISABLE_READDIR_ON_OPEN: EMPTY_DIR
-      INPUT_DIR: /data
-      INPUT_MANIFEST_PATH: /ingest/manifests/paleocar_v3.yml
-      METADATA_FILE_PATH: /ingest/metadata.yml
-      OUTPUT_DIR: /output/paleocar_v3
-      HOME: /tmp
-      TRUNC_TO_UINT16: "true"
-    volumes:
-      - ./timeseries/ingest/metadata.yml:/ingest/metadata.yml
-      - ./cog-input:/data
-      - ./timeseries/ingest/output:/output
-
   release:
     user: "${SKOPE_OPERATOR_UID:?run through make}:${SKOPE_OPERATOR_GID:?run through make}"
     build:

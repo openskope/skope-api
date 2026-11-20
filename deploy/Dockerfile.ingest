@@ -26,16 +26,13 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 COPY timeseries/ingest/src ./src
 COPY timeseries/ingest/scripts ./scripts
 COPY timeseries/ingest/README.md ./
-COPY timeseries/ingest/metadata.yml ./metadata.yml
-COPY timeseries/ingest/legacy-metadata.yml ./legacy-metadata.yml
-COPY timeseries/ingest/manifests ./manifests
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --system --break-system-packages --no-deps .
 
 # The runtime operator may have any uid/gid; copied scripts stay root-owned.
 RUN chmod -R a+rX /ingest
 
-CMD ["cog-stac-pipeline"]
+CMD ["skope-release", "--help"]
 
 FROM runtime AS test
 
