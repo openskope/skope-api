@@ -1,6 +1,5 @@
 """Source preflight (AT-007, AT-009, AT-022; OBS-001 to OBS-011, COG-007, COG-013 to COG-016, META-004)."""
 
-import numpy as np
 import pytest
 import yaml
 from osgeo import gdal

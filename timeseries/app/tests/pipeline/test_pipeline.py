@@ -16,7 +16,6 @@ from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
 from app.tests.pipeline.conftest import SINGLE_CELL_POLYGON
-from app.core.job_control import RecoverableJobs
 from app.schemas.jobs import ExtractionJobRecord
 
 EXTRACT_URL = "/timeseries/extract"
@@ -28,7 +27,6 @@ STATUS_URL = "/timeseries/status"
 # Public surface
 
 
-@pytest.mark.integration
 def test_settings_endpoint_is_not_exposed(pipeline_client):
     response = pipeline_client.get("/settings")
 
@@ -97,7 +95,6 @@ def _get_status(client, job_id: str) -> dict:
     return resp.json()
 
 
-@pytest.mark.integration
 @pytest.mark.parametrize("query", ["", "?colormap=magma&rescale=0,1"])
 def test_tile_uses_the_display_palette_and_range(pipeline_client, monkeypatch, query):
     captured = _capture_tile(monkeypatch)
@@ -113,7 +110,6 @@ def test_tile_uses_the_display_palette_and_range(pipeline_client, monkeypatch, q
 # Extract pipeline — happy path
 
 
-@pytest.mark.integration
 def test_extract_annual_full_range_succeeds(pipeline_client):
     job_id = _do_extract(pipeline_client, "test_annual", "0001", "0005")
     job = _get_status(pipeline_client, job_id)
@@ -123,7 +119,6 @@ def test_extract_annual_full_range_succeeds(pipeline_client):
     assert len(job["result"]["series"][0]["values"]) == 5
 
 
-@pytest.mark.integration
 def test_status_keeps_null_statistics_and_lists_only_set_fields(pipeline_client):
     # 0001 has no predecessors, so it has no moving z-score and no statistics.
     job_id = _do_extract(
@@ -139,7 +134,6 @@ def test_status_keeps_null_statistics_and_lists_only_set_fields(pipeline_client)
     assert job["result"]["summary_stats"][0]["stdev"] is None
 
 
-@pytest.mark.integration
 def test_extract_monthly_full_range_succeeds(pipeline_client):
     job_id = _do_extract(pipeline_client, "test_monthly", "0001-01", "0005-12")
     job = _get_status(pipeline_client, job_id)
@@ -149,7 +143,6 @@ def test_extract_monthly_full_range_succeeds(pipeline_client):
     assert len(job["result"]["series"][0]["values"]) == 60
 
 
-@pytest.mark.integration
 def test_extract_partial_range_returns_correct_slice(pipeline_client):
     # Request years 2–4 out of 5: expect 3 timesteps
     job_id = _do_extract(pipeline_client, "test_annual", "0002", "0004")
@@ -162,7 +155,6 @@ def test_extract_partial_range_returns_correct_slice(pipeline_client):
     assert len(series["values"]) == 3
 
 
-@pytest.mark.integration
 def test_extract_null_range_uses_dataset_period(pipeline_client):
     job_id = _do_extract(
         pipeline_client, "test_annual", "0001", "0005", time_range=None
@@ -176,7 +168,6 @@ def test_extract_null_range_uses_dataset_period(pipeline_client):
     }
 
 
-@pytest.mark.integration
 def test_extract_rejected_when_worker_is_at_capacity(pipeline_client, job_store):
     pipeline_client.portal.call(
         job_store.atomic_extraction,
@@ -194,7 +185,6 @@ def test_extract_rejected_when_worker_is_at_capacity(pipeline_client, job_store)
     assert response.headers["retry-after"] == "5"
 
 
-@pytest.mark.integration
 def test_extract_processing_deadline_is_enforced(pipeline_client):
     job_id = _do_extract(
         pipeline_client,
@@ -209,7 +199,6 @@ def test_extract_processing_deadline_is_enforced(pipeline_client):
     assert job["error"] == "Processing exceeded 0 ms."
 
 
-@pytest.mark.integration
 def test_extract_stops_reading_at_its_deadline(pipeline_client, monkeypatch, job_store):
     # One band per read, each taking longer than the deadline. The release's
     # 5 bands sit in 3 files read in parallel, so a stopped job reads at most
@@ -249,7 +238,6 @@ def test_extract_stops_reading_at_its_deadline(pipeline_client, monkeypatch, job
 # Extract pipeline — error cases
 
 
-@pytest.mark.integration
 def test_extract_unknown_dataset_returns_404(pipeline_client):
     resp = pipeline_client.post(
         EXTRACT_URL,
@@ -259,7 +247,6 @@ def test_extract_unknown_dataset_returns_404(pipeline_client):
     assert resp.status_code == 404
 
 
-@pytest.mark.integration
 def test_extract_unknown_variable_returns_404(pipeline_client):
     payload = _extract_payload("test_annual", "0001", "0005")
     payload["variable_id"] = "no-such-var"
@@ -273,7 +260,6 @@ def test_extract_unknown_variable_returns_404(pipeline_client):
 # Analyze pipeline — extract first, then analyze
 
 
-@pytest.mark.integration
 def test_analyze_on_extract_result_returns_correct_response(pipeline_client):
     job_id = _do_extract(pipeline_client, "test_annual", "0001", "0005")
     assert _get_status(pipeline_client, job_id)["status"] == "SUCCESS"
@@ -287,7 +273,6 @@ def test_analyze_on_extract_result_returns_correct_response(pipeline_client):
     assert len(body["series"][0]["values"]) == 5
 
 
-@pytest.mark.integration
 def test_analyze_with_time_range_slices_series(pipeline_client):
     job_id = _do_extract(pipeline_client, "test_annual", "0001", "0005")
     assert _get_status(pipeline_client, job_id)["status"] == "SUCCESS"
@@ -301,7 +286,6 @@ def test_analyze_with_time_range_slices_series(pipeline_client):
     assert len(resp.json()["series"][0]["values"]) == 3
 
 
-@pytest.mark.integration
 def test_analyze_with_zscore_transform_returns_valid_response(pipeline_client):
     job_id = _do_extract(pipeline_client, "test_annual", "0001", "0005")
     assert _get_status(pipeline_client, job_id)["status"] == "SUCCESS"
@@ -322,7 +306,6 @@ def test_analyze_with_zscore_transform_returns_valid_response(pipeline_client):
     assert all(v is not None for v in values)
 
 
-@pytest.mark.integration
 def test_extract_stores_the_whole_axis_for_any_range(pipeline_client):
     job_id = _do_extract(pipeline_client, "test_annual", "0002", "0004")
     assert _get_status(pipeline_client, job_id)["status"] == "SUCCESS"
@@ -333,7 +316,6 @@ def test_extract_stores_the_whole_axis_for_any_range(pipeline_client):
     assert resp.json()["series"][0]["values"] == [1.0, 2.0, 3.0, 4.0, 5.0]
 
 
-@pytest.mark.integration
 def test_extract_smooths_with_the_years_before_its_range(pipeline_client):
     job_id = _do_extract(
         pipeline_client,
@@ -357,7 +339,6 @@ def test_extract_smooths_with_the_years_before_its_range(pipeline_client):
     assert series["timesteps"] == ["0003", "0004", "0005"]
 
 
-@pytest.mark.integration
 def test_extract_reference_interval_can_lie_outside_its_range(pipeline_client):
     job_id = _do_extract(
         pipeline_client,
@@ -380,7 +361,6 @@ def test_extract_reference_interval_can_lie_outside_its_range(pipeline_client):
 # Analyze pipeline — error cases (no raster I/O needed)
 
 
-@pytest.mark.integration
 async def test_analyze_rejects_a_range_the_extraction_does_not_cover(
     pipeline_client, job_store
 ):
@@ -407,7 +387,6 @@ async def test_analyze_rejects_a_range_the_extraction_does_not_cover(
     assert uncovered.status_code == 410
 
 
-@pytest.mark.integration
 async def test_job_lifecycle_keeps_private_release_provenance(
     pipeline_client, job_store, monkeypatch
 ):
@@ -451,7 +430,6 @@ async def test_job_lifecycle_keeps_private_release_provenance(
     }
 
 
-@pytest.mark.integration
 @pytest.mark.parametrize(
     "field,value",
     [("release_id", "test_annual-r-2026.02.02"), ("declaration_digest", "e" * 64)],
@@ -474,7 +452,6 @@ def test_analyze_rejects_a_previous_source_release(
     assert "source release has changed" in response.json()["detail"]["msg"]
 
 
-@pytest.mark.integration
 @pytest.mark.parametrize(
     "field,value",
     [
@@ -503,7 +480,6 @@ async def test_analyze_requires_a_supported_job_record(
     assert "incompatible" in response.json()["detail"]["msg"]
 
 
-@pytest.mark.integration
 @pytest.mark.parametrize(
     "overrides, message",
     [
@@ -547,7 +523,6 @@ def test_analyze_explains_a_request_it_cannot_compute(
     assert message in resp.json()["detail"]
 
 
-@pytest.mark.integration
 def test_extract_refuses_a_window_longer_than_the_dataset(pipeline_client):
     resp = pipeline_client.post(
         EXTRACT_URL,
@@ -563,13 +538,11 @@ def test_extract_refuses_a_window_longer_than_the_dataset(pipeline_client):
     assert resp.status_code == 422
 
 
-@pytest.mark.integration
 def test_analyze_nonexistent_job_returns_404(pipeline_client):
     resp = pipeline_client.post(ANALYZE_URL, json=_analyze_payload("does-not-exist"))
     assert resp.status_code == 404
 
 
-@pytest.mark.integration
 async def test_analyze_pending_job_returns_409(pipeline_client, job_store):
     await job_store.update_job("pending-job", {"status": "PENDING"})
 
@@ -577,7 +550,6 @@ async def test_analyze_pending_job_returns_409(pipeline_client, job_store):
     assert resp.status_code == 409
 
 
-@pytest.mark.integration
 async def test_analyze_failed_job_returns_409(pipeline_client, job_store):
     await job_store.update_job(
         "failed-job", {"status": "FAILED", "error": "upstream error"}
@@ -591,7 +563,6 @@ async def test_analyze_failed_job_returns_409(pipeline_client, job_store):
 # Releases: tiles by canonical key, ranges, startup refusal
 
 
-@pytest.mark.integration
 @pytest.mark.parametrize(
     "path, cog, band",
     [
@@ -612,7 +583,6 @@ def test_tile_resolves_the_timestep_to_its_cog_and_band(
     assert captured["band"] == band
 
 
-@pytest.mark.integration
 @pytest.mark.parametrize(
     "path, status",
     [
@@ -632,7 +602,6 @@ def test_tile_rejects_unknown_and_malformed_timesteps(
     assert pipeline_client.get(f"/tiles/{path}/0/0/0").status_code == status
 
 
-@pytest.mark.integration
 def test_extract_range_that_selects_nothing_is_rejected(pipeline_client):
     resp = pipeline_client.post(
         EXTRACT_URL,
@@ -644,7 +613,6 @@ def test_extract_range_that_selects_nothing_is_rejected(pipeline_client):
     assert "selects no timesteps" in resp.json()["detail"]
 
 
-@pytest.mark.integration
 def test_extract_malformed_range_is_rejected(pipeline_client):
     resp = pipeline_client.post(
         EXTRACT_URL,
@@ -655,7 +623,6 @@ def test_extract_malformed_range_is_rejected(pipeline_client):
     assert resp.status_code == 422
 
 
-@pytest.mark.integration
 @pytest.mark.parametrize("endpoint", ["extract", "analyze"])
 @pytest.mark.parametrize("reference", [False, True])
 @pytest.mark.parametrize(
@@ -691,7 +658,6 @@ def test_invalid_calendar_ranges_return_422(
     assert "not a valid date" in response.json()["detail"]
 
 
-@pytest.mark.integration
 def test_extract_values_follow_the_axis_across_files(pipeline_client):
     job_id = _do_extract(pipeline_client, "test_monthly", "0001-11", "0002-02")
 
@@ -702,7 +668,6 @@ def test_extract_values_follow_the_axis_across_files(pipeline_client):
     assert series["time_range"] == {"gte": "0001-11", "lte": "0002-02"}
 
 
-@pytest.mark.integration
 def test_analyze_range_finer_than_the_dataset_keeps_its_first_timestep(
     pipeline_client,
 ):
@@ -720,7 +685,6 @@ def test_analyze_range_finer_than_the_dataset_keeps_its_first_timestep(
     assert resp.json()["series"][0]["timesteps"] == ["0002", "0003", "0004"]
 
 
-@pytest.mark.integration
 def test_api_refuses_to_start_on_a_wrong_pin(tmp_path, monkeypatch):
     import app.main
     from app.main import app as fastapi_app
@@ -743,7 +707,6 @@ def test_api_refuses_to_start_on_a_wrong_pin(tmp_path, monkeypatch):
             pass
 
 
-@pytest.mark.integration
 def test_api_refuses_to_start_without_a_display_entry(tmp_path, monkeypatch):
     import app.main
     from app.main import app as fastapi_app
@@ -764,7 +727,6 @@ def test_api_refuses_to_start_without_a_display_entry(tmp_path, monkeypatch):
     assert [r.requirement for r in exc_info.value.refusals] == ["DISP-001"]
 
 
-@pytest.mark.integration
 def test_metadata_serves_schema_1_0_0_in_display_order(pipeline_client):
     body = pipeline_client.get("/metadata").json()
 
@@ -776,7 +738,6 @@ def test_metadata_serves_schema_1_0_0_in_display_order(pipeline_client):
     assert monthly["variables"][0]["display"]["range"] == [1, 60]
 
 
-@pytest.mark.integration
 def test_lost_acceptance_response_recovers_the_same_job_even_at_capacity(
     pipeline_client, job_store, monkeypatch
 ):
@@ -810,7 +771,6 @@ def test_lost_acceptance_response_recovers_the_same_job_even_at_capacity(
     assert conflict.json()["detail"]["code"] == "IDEMPOTENCY_CONFLICT"
 
 
-@pytest.mark.integration
 def test_recovery_keeps_accepted_release_but_new_submissions_check_source(
     pipeline_client, monkeypatch
 ):
@@ -845,7 +805,6 @@ def test_recovery_keeps_accepted_release_but_new_submissions_check_source(
     assert fresh.json()["detail"]["code"] == "SOURCE_CHANGED"
 
 
-@pytest.mark.integration
 def test_scheduling_failure_remains_bound_to_its_key_and_releases_admission(
     pipeline_client, monkeypatch
 ):
@@ -875,7 +834,6 @@ def test_scheduling_failure_remains_bound_to_its_key_and_releases_admission(
     _do_extract(pipeline_client, "test_annual", "0001", "0005")
 
 
-@pytest.mark.integration
 def test_retry_after_is_visible_to_browser_clients(pipeline_client, job_store):
     pipeline_client.portal.call(
         job_store.atomic_extraction,
@@ -892,7 +850,6 @@ def test_retry_after_is_visible_to_browser_clients(pipeline_client, job_store):
     assert "Retry-After" in response.headers["access-control-expose-headers"]
 
 
-@pytest.mark.integration
 def test_openapi_declares_submission_analysis_and_structured_errors(pipeline_client):
     paths = pipeline_client.app.openapi()["paths"]
     assert paths[EXTRACT_URL]["post"]["responses"]["202"]["content"][
@@ -906,7 +863,6 @@ def test_openapi_declares_submission_analysis_and_structured_errors(pipeline_cli
     ]["schema"]["$ref"].endswith("/JobErrorResponse")
 
 
-@pytest.mark.integration
 def test_extract_requires_an_idempotency_key_before_accepting_work(pipeline_client):
     response = pipeline_client.post(
         EXTRACT_URL, json=_extract_payload("test_annual", "0001", "0005")
@@ -925,7 +881,6 @@ def test_extract_requires_an_idempotency_key_before_accepting_work(pipeline_clie
     assert key["required"] is True
 
 
-@pytest.mark.integration
 def test_analysis_documents_coordination_unavailability(pipeline_client):
     response = pipeline_client.app.openapi()["paths"][ANALYZE_URL]["post"]["responses"][
         "503"

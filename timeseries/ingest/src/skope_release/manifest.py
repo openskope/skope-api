@@ -12,7 +12,7 @@ from .documents import dumps_json, load_document
 from .findings import Report
 from .identity import IDENTITY_PROFILE
 from .models import Overview, ReleaseManifest
-from .plan import FinalObservation, require_observation
+from .plan import require_observation
 
 log = logging.getLogger(__name__)
 

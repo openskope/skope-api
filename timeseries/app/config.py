@@ -20,7 +20,6 @@ class Settings(BaseSettings):
     environment: str = "dev"
     skope_build_id: str = "development"
     name: str = "SKOPE API Services (development)"
-    base_uri: str = "timeseries"
     max_processing_time: int = 20000  # in milliseconds
     # Deployment-wide extraction slots, coordinated by the job store.
     max_concurrent_jobs: int = Field(default=1, ge=1, le=32)

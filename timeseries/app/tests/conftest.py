@@ -1,6 +1,4 @@
-import json
 import os
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -48,17 +46,7 @@ def served_registry(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Transform / spatial fixtures
-
-
-@pytest.fixture
-def geo_transform_6():
-    return [0.00833, 0.0, -115.0, 0.0, -0.00833, 43.0]
-
-
-@pytest.fixture
-def proj_transform_6():
-    return [800.0, 0.0, 200000.0, 0.0, -800.0, 4800000.0]
+# Spatial fixtures
 
 
 @pytest.fixture

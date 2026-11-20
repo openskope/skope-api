@@ -17,18 +17,16 @@ updates:
           - pyproj
           - numpy
           - pandas
-          - scipy
           - pytest
           - pytest-asyncio
           - black
           - ipython
-          - requests
         update-types: [minor, patch]
       scientific-libraries:
-        patterns: [rasterio, Shapely, shapely, pyproj, numpy, pandas, scipy]
+        patterns: [rasterio, Shapely, shapely, pyproj, numpy, pandas]
         update-types: [minor, patch]
       test-tools:
-        patterns: [pytest, pytest-asyncio, black, ipython, requests]
+        patterns: [pytest, pytest-asyncio, black, ipython]
         update-types: [minor, patch]
   - package-ecosystem: docker
     directory: /deploy

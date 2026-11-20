@@ -11,7 +11,7 @@ import posixpath
 from pathlib import Path
 
 from .findings import Report
-from .plan import FinalObservation, require_observation
+from .plan import require_observation
 
 
 def check_stac_against_bytes(observation: object, root: Path, report: Report) -> None:
