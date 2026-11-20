@@ -2,8 +2,11 @@
 
 import copy
 import importlib.util
+import io
 import json
+import os
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -123,6 +126,62 @@ class ImageSelectionTests(unittest.TestCase):
                     runtime.check(path, "prod")
                 inspect.assert_not_called()
 
+    def test_pr_bundle_is_rejected_for_production_even_with_explicit_selection(self):
+        manifest = dict(self.manifest, ci={"event": "pull_request"})
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "images-prod.json"
+            path.write_text(json.dumps(self.selection))
+            (path.parent / "manifest.json").write_text(json.dumps(manifest))
+            with self.assertRaisesRegex(ValueError, "only be deployed to staging"):
+                runtime.bundle_images(path, "prod", self.revision)
+
+    def test_ci_export_retains_pr_identity_with_the_scanned_images(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            (output / "manifest.json").write_text(json.dumps(self.manifest))
+            event = output / "event.json"
+            event.write_text(
+                json.dumps(
+                    {
+                        "number": 69,
+                        "pull_request": {
+                            "head": {"sha": "c" * 40},
+                            "base": {"sha": "d" * 40},
+                        },
+                    }
+                )
+            )
+            environment = {
+                "GITHUB_ACTIONS": "true",
+                "GITHUB_EVENT_PATH": str(event),
+                "GITHUB_REPOSITORY": "openskope/skope-api",
+                "GITHUB_RUN_ID": "123",
+                "GITHUB_RUN_ATTEMPT": "2",
+                "GITHUB_EVENT_NAME": "pull_request",
+            }
+            with patch.object(runtime, "OUTPUT", output), patch.dict(
+                os.environ, environment
+            ), patch.object(runtime.subprocess, "Popen") as popen:
+                process = popen.return_value.__enter__.return_value
+                process.stdout = io.BytesIO(b"test image archive")
+                process.wait.return_value = 0
+                runtime.export()
+            manifest = json.loads((output / "manifest.json").read_text())
+            self.assertEqual(
+                manifest["ci"],
+                {
+                    "repository": "openskope/skope-api",
+                    "run_id": 123,
+                    "run_attempt": 2,
+                    "event": "pull_request",
+                    "pr": 69,
+                    "head_sha": "c" * 40,
+                    "base_sha": "d" * 40,
+                },
+            )
+            self.assertEqual(manifest["images"], self.manifest["images"])
+            self.assertTrue((output / "images.tar.gz").is_file())
+
 
 class CIDeploymentTests(unittest.TestCase):
     def setUp(self):
@@ -180,6 +239,26 @@ class CIDeploymentTests(unittest.TestCase):
                     )
             self.assertEqual(list(cache.rglob("runtime-images-*")), [])
             self.assertEqual(list(cache.rglob(".download-*")), [])
+
+    def test_cached_bundle_without_archive_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory)
+            cached = cache / "openskope/skope-api/runtime-images-123-2-456"
+            cached.mkdir(parents=True)
+            with patch.object(
+                runtime, "github_records", return_value=[self.artifact]
+            ), patch.object(runtime, "bundle_images"), patch.object(
+                runtime, "run"
+            ) as command:
+                with self.assertRaisesRegex(ValueError, "cached CI bundle is missing"):
+                    runtime.download_bundle(
+                        self.workflow,
+                        "openskope/skope-api",
+                        cache,
+                        "staging",
+                        self.revision,
+                    )
+            command.assert_not_called()
 
     def test_expired_or_previous_attempt_artifacts_are_not_selected(self):
         for artifact in (
@@ -284,6 +363,402 @@ class CIDeploymentTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "invalid bundle"):
                 runtime.deploy_ci("staging")
             command.assert_not_called()
+
+
+class PRDeploymentTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.cache = Path(self.temporary.name)
+        self.revision = "a" * 40
+        self.head = "b" * 40
+        self.base = "c" * 40
+        self.repository = "openskope/skope-api"
+        self.pr = {
+            "state": "open",
+            "mergeable": True,
+            "merge_commit_sha": self.revision,
+            "head": {"sha": self.head},
+            "base": {"sha": self.base, "repo": {"full_name": self.repository}},
+        }
+        # Fork PR runs can have an empty pull_requests collection.
+        self.workflow = {
+            "id": 123,
+            "run_attempt": 2,
+            "event": "pull_request",
+            "head_sha": self.head,
+            "status": "completed",
+            "conclusion": "success",
+            "pull_requests": [],
+        }
+        self.ci = {
+            "repository": self.repository,
+            "run_id": 123,
+            "run_attempt": 2,
+            "event": "pull_request",
+            "pr": 69,
+            "head_sha": self.head,
+            "base_sha": self.base,
+        }
+        self.bundle = self.cache / "bundle"
+        self.bundle.mkdir()
+        (self.bundle / "manifest.json").write_text(json.dumps({"ci": self.ci}))
+        self.checkout = self.cache / "checkouts" / self.repository / self.revision
+        self.image = "sha256:" + "d" * 64
+        self.images = dict.fromkeys(("server", "titiler", "redis"), self.image)
+        self.log = self.cache / "deploy-state/staging.jsonl"
+        self.commands = []
+        self.pr_mock = self.enterContext(
+            patch.object(runtime, "current_pr", return_value=self.pr)
+        )
+        self.enterContext(
+            patch.object(runtime, "github_records", return_value=[self.workflow])
+        )
+        self.enterContext(
+            patch.object(runtime, "download_bundle", return_value=self.bundle)
+        )
+        self.enterContext(
+            patch.object(runtime, "bundle_images", return_value=self.images)
+        )
+        self.enterContext(patch.dict(os.environ, {"DEPLOY_LOG": str(self.log)}))
+
+        def command(*args, **kwargs):
+            self.commands.append((args, kwargs))
+            if args[:2] == ("git", "rev-parse"):
+                return self.revision
+            if args[:2] == ("git", "status"):
+                return ""
+
+        self.command = self.enterContext(
+            patch.object(runtime, "run", side_effect=command)
+        )
+
+    def test_fork_pr_uses_tested_merge_checkout_and_records_ci_after_success(self):
+        runtime.deploy_pr("69", self.repository, self.cache)
+        self.assertIn(
+            (("git", "worktree", "add", "--detach", self.checkout, self.revision), {}),
+            self.commands,
+        )
+        self.assertEqual(
+            self.commands[-1],
+            (
+                (
+                    "make",
+                    "deploy",
+                    "ENVIRONMENT=staging",
+                    "PR=",
+                    f"DEPLOY_IMAGES={self.bundle / 'images-staging.json'}",
+                    f"DEPLOY_LOG={self.log}",
+                ),
+                {"cwd": self.checkout},
+            ),
+        )
+        entry = json.loads(self.log.with_name("staging-ci.jsonl").read_text())
+        self.assertEqual(
+            (entry["pr"], entry["run_id"], entry["commit"], entry["head_sha"]),
+            (69, 123, self.revision, self.head),
+        )
+        self.assertEqual(entry["images"], self.images)
+
+    def test_latest_failed_or_running_run_does_not_fall_back_to_success(self):
+        for status, conclusion in (("in_progress", None), ("completed", "failure")):
+            latest = dict(self.workflow, status=status, conclusion=conclusion)
+            with patch.object(
+                runtime, "github_records", return_value=[latest, self.workflow]
+            ):
+                with self.assertRaisesRegex(ValueError, "latest CI run"):
+                    runtime.deploy_pr("69", self.repository, self.cache)
+        self.command.assert_not_called()
+
+    def test_missing_bundle_or_mismatched_provenance_never_loads_images(self):
+        with patch.object(runtime, "download_bundle", return_value=None):
+            with self.assertRaisesRegex(ValueError, "no retained image bundle"):
+                runtime.deploy_pr("69", self.repository, self.cache)
+        for field, value in (
+            ("pr", 68),
+            ("head_sha", "e" * 40),
+            ("run_attempt", 1),
+            ("base_sha", "f" * 40),
+            ("repository", "other/repo"),
+        ):
+            manifest = {"ci": dict(self.ci, **{field: value})}
+            (self.bundle / "manifest.json").write_text(json.dumps(manifest))
+            with self.assertRaisesRegex(ValueError, "provenance"):
+                runtime.deploy_pr("69", self.repository, self.cache)
+        self.command.assert_not_called()
+
+    def test_pr_change_during_download_stops_before_fetch_and_load(self):
+        self.pr_mock.side_effect = [self.pr, dict(self.pr, merge_commit_sha="e" * 40)]
+        with self.assertRaisesRegex(ValueError, "PR changed"):
+            runtime.deploy_pr("69", self.repository, self.cache)
+        self.command.assert_not_called()
+
+    def test_ci_rerun_during_download_stops_before_fetch_and_load(self):
+        latest = dict(self.workflow, run_attempt=3)
+        with patch.object(
+            runtime, "github_records", side_effect=[[self.workflow], [latest]]
+        ):
+            with self.assertRaisesRegex(ValueError, "PR CI changed"):
+                runtime.deploy_pr("69", self.repository, self.cache)
+        self.command.assert_not_called()
+
+    def test_real_git_checkout_is_detached_reused_and_leaves_operator_branch_alone(
+        self,
+    ):
+        source = self.cache / "source"
+        source.mkdir()
+
+        def git(*args, cwd=source):
+            return subprocess.run(
+                ["git", *map(str, args)],
+                cwd=cwd,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+
+        git("init", "--initial-branch=operator")
+        git(
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.com",
+            "commit",
+            "--allow-empty",
+            "-m",
+            "fixture",
+        )
+        revision = git("rev-parse", "HEAD")
+        git("update-ref", "refs/pull/69/merge", revision)
+        self.pr["merge_commit_sha"] = revision
+        checkout = self.cache / "checkouts" / self.repository / revision
+
+        def command(*args, **kwargs):
+            if args[0] != "git":
+                return
+            arguments = list(args[1:])
+            if arguments[0] == "fetch":
+                arguments[2] = source  # Fetch the fixture instead of GitHub.
+            return git(*arguments, cwd=kwargs.get("cwd", source))
+
+        self.command.side_effect = command
+        with patch.object(runtime, "ROOT", source):
+            runtime.deploy_pr("69", self.repository, self.cache)
+            runtime.deploy_pr("69", self.repository, self.cache)
+        self.assertEqual(git("symbolic-ref", "--short", "HEAD"), "operator")
+        self.assertEqual(git("rev-parse", "HEAD", cwd=checkout), revision)
+        self.assertEqual(git("branch", "--show-current", cwd=checkout), "")
+        self.assertEqual(git("status", "--porcelain", cwd=checkout), "")
+
+    def test_changed_merge_ref_or_dirty_existing_checkout_never_loads_images(self):
+        with patch.object(runtime, "run", side_effect=[None, "e" * 40]):
+            with self.assertRaisesRegex(ValueError, "merge changed"):
+                runtime.deploy_pr("69", self.repository, self.cache)
+        self.checkout.mkdir(parents=True)
+        with patch.object(runtime, "run", side_effect=[self.revision, " M file"]):
+            with self.assertRaisesRegex(ValueError, "dirty or has the wrong revision"):
+                runtime.deploy_pr("69", self.repository, self.cache)
+        self.command.assert_not_called()
+
+    def test_failed_deployment_does_not_record_success(self):
+        def fail_deploy(*args, **kwargs):
+            if args[0] == "make":
+                raise subprocess.CalledProcessError(1, args)
+            return self.revision if args[:2] == ("git", "rev-parse") else ""
+
+        self.command.side_effect = fail_deploy
+        with self.assertRaises(subprocess.CalledProcessError):
+            runtime.deploy_pr("69", self.repository, self.cache)
+        self.assertFalse(self.log.with_name("staging-ci.jsonl").exists())
+
+    def test_pr_selection_rejects_production_or_explicit_images(self):
+        for environment, selection in (
+            ("prod", ""),
+            ("staging", "/tmp/selection.json"),
+        ):
+            with patch.dict(os.environ, {"PR": "69", "DEPLOY_IMAGES": selection}):
+                with self.assertRaisesRegex(ValueError, "staging-only"):
+                    runtime.deploy_ci(environment)
+        self.command.assert_not_called()
+
+    def test_invalid_pr_number_is_rejected_before_network_calls(self):
+        for number in ("-1", "0", "../69", "69;echo"):
+            with self.assertRaisesRegex(ValueError, "positive pull request number"):
+                runtime.deploy_pr(number, self.repository, self.cache)
+        self.pr_mock.assert_not_called()
+
+
+class LocalDeploymentMakeTests(unittest.TestCase):
+    """Exercise the real Make entrypoints without contacting Docker or GitHub."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        source = Path(__file__).resolve().parents[1]
+        shutil.copy(source / "Makefile", self.root / "Makefile")
+        (self.root / "scripts").mkdir()
+        shutil.copy(
+            source / "scripts/release-root.sh", self.root / "scripts/release-root.sh"
+        )
+        pins = self.root / "deploy/releases"
+        pins.mkdir(parents=True)
+        for environment in ("staging", "prod"):
+            (pins / f"{environment}.yml").write_text(f"release_root: {self.root}\n")
+        self.commands = self.root / "commands.jsonl"
+        self.bin = self.root / "bin"
+        self.bin.mkdir()
+        stub = """#!/usr/bin/env python3
+import json, os, sys
+from pathlib import Path
+name = Path(sys.argv[0]).name
+with open(os.environ["DEPLOY_TEST_COMMANDS"], "a") as stream:
+    stream.write(json.dumps([name, *sys.argv[1:]]) + "\\n")
+if name == "git" and sys.argv[1:3] == ["status", "--porcelain"]:
+    print(os.environ.get("DEPLOY_TEST_DIRTY", ""), end="")
+elif name == "git" and sys.argv[1:3] == ["rev-parse", "HEAD"]:
+    print("a" * 40)
+elif name == "gh":
+    sys.exit("GitHub is unavailable")
+elif name == "docker" and os.environ.get("DEPLOY_TEST_FAIL") in sys.argv[1:]:
+    sys.exit(1)
+"""
+        for name in ("git", "docker", "gh"):
+            path = self.bin / name
+            path.write_text(stub)
+            path.chmod(0o755)
+        # CI selection is observable without actually downloading anything.
+        (self.root / "scripts/runtime-images.py").write_text(stub)
+        self.environment = dict(
+            os.environ,
+            PATH=f"{self.bin}:{os.environ['PATH']}",
+            DEPLOY_TEST_COMMANDS=str(self.commands),
+        )
+        for name in (
+            "MAKEFLAGS",
+            "MFLAGS",
+            "MAKELEVEL",
+            "PR",
+            "LOCAL_BUILD",
+            "DEPLOY_IMAGES",
+            "DEPLOY_LOG",
+            "PULL",
+            "SKOPE_RELEASE_ROOT",
+            "FULL_VERIFICATION",
+            "SKIP_FULL_VERIFICATION",
+        ):
+            self.environment.pop(name, None)
+
+    def invoke(self, *arguments):
+        result = subprocess.run(
+            ["make", *arguments],
+            cwd=self.root,
+            env=self.environment,
+            capture_output=True,
+            text=True,
+        )
+        commands = (
+            [json.loads(line) for line in self.commands.read_text().splitlines()]
+            if self.commands.exists()
+            else []
+        )
+        return result, commands
+
+    def test_local_staging_and_production_build_verify_and_deploy_without_github(self):
+        for target, environment in (
+            ("deploy-staging", "staging"),
+            ("deploy-production", "prod"),
+        ):
+            with self.subTest(target=target):
+                self.commands.unlink(missing_ok=True)
+                result, commands = self.invoke(target, "LOCAL_BUILD=1", "PULL=0")
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertFalse(
+                    any(
+                        command[0] in ("gh", "runtime-images.py")
+                        for command in commands
+                    )
+                )
+                docker = [command for command in commands if command[0] == "docker"]
+                build = next(command for command in docker if "build" in command)
+                self.assertIn(f"deploy/compose/{environment}.yml", build)
+                self.assertNotIn("--pull", build)
+                verify = next(
+                    i
+                    for i, command in enumerate(docker)
+                    if "app.registry.verify" in command
+                )
+                up = next(i for i, command in enumerate(docker) if "up" in command)
+                self.assertLess(verify, up)
+                self.assertIn("--metadata-only", docker[verify])
+                self.assertIn("--no-build", docker[up])
+                self.assertIn("never", docker[up])
+                self.assertTrue(
+                    any("app.registry.deployment" in command for command in docker)
+                )
+
+    def test_full_verification_is_explicit_and_survives_recursive_make(self):
+        result, commands = self.invoke(
+            "deploy-staging", "LOCAL_BUILD=1", "FULL_VERIFICATION=1"
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        verify = next(
+            command for command in commands if "app.registry.verify" in command
+        )
+        self.assertNotIn("--metadata-only", verify)
+
+    def test_invalid_and_obsolete_verification_flags_fail_before_deployment(self):
+        for flag in (
+            "FULL_VERIFICATION=true",
+            "FULL_VERIFICATION=false",
+            "FULL_VERIFICATION=yes",
+            "SKIP_FULL_VERIFICATION=0",
+            "SKIP_FULL_VERIFICATION=1",
+        ):
+            with self.subTest(flag=flag):
+                self.commands.unlink(missing_ok=True)
+                result, commands = self.invoke("deploy-staging", "LOCAL_BUILD=1", flag)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("FULL_VERIFICATION", result.stderr)
+                self.assertFalse(any(command[0] == "docker" for command in commands))
+
+    def test_local_mode_rejects_ambiguous_sources_and_invalid_flags_before_build(self):
+        for arguments in (
+            ("LOCAL_BUILD=1", "PR=69"),
+            ("LOCAL_BUILD=1", "DEPLOY_IMAGES=/tmp/images.json"),
+            ("LOCAL_BUILD=yes",),
+        ):
+            result, commands = self.invoke("deploy-staging", *arguments)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertFalse(any(command[0] == "docker" for command in commands))
+
+    def test_local_mode_rejects_dirty_source_before_build(self):
+        self.environment["DEPLOY_TEST_DIRTY"] = " M app/main.py"
+        result, commands = self.invoke("deploy-staging", "LOCAL_BUILD=1")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("clean checkout", result.stderr)
+        self.assertFalse(any(command[0] == "docker" for command in commands))
+
+    def test_default_mode_keeps_ci_selection_instead_of_building_locally(self):
+        result, commands = self.invoke("deploy-staging")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(["runtime-images.py", "deploy-staging"], commands)
+        self.assertFalse(any(command[0] == "docker" for command in commands))
+
+    def test_failed_local_build_or_release_verification_never_replaces_services(self):
+        for failure in ("build", "app.registry.verify"):
+            with self.subTest(failure=failure):
+                self.commands.unlink(missing_ok=True)
+                self.environment["DEPLOY_TEST_FAIL"] = failure
+                result, commands = self.invoke("deploy-staging", "LOCAL_BUILD=1")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(
+                    any(
+                        "up" in command
+                        for command in commands
+                        if command[0] == "docker"
+                    )
+                )
 
 
 if __name__ == "__main__":

@@ -26,7 +26,7 @@ HEADER = (
     "# Generated from validated STAC. Do not edit.\n"
     "# Authority: collection.json{items}. Regenerated and byte-compared on build.\n"
 )
-STRUCTURAL_RELS = {"self", "root", "parent", "child", "collection", "item", "license"}
+STRUCTURAL_RELS = {"self", "root", "parent", "child", "collection", "item"}
 FLOW_KEYS = {"bbox", "shape", "transform", "values", "roles"}
 WIDTH = 100
 
@@ -215,6 +215,11 @@ def build_overview(root: Path, *, release_id: str, declaration_digest: str, repo
         uncertainty = collection["skope:uncertainty"]
         dataset["uncertainty"] = {"summary": uncertainty["summary"], "methodology_href": uncertainty["methodology_href"]}
     dataset["links"] = _external_links(collection.get("links", []))
+    # Enforce the source on new projections, while older published overviews
+    # remain readable even if their generator discarded license links.
+    if dataset["license"] == "other" and not any(link["rel"] == "license" for link in dataset["links"]):
+        report.add("API-010", "license `other` requires an HTTPS license source link", **ctx)
+        return None
 
     overview = {
         "schema_version": SCHEMA_VERSION,

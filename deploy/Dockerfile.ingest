@@ -45,6 +45,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 COPY timeseries/ingest/tests ./tests
 COPY tests/contracts ./tests/contracts
-RUN chmod -R a+rX ./tests
+COPY timeseries/ingest/datasets ./datasets
+RUN chmod -R a+rX ./tests ./datasets
 
 CMD ["pytest", "tests"]

@@ -13,6 +13,7 @@ from shapely.ops import unary_union
 from typing import Callable, Dict, List, Iterator, Tuple, Sequence
 
 # Local imports
+from app.telemetry import log_event
 from app.config import get_settings
 from app.core.validation import resolve_spatial_window
 from app.exceptions import SelectedAreaPolygonIsTooLarge
@@ -36,7 +37,12 @@ RASTERIO_ENV_KWARGS = {
     "GDAL_DISABLE_READDIR_ON_OPEN": "EMPTY_DIR",
     "CPL_VSIL_CURL_ALLOWED_EXTENSIONS": "tif,tiff,ovr",
     "VSI_CACHE": "TRUE",
-    "GDAL_HTTP_RETRY__COUNT": "3",
+    # Bound each HTTP transfer, including its body. Extraction cancellation is
+    # cooperative between chunks; these limits stop a stalled remote read.
+    "GDAL_HTTP_CONNECTTIMEOUT": str(settings.raster_connect_timeout_seconds),
+    "GDAL_HTTP_TIMEOUT": str(settings.raster_http_timeout_seconds),
+    # Hidden retries (with GDAL's default 30s delay) outlive the job budget.
+    "GDAL_HTTP_MAX_RETRY": "0",
     "AWS_NO_SIGN_REQUEST": "YES",
 }
 
@@ -110,8 +116,8 @@ def extract_summarystat_timeseries(
     """Returns (uri, mean_array, median_array) — both zonal statistics are always computed
     so the analysis layer can select either without a second raster read.
 
-    `check_cancelled` runs before each chunk read and raises to stop the
-    extraction, so a passed deadline stops it within one chunk read."""
+    `check_cancelled` runs before and after each chunk read. Cancellation is
+    cooperative: an in-progress native read must finish or fail first."""
     mean_results: List[float] = []
     median_results: List[float] = []
     n_inside = int(precomputed_mask.sum())
@@ -123,11 +129,16 @@ def extract_summarystat_timeseries(
                         check_cancelled()
                     raw = src.read(band_chunk, window=window)
 
+                    if check_cancelled is not None:
+                        check_cancelled()
+
                     # Only the cells inside the area, one band at a time: the
                     # statistics never sift through the cells outside it.
                     # Nodata is compared in the file's own type, where it's
                     # exact.
-                    cells = np.empty((len(band_chunk), n_inside), dtype=np.float32)
+                    # Float64 preserves float64 inputs and all supported integer
+                    # values; float32 would round them before either reduction.
+                    cells = np.empty((len(band_chunk), n_inside), dtype=np.float64)
                     for i, band in enumerate(raw):
                         inside = band[precomputed_mask]
                         cells[i] = inside
@@ -140,8 +151,8 @@ def extract_summarystat_timeseries(
                     # response carries as null. numpy warns about each one.
                     with warnings.catch_warnings():
                         warnings.simplefilter("ignore", RuntimeWarning)
-                        # Sum in float64: float32 sums over many cells lose
-                        # about 7 digits, which z-scores then amplify.
+                        # Keep both input values and mean accumulation in
+                        # float64; z-scores can amplify reduction error.
                         mean_results.extend(np.nanmean(cells, axis=1, dtype=np.float64))
                         median_results.extend(np.nanmedian(cells, axis=1))
 
@@ -261,9 +272,6 @@ async def execute_timeseries_job(
     chunk_size = calculate_safe_chunk_size(
         width=int(window.width), height=int(window.height)
     )
-    logger.info(
-        f"RAM Governor set chunk size to {chunk_size}. Area: {total_area} sqm. Cells: {n_cells}"
-    )
 
     limiter = anyio.CapacityLimiter(max_concurrency)
     results: List[Tuple[str, np.ndarray]] = []
@@ -295,13 +303,15 @@ async def execute_timeseries_job(
         logger.error(f"Task group failed during Map phase: {e}")
         raise RuntimeError("Timeseries extraction failed.") from e
     finally:
-        logger.info(
-            "Extraction %s after %.1f s: %d cells x %d timesteps, chunk %d.",
-            outcome,
-            time.monotonic() - started,
-            n_cells,
-            len(timestep_list),
-            chunk_size,
+        log_event(
+            "raster_reads_finished",
+            outcome=outcome,
+            duration_ms=round((time.monotonic() - started) * 1000, 3),
+            cells=n_cells,
+            window_cells=int(window.width * window.height),
+            timesteps=len(timestep_list),
+            files=len(file_mapping),
+            chunk_bands=chunk_size,
         )
 
     # Sort by insertion order of file_mapping to preserve chronological ordering

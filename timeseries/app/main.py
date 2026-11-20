@@ -1,4 +1,5 @@
 import logging
+import anyio
 from pathlib import Path
 
 import httpx
@@ -10,6 +11,8 @@ from fastapi.responses import JSONResponse
 from starlette.status import HTTP_422_UNPROCESSABLE_CONTENT
 from contextlib import asynccontextmanager
 
+from app.core.job_control import JobContractError
+from app.telemetry import RequestTimingMiddleware, log_event
 from app.config import get_settings
 from app.exceptions import TimeseriesValidationError
 from app.registry.compose import (
@@ -82,6 +85,7 @@ async def lifespan(app: FastAPI):
         await job_store.healthcheck()
         app.state.client = async_client
         app.state.job_store = job_store
+        app.state.analysis_limiter = anyio.CapacityLimiter(1)
 
         yield
     finally:
@@ -90,6 +94,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="SKOPE API Services", lifespan=lifespan)
+app.add_middleware(RequestTimingMiddleware)
 
 if settings.is_production:
     sentry_sdk.init(dsn=settings.sentry_dsn)
@@ -103,7 +108,22 @@ app.add_middleware(
     allow_origins=settings.allowed_origins,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Retry-After", "X-Request-ID"],
 )
+
+
+@app.exception_handler(JobContractError)
+async def job_contract_error_handler(request: Request, exc: JobContractError):
+    log_event("job_contract_error", status=exc.status, error_code=exc.code)
+    return JSONResponse(
+        status_code=exc.status,
+        content={"detail": {"code": exc.code, "msg": exc.message}},
+        headers=(
+            {"Retry-After": "5"}
+            if exc.code in {"CAPACITY_EXHAUSTED", "COORDINATION_UNAVAILABLE"}
+            else None
+        ),
+    )
 
 
 @app.exception_handler(TimeseriesValidationError)

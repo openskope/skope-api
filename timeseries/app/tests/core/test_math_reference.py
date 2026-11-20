@@ -104,7 +104,7 @@ def test_an_area_without_a_center_counts_the_cells_it_touches():
 # Zonal statistics
 
 
-def _write_cube(path, bands):
+def _write_cube(path, bands, nodata=NODATA):
     count, height, width = bands.shape
     with rasterio.open(
         path,
@@ -113,8 +113,8 @@ def _write_cube(path, bands):
         width=width,
         height=height,
         count=count,
-        dtype="uint32",
-        nodata=NODATA,
+        dtype=bands.dtype,
+        nodata=nodata,
         crs="EPSG:4326",
         transform=from_origin(0.0, 10.0, 1.0, 1.0),
     ) as dst:
@@ -166,7 +166,27 @@ def test_a_value_next_to_nodata_is_not_nodata(tmp_path):
 
     _, means, medians = extract_summarystat_timeseries(path, [1], window, mask, 1)
 
-    assert not np.isnan(means[0]) and not np.isnan(medians[0])
+    assert means[0] == NODATA - 1
+    assert medians[0] == NODATA - 1
+
+
+@pytest.mark.parametrize(
+    "dtype, values, nodata",
+    [
+        ("uint32", [16777217, 16777219], 4294967295),
+        ("int32", [-16777217, -16777219], -2147483648),
+        ("float64", [1.000000000001, 1.000000000003], -9999),
+    ],
+)
+def test_zonal_statistics_preserve_source_precision(tmp_path, dtype, values, nodata):
+    bands = np.array([[values + [nodata]]], dtype=dtype)
+    path = _write_cube(tmp_path / "precision.tif", bands, nodata)
+    _, means, medians = extract_summarystat_timeseries(
+        path, [1], rasterio.windows.Window(0, 0, 3, 1), np.ones((1, 3), bool), 1
+    )
+    expected = (float(values[0]) + float(values[1])) / 2
+    assert means[0] == expected
+    assert medians[0] == expected
 
 
 def test_zonal_mean_keeps_float64_precision(tmp_path):

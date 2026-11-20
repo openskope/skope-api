@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.registry.models import Identifier, Precision, ReleaseId, Sha256Hex
-from app.schemas.timeseries import JobStatus, TimeseriesResponse
+from app.schemas.timeseries import JobStatus, TimeseriesResponse, JobLifecycle
 from app.vendor.timeaxis import parse_key
 
 if TYPE_CHECKING:
@@ -57,6 +57,8 @@ class ExtractionJobRecord(InternalModel):
     result: TimeseriesResponse | None = None
     base_series: BaseSeries | None = None
     error: str | None = None
+    error_code: str | None = None
+    lifecycle: JobLifecycle | None = None
 
     @model_validator(mode="after")
     def valid_success(self):

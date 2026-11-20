@@ -45,7 +45,7 @@
           "type": "string"
         },
         "license": {
-          "minLength": 1,
+          "description": "One canonical listed SPDX license identifier, or `other` with a source URL.",
           "title": "License",
           "type": "string"
         },

@@ -18,10 +18,18 @@ logger = logging.getLogger(__name__)
 class Settings(BaseSettings):
     allowed_origins: List[str] = Field(default_factory=lambda: ["*"])
     environment: str = "dev"
+    skope_build_id: str = "development"
     name: str = "SKOPE API Services (development)"
     base_uri: str = "timeseries"
     max_processing_time: int = 20000  # in milliseconds
+    # Deployment-wide extraction slots, coordinated by the job store.
     max_concurrent_jobs: int = Field(default=1, ge=1, le=32)
+    analysis_processing_time: int = Field(default=20000, ge=1, le=60000)
+    extraction_dispatch_seconds: int = Field(default=10, ge=1, le=60)
+    extraction_recovery_grace_seconds: int = Field(default=5, ge=1, le=60)
+    # Per-transfer limits, not a replacement for the extraction job deadline.
+    raster_connect_timeout_seconds: int = Field(default=5, ge=1, le=20)
+    raster_http_timeout_seconds: int = Field(default=15, ge=1, le=20)
     default_max_cells: int = 1_000_000
     max_series_options: int = Field(default=10, ge=1, le=100)
     max_geometry_shapes: int = Field(default=100, ge=1, le=1_000)

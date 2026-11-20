@@ -8,7 +8,8 @@ from fastapi import HTTPException
 from app.core.tiles import stream_tile
 
 
-async def test_stream_tile_requests_a_one_band_view_of_the_cog():
+async def test_stream_tile_requests_a_one_band_view_of_the_cog(monkeypatch):
+    monkeypatch.setattr("app.core.tiles.request_id", Mock(get=lambda: "a" * 32))
     response = Mock(status_code=200, headers={"Content-Type": "image/png"})
     response.raise_for_status = Mock()
     client = Mock()
@@ -30,6 +31,9 @@ async def test_stream_tile_requests_a_one_band_view_of_the_cog():
     params = client.build_request.call_args.kwargs["params"]
     assert params["url"] == "vrt:///releases/r/cogs/ppt/ds--0001--0100.tif?bands=37"
     assert params["bidx"] == 1
+    assert client.build_request.call_args.kwargs["headers"] == {
+        "X-Request-ID": "a" * 32
+    }
 
 
 async def test_stream_tile_closes_upstream_error_response():

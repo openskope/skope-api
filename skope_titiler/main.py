@@ -1,1 +1,5 @@
-from titiler.application.main import app  # noqa: F401
+from titiler.application.main import app
+
+from skope_titiler.telemetry import RequestTimingMiddleware
+
+app.add_middleware(RequestTimingMiddleware, service="titiler")

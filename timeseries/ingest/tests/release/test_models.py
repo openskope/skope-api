@@ -192,3 +192,29 @@ def test_overview_requires_profile_consistency():
         "calendar": "proleptic_gregorian", "timestep_meaning": "instant", "endpoint_inclusion": "inclusive",
     }
     assert check(Overview, with_time)[0] is None  # API-006
+
+
+@pytest.mark.parametrize("license", ["MIT", "Apache-2.0", "CC-BY-4.0", "CC0-1.0"])
+def test_curated_accepts_listed_spdx_license(license):
+    data = curated_doc("synth", ["alpha"]) | {"license": license}
+    assert check(Curated, data)[0] is not None
+
+
+@pytest.mark.parametrize("license", [
+    "Made-Up-License", "mit", "NONE", "NOASSERTION", "LicenseRef-Custom",
+    "MIT OR Apache-2.0", "GPL-2.0+", "https://example.org/license", "CC-BY-4.0/../MIT",
+])
+def test_curated_rejects_nonlisted_or_noncanonical_license(license):
+    data = curated_doc("synth", ["alpha"]) | {"license": license}
+    doc, report = check(Curated, data)
+    assert doc is None
+    assert "SPDX" in report.to_text()
+
+
+@pytest.mark.parametrize("href,valid", [
+    (None, False), ("http://example.org/terms", False),
+    ("javascript:alert(1)", False), ("https://example.org/terms", True),
+])
+def test_other_curated_license_requires_https_source(href, valid):
+    data = curated_doc("synth", ["alpha"]) | {"license": "other", "license_href": href}
+    assert (check(Curated, data)[0] is not None) == valid

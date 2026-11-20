@@ -2199,10 +2199,11 @@ Operations:
   outside version control and outside the release root, recording the deploy
   time, environment, operator, the commit the images were built from, the
   running image IDs, and each pinned release's ID, declaration digest, manifest
-  digest, resolved path, and verification mode and result. Deployment defaults
-  to full verification; an explicit application-only redeploy may use the
-  metadata checks described in TXN-011. The log is a record, never an automatic
-  reason to skip verification.
+  digest, resolved path, and verification mode and result. Application deployment
+  defaults to the metadata checks described in TXN-011. Full asset verification
+  is explicitly enabled with `FULL_VERIFICATION=1` when promoting new
+  dataset releases. The log is a record, never an automatic reason to skip
+  verification.
 - The operational audit store (TXN-017) is a directory of JSON records outside
   the release root. A cleanup authorization is a JSON record naming the
   operator, time, mechanism, reason, and a grace period of at least 24 hours.

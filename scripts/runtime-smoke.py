@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import sys
 import time
+import uuid
 
 import httpx
 import numpy as np
@@ -95,7 +96,11 @@ def check():
             "requested_series_options": OPTIONS,
             "time_range": {"gte": "0001", "lte": "0005"},
         }
-        response = client.post("/timeseries/extract", json=payload)
+        response = client.post(
+            "/timeseries/extract",
+            json=payload,
+            headers={"Idempotency-Key": uuid.uuid4().hex},
+        )
         assert response.status_code == 202, response.text
         job_id = response.json()["job_id"]
         deadline = time.monotonic() + 30

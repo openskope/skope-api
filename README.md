@@ -51,6 +51,11 @@ for deploying or rolling back with the exact images that passed CI.
 On the matching application host, `make deploy-staging` or `make deploy-production`
 automatically downloads and loads a successful CI bundle for the checked-out
 commit (requires authenticated `gh`).
+Use `make deploy-staging PR=69` to deploy a pull request's tested merge commit
+and CI images to shared staging without changing the operator's branch.
+If GitHub is unavailable, use `make deploy-staging LOCAL_BUILD=1` (or
+`make deploy-production LOCAL_BUILD=1`) from a clean local checkout. This builds
+on the application host and retains release verification and deployment logging.
 
 ## Dataset releases
 
@@ -152,12 +157,25 @@ releases that only repackage it.
 
 ## Extraction job durability
 
-Extraction requests run as background tasks in the API worker that accepts them.
-Redis retains job status, results, and internal analysis data for 24 hours, but it
-is not an execution queue: a worker restart does not resume an in-flight job.
-Clients should treat a missing job or a job that remains nonterminal across a
-deployment as abandoned and submit a new extraction request.
+Extraction requests require an `Idempotency-Key` and run as background tasks in
+the accepting API worker. Retrying the same request with the same key recovers
+the accepted attempt. Results expire 24 hours from acceptance, with an additional
+24-hour idempotency tombstone. Redis is transient: restart/flush loses these
+records and the associated recovery guarantees.
 
-This execution model is suitable for the current short, bounded extractions. A
-separate durable worker queue is required before offering restart-safe or
-resumable jobs.
+Expired worker leases become terminal `WORKER_LOST` failures when reconciled;
+work is not automatically rerun. An explicit new attempt requires a new key.
+See the [recoverable extraction contract](docs/specs/recoverable-extraction-jobs-v1.md)
+for deadlines, expiry and recovery behavior. A durable execution system remains
+necessary before offering restart-safe or resumable jobs.
+
+Backend request/job timing and sampling controls: [telemetry](docs/telemetry.md).
+
+Support reports can read `GET /version` for the image's baked-in build ID and
+environment. Browser clients can read `X-Request-ID` through CORS to correlate
+API calls with server logs.
+
+API deploys check release metadata by default. Add `FULL_VERIFICATION=1`
+to hash all release assets, for example
+`make deploy-staging FULL_VERIFICATION=1`. Use full verification when
+promoting new dataset releases; `make verify-releases` always hashes all assets.

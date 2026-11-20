@@ -6,7 +6,6 @@ from fastapi.testclient import TestClient
 import app.main
 from app.main import app as fastapi_app
 from app.store.jobs import FileSystemJobStore, get_job_store
-from app.core.job_control import get_job_controller
 from app.tests.release_builder import build_release, write_pin
 
 # Two small releases on a 5x5 grid of 1-degree pixels with its top-left corner
@@ -100,4 +99,3 @@ def pipeline_client(monkeypatch, tmp_path, job_store):
             yield client
     finally:
         fastapi_app.dependency_overrides.clear()
-        get_job_controller.cache_clear()
