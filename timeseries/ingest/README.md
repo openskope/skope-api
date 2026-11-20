@@ -50,6 +50,19 @@ It must contain:
 
 - [ ] **Dataset:** title, description, license, providers, and a region name
   (such as `"Southwestern USA"`).
+  - License must be one canonical SPDX License List identifier (for example, `CC-BY-4.0`),
+    or `other` with an HTTPS `license_href` pointing to the provider’s terms/source.
+    `other` does not assert permission to reuse the data. Expressions, `LicenseRef-*`,
+    `NONE`, and `NOASSERTION` are not accepted. The policy lives in `skope_release/licenses.py`;
+    the pinned `packaging` dependency supplies the SPDX list offline.
+    New overviews retain the source URL as a `rel: license` link. Existing published
+    overviews remain readable even when an older generator omitted that link;
+    API startup does not retroactively enforce the new authoring policy.
+    Ambiguously licensed datasets remain supported through `other`, including
+    LBDA and OWDA. When no explicit terms are known, `license_href` may point to
+    the provider's dataset or study page as source evidence. That link does not
+    establish a license or imply that the data are openly licensed; retain the
+    licensing uncertainty in the curated metadata for review.
 - [ ] **Each variable:** title, description, and unit (or explicitly
   `unitless`).
 - [ ] **Each categorical variable:** what every encoded value means.

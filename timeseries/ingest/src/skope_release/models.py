@@ -27,6 +27,8 @@ from pydantic import (
     model_validator,
 )
 
+from .licenses import DatasetLicense
+
 # ---------------------------------------------------------------------------
 # Shared field types
 
@@ -192,7 +194,7 @@ class Curated(Strict):
     profile: Profile
     title: NonEmpty
     description: NonEmpty
-    license: NonEmpty  # SPDX identifier, or "other" with license_href
+    license: DatasetLicense
     license_href: HttpsUrl | None = None
     region_name: NonEmpty
     providers: list[Provider] = Field(min_length=1)
@@ -476,7 +478,7 @@ class OverviewDataset(Strict):
     title: NonEmpty
     description: NonEmpty
     profile: Profile
-    license: NonEmpty
+    license: DatasetLicense
     region_name: NonEmpty
     extent: OverviewExtent
     grid: OverviewGrid

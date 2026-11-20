@@ -12,6 +12,7 @@ dependencies = [
     "jsonschema",
     "netCDF4",  # prepare scripts read NetCDF sources (META-013)
     "numpy<3",
+    "packaging==26.3",  # pinned SPDX license list
     "pydantic>=2.9,<3",
     "pystac",
     "python-dateutil",
