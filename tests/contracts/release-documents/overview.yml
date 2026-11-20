@@ -1,0 +1,74 @@
+# Written by `make test-ingest UPDATE_CONTRACTS=1`; see ../README.md.
+schema_version: 1.0.0
+release_id: synth-r-2026.10.07
+declaration_digest: '0000000000000000000000000000000000000000000000000000000000000000'
+dataset:
+  id: synth
+  version: '1'
+  title: Synthetic synth
+  description: A synthetic dataset for tests.
+  profile: TemporalCubeDataset
+  license: CC-BY-4.0
+  region_name: Testland
+  extent:
+    bbox:
+    - -115.0
+    - 42.7
+    - -114.6
+    - 43.0
+  grid:
+    code: EPSG:4269
+    shape:
+    - 30
+    - 40
+    transform:
+    - 0.01
+    - 0.0
+    - -115.0
+    - 0.0
+    - -0.01
+    - 43.0
+  time:
+    kind: regular
+    origin: '0100'
+    step: P1Y
+    count: 5
+    chunk_size: 2
+    precision: year
+    calendar: proleptic_gregorian
+    timestep_meaning: aggregation_period
+    endpoint_inclusion: inclusive
+  providers:
+  - name: Test Lab
+    roles:
+    - producer
+    - licensor
+  lineage: Made up for tests.
+  publications:
+  - citation: Author, A. 2014. A paper.
+    doi: 10.1038/ncomms6618
+  uncertainty:
+    summary: None; synthetic.
+    methodology_href: null
+  links:
+  - rel: via
+    href: https://example.org/source
+variables:
+  alpha:
+    title: Variable alpha
+    description: Synthetic alpha.
+    unit: mm
+    category: precipitation
+    data_type: uint32
+    nodata: 4294967295
+    scale: 1.0
+    offset: 0.0
+  beta:
+    title: Variable beta
+    description: Synthetic beta.
+    unit: mm
+    category: precipitation
+    data_type: uint32
+    nodata: 4294967295
+    scale: 1.0
+    offset: 0.0

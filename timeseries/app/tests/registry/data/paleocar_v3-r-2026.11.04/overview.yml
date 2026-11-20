@@ -1,8 +1,8 @@
 # Generated from validated STAC. Do not edit.
 # Authority: collection.json and items/. Regenerated and byte-compared on build.
 schema_version: "1.0.0"
-release_id: "paleocar_v3-r-2026.10.07"
-declaration_digest: "fa5b29a944289e7677f1bff46216a2222f20f5eb73d7237e9d453e0c2e1f059e"
+release_id: "paleocar_v3-r-2026.11.04"
+declaration_digest: "ebb5bb56d7b0b93b162e2d6f0e8bfc311f8023cafd5a8cd37f73309cdd0b6bd4"
 dataset:
   id: "paleocar_v3"
   version: "3"
@@ -23,7 +23,7 @@ dataset:
     origin: "0103"
     step: "P1Y"
     count: 1898
-    chunk_size: 100
+    chunk_size: 250
     precision: "year"
     calendar: "proleptic_gregorian"
     timestep_meaning: "aggregation_period"
@@ -50,10 +50,82 @@ variables:
   gdd_cotton_annual:
     title: "Annual (Jan–Dec) Cotton Growing Degree Days"
     description: "Calendar-year (January–December) growing degree days for cotton, reconstructed by PaleoCAR (the prediction_scaled product)."
-    unit: "°F GDD"
+    unit: "°C GDD"
     category: "Growing Degree Days"
-    data_type: "uint32"
-    nodata: 4294967295
+    data_type: "uint16"
+    nodata: 65535
+    scale: 1.0
+    offset: 0.0
+  gdd_cotton_may_sept:
+    title: "Summer (May–Sept) Cotton Growing Degree Days"
+    description: "Summer (May–September) growing degree days for cotton, reconstructed by PaleoCAR (the prediction_scaled product)."
+    unit: "°C GDD"
+    category: "Growing Degree Days"
+    data_type: "uint16"
+    nodata: 65535
+    scale: 1.0
+    offset: 0.0
+  gdd_cotton_water_year:
+    title: "Water-year (Oct–Sept) Cotton Growing Degree Days"
+    description: "Water-year (the previous October through September) growing degree days for cotton, reconstructed by PaleoCAR (the prediction_scaled product)."
+    unit: "°C GDD"
+    category: "Growing Degree Days"
+    data_type: "uint16"
+    nodata: 65535
+    scale: 1.0
+    offset: 0.0
+  gdd_maize_annual:
+    title: "Annual (Jan–Dec) Maize Growing Degree Days"
+    description: "Calendar-year (January–December) growing degree days for maize, reconstructed by PaleoCAR (the prediction_scaled product)."
+    unit: "°C GDD"
+    category: "Growing Degree Days"
+    data_type: "uint16"
+    nodata: 65535
+    scale: 1.0
+    offset: 0.0
+  gdd_maize_may_sept:
+    title: "Summer (May–Sept) Maize Growing Degree Days"
+    description: "Summer (May–September) growing degree days for maize, reconstructed by PaleoCAR (the prediction_scaled product)."
+    unit: "°C GDD"
+    category: "Growing Degree Days"
+    data_type: "uint16"
+    nodata: 65535
+    scale: 1.0
+    offset: 0.0
+  gdd_maize_water_year:
+    title: "Water-year (Oct–Sept) Maize Growing Degree Days"
+    description: "Water-year (the previous October through September) growing degree days for maize, reconstructed by PaleoCAR (the prediction_scaled product)."
+    unit: "°C GDD"
+    category: "Growing Degree Days"
+    data_type: "uint16"
+    nodata: 65535
+    scale: 1.0
+    offset: 0.0
+  gdd_wheat_annual:
+    title: "Annual (Jan–Dec) Wheat Growing Degree Days"
+    description: "Calendar-year (January–December) growing degree days for wheat, reconstructed by PaleoCAR (the prediction_scaled product)."
+    unit: "°C GDD"
+    category: "Growing Degree Days"
+    data_type: "uint16"
+    nodata: 65535
+    scale: 1.0
+    offset: 0.0
+  gdd_wheat_may_sept:
+    title: "Summer (May–Sept) Wheat Growing Degree Days"
+    description: "Summer (May–September) growing degree days for wheat, reconstructed by PaleoCAR (the prediction_scaled product)."
+    unit: "°C GDD"
+    category: "Growing Degree Days"
+    data_type: "uint16"
+    nodata: 65535
+    scale: 1.0
+    offset: 0.0
+  gdd_wheat_water_year:
+    title: "Water-year (Oct–Sept) Wheat Growing Degree Days"
+    description: "Water-year (the previous October through September) growing degree days for wheat, reconstructed by PaleoCAR (the prediction_scaled product)."
+    unit: "°C GDD"
+    category: "Growing Degree Days"
+    data_type: "uint16"
+    nodata: 65535
     scale: 1.0
     offset: 0.0
   ppt_annual:
@@ -61,7 +133,25 @@ variables:
     description: "Calendar-year (January–December) total precipitation, reconstructed by PaleoCAR (the prediction_scaled product)."
     unit: "mm"
     category: "Precipitation"
-    data_type: "uint32"
-    nodata: 4294967295
+    data_type: "uint16"
+    nodata: 65535
+    scale: 1.0
+    offset: 0.0
+  ppt_may_sept:
+    title: "Summer (May–Sept) Precipitation"
+    description: "Summer (May–September) total precipitation, reconstructed by PaleoCAR (the prediction_scaled product)."
+    unit: "mm"
+    category: "Precipitation"
+    data_type: "uint16"
+    nodata: 65535
+    scale: 1.0
+    offset: 0.0
+  ppt_water_year:
+    title: "Water-year (Oct–Sept) Precipitation"
+    description: "Water-year (the previous October through September) total precipitation, reconstructed by PaleoCAR (the prediction_scaled product)."
+    unit: "mm"
+    category: "Precipitation"
+    data_type: "uint16"
+    nodata: 65535
     scale: 1.0
     offset: 0.0

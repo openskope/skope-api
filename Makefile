@@ -8,6 +8,7 @@ PULL ?= 1
 PR ?=
 export PR LOCAL_BUILD DEPLOY_IMAGES
 export FULL_VERIFICATION ?= 0
+UPDATE_CONTRACTS ?= 0
 RUNTIME_IMAGES_DIR ?= runtime-images
 RUNTIME_REFRESH ?= 0
 export RUNTIME_IMAGES_DIR RUNTIME_REFRESH
@@ -195,11 +196,15 @@ test-api: prepare ##- Build the development image and run the API tests
 		'black --check --extend-exclude "app/vendor/" app && pytest -o cache_dir=/tmp/pytest-cache -c app/pytest.ini app/tests'
 
 test-ingest: override ENVIRONMENT=dev
-test-ingest: prepare ##- Build and run the ingest tests
+# UPDATE_CONTRACTS=1 rewrites tests/contracts/release-documents from the release tool's output.
+test-ingest: prepare ##- Build and run the ingest tests (UPDATE_CONTRACTS=1 rewrites the shared release documents)
+	@case "$(UPDATE_CONTRACTS)" in 0|1) ;; *) echo 'UPDATE_CONTRACTS must be 0 or 1' >&2; exit 2;; esac
 	@$(TEST_COMPOSE) --profile test config --quiet
 	$(TEST_COMPOSE) --profile test build $(BUILD_FLAGS) ingest-test
 	@trap '$(TEST_COMPOSE) --profile test down --remove-orphans' EXIT INT TERM; \
-		$(TEST_COMPOSE) --profile test run --rm --no-deps ingest-test
+		$(TEST_COMPOSE) --profile test run --rm --no-deps \
+		-v "$(CURDIR)/tests/contracts:/ingest/tests/contracts$(if $(filter 1,$(UPDATE_CONTRACTS)),,:ro)" \
+		-e UPDATE_CONTRACTS=$(UPDATE_CONTRACTS) ingest-test
 
 test-runtime: prepare ##- Build fresh runtime images and exercise real tiles, extraction and analysis
 	python3 -m unittest discover -s tests -p test_runtime_images.py

@@ -9,7 +9,9 @@ from pydantic import ValidationError
 
 from app.registry.models import Overview, Pin, ReleaseManifest
 
-REAL = Path(__file__).parent / "data" / "paleocar_v3-r-2026.10.07"
+REAL = Path(__file__).parent / "data" / "paleocar_v3-r-2026.11.04"
+# Written by the release tool's tests from a synthetic release (tests/contracts/README.md).
+CONTRACT = Path("tests/contracts/release-documents")
 
 
 def _overview_doc():
@@ -19,10 +21,12 @@ def _overview_doc():
 def test_real_overview_parses():
     overview = Overview.model_validate(_overview_doc())
 
-    assert overview.release_id == "paleocar_v3-r-2026.10.07"
+    assert overview.release_id == "paleocar_v3-r-2026.11.04"
     assert overview.dataset.time.origin == "0103"
     assert overview.dataset.time.count == 1898
-    assert sorted(overview.variables) == ["gdd_cotton_annual", "ppt_annual"]
+    assert overview.dataset.time.chunk_size == 250
+    assert len(overview.variables) == 12
+    assert {"ppt_annual", "gdd_maize_may_sept"} <= set(overview.variables)
 
 
 def test_real_manifest_parses():
@@ -31,6 +35,19 @@ def test_real_manifest_parses():
     )
 
     assert manifest.dataset.id == "paleocar_v3"
+    assert any(f.path == "overview.yml" for f in manifest.files)
+
+
+def test_release_tool_documents_parse():
+    """Whatever the release tool writes now, these models read."""
+    overview = Overview.model_validate(
+        yaml.safe_load((CONTRACT / "overview.yml").read_text())
+    )
+    manifest = ReleaseManifest.model_validate_json(
+        (CONTRACT / "release-manifest.json").read_text()
+    )
+
+    assert manifest.release_id == overview.release_id
     assert any(f.path == "overview.yml" for f in manifest.files)
 
 

@@ -20,11 +20,11 @@ from app.registry.metadata import (
 from app.registry.models import Overview, OverviewGrid, Pin
 from app.tests.release_builder import build_release
 
-REAL = Path(__file__).parent / "data" / "paleocar_v3-r-2026.10.07"
+REAL = Path(__file__).parent / "data" / "paleocar_v3-r-2026.11.04"
 
 
 def _real_registry():
-    """The paleocar_v3 prototype's overview, without its COGs."""
+    """The paleocar_v3 release's overview, without its COGs."""
     overview = Overview.model_validate(
         yaml.safe_load((REAL / "overview.yml").read_text())
     )

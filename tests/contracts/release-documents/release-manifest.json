@@ -1,0 +1,127 @@
+{
+  "created": "2026-10-07T12:00:00Z",
+  "dataset": {
+    "id": "synth",
+    "stac_entrypoint": "collection.json",
+    "version": "1"
+  },
+  "declaration": {
+    "digest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "digest_algorithm": "sha256",
+    "identity_profile": "openskope-release-declaration-v1"
+  },
+  "files": [
+    {
+      "checksum": "12200000000000000000000000000000000000000000000000000000000000000000",
+      "path": "cogs/alpha/synth--0100--0101.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 0
+    },
+    {
+      "checksum": "12200000000000000000000000000000000000000000000000000000000000000000",
+      "path": "cogs/alpha/synth--0102--0103.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 0
+    },
+    {
+      "checksum": "12200000000000000000000000000000000000000000000000000000000000000000",
+      "path": "cogs/alpha/synth--0104--0104.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 0
+    },
+    {
+      "checksum": "12200000000000000000000000000000000000000000000000000000000000000000",
+      "path": "cogs/beta/synth--0100--0101.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 0
+    },
+    {
+      "checksum": "12200000000000000000000000000000000000000000000000000000000000000000",
+      "path": "cogs/beta/synth--0102--0103.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 0
+    },
+    {
+      "checksum": "12200000000000000000000000000000000000000000000000000000000000000000",
+      "path": "cogs/beta/synth--0104--0104.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 0
+    },
+    {
+      "checksum": "12200000000000000000000000000000000000000000000000000000000000000000",
+      "path": "collection.json",
+      "roles": [
+        "stac",
+        "collection"
+      ],
+      "size": 0
+    },
+    {
+      "checksum": "12200000000000000000000000000000000000000000000000000000000000000000",
+      "path": "items/synth--0100--0101.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 0
+    },
+    {
+      "checksum": "12200000000000000000000000000000000000000000000000000000000000000000",
+      "path": "items/synth--0102--0103.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 0
+    },
+    {
+      "checksum": "12200000000000000000000000000000000000000000000000000000000000000000",
+      "path": "items/synth--0104--0104.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 0
+    },
+    {
+      "checksum": "12200000000000000000000000000000000000000000000000000000000000000000",
+      "path": "overview.yml",
+      "roles": [
+        "derived"
+      ],
+      "size": 0
+    }
+  ],
+  "producer": {
+    "name": "skope-api dataset pipeline",
+    "revision": "abc123",
+    "version": "0.1.0"
+  },
+  "release_id": "synth-r-2026.10.07",
+  "schema_version": "1.0.0",
+  "sources": [
+    {
+      "checksum": "12200000000000000000000000000000000000000000000000000000000000000000",
+      "href": "sources/alpha.tif",
+      "id": "alpha"
+    },
+    {
+      "checksum": "12200000000000000000000000000000000000000000000000000000000000000000",
+      "href": "sources/beta.tif",
+      "id": "beta"
+    }
+  ],
+  "status": "complete"
+}

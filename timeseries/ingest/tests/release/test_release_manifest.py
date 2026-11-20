@@ -1,6 +1,7 @@
 """The release manifest and verification (AT-015; MAN-001 to MAN-008, REL-001, TXN-011)."""
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -95,6 +96,43 @@ def test_shared_release_identity_contract(release, case):
     if not case["valid"]:
         assert {finding.requirement for finding in report.errors} == {"AUTH-002"}
 
+
+CONTRACT = Path("tests/contracts/release-documents")
+ZERO_DIGEST = "0" * 64
+ZERO_MULTIHASH = "1220" + ZERO_DIGEST
+
+
+def _contract_form(manifest, overview):
+    """The documents without the values that depend on GDAL's bytes or the test's paths."""
+    for entry in manifest["files"]:
+        entry.update(size=0, checksum=ZERO_MULTIHASH)
+    for source in manifest["sources"]:
+        source.update(href=f"sources/{source['id']}.tif", checksum=ZERO_MULTIHASH)
+    manifest["declaration"]["digest"] = ZERO_DIGEST
+    overview["declaration_digest"] = ZERO_DIGEST
+    return manifest, overview
+
+
+def test_release_documents_match_the_shared_contract(release):
+    """The API's models parse these same files, so a format change reaches its tests."""
+    root, _ = release
+    manifest, overview = _contract_form(
+        json.loads((root / "release-manifest.json").read_text()), yaml.safe_load((root / "overview.yml").read_text())
+    )
+    if os.environ.get("UPDATE_CONTRACTS") == "1":
+        CONTRACT.mkdir(exist_ok=True)
+        (CONTRACT / "release-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+        (CONTRACT / "overview.yml").write_text(
+            "# Written by `make test-ingest UPDATE_CONTRACTS=1`; see ../README.md.\n"
+            + yaml.safe_dump(overview, sort_keys=False, allow_unicode=True)
+        )
+        return
+    assert manifest == json.loads((CONTRACT / "release-manifest.json").read_text()), (
+        "the release manifest's format changed; run `make test-ingest UPDATE_CONTRACTS=1` and review the diff"
+    )
+    assert overview == yaml.safe_load((CONTRACT / "overview.yml").read_text()), (
+        "the overview's format changed; run `make test-ingest UPDATE_CONTRACTS=1` and review the diff"
+    )
 
 def test_verification_detects_tampering(release):
     root, _ = release

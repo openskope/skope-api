@@ -1,0 +1,942 @@
+{
+  "created": "2026-11-04T00:00:00Z",
+  "dataset": {
+    "id": "paleocar_v3",
+    "stac_entrypoint": "collection.json",
+    "version": "3"
+  },
+  "declaration": {
+    "digest": "ebb5bb56d7b0b93b162e2d6f0e8bfc311f8023cafd5a8cd37f73309cdd0b6bd4",
+    "digest_algorithm": "sha256",
+    "identity_profile": "openskope-release-declaration-v1"
+  },
+  "files": [
+    {
+      "checksum": "122057bd861da4ef574028287f144b37d80b80573d29d990b1e6b0e4b56f30c01c82",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--0103--0352.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 794506463
+    },
+    {
+      "checksum": "122036f6ddac402aa33842ffe4cb86cef980c77cf00f0f69e23012504c48d467a4b9",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--0353--0602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 246061621
+    },
+    {
+      "checksum": "12208f97b8b7a7bd376c44e43d6780c4c90c11f3091d148edb11c1903bf01f256b49",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--0603--0852.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 794471537
+    },
+    {
+      "checksum": "122008e0067647e02034845052b4fcc96d51f208dc2a616163e37b177d36672835fc",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--0853--1102.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 798584356
+    },
+    {
+      "checksum": "122074e66d6b6a45befcf922dd75bccc40abd264bcbfe41b0494d1c1a8b0cbf829db",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--1103--1352.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 813952094
+    },
+    {
+      "checksum": "1220dd99ee16dd062796fc9de59559d6d44355784b695b7b611e4778c010f61d00ed",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--1353--1602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 829823759
+    },
+    {
+      "checksum": "1220df92d28f16cdf54dba63a8be559c44871d95179fee36daeeaacb49ff1f847b1a",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--1603--1852.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 843611425
+    },
+    {
+      "checksum": "122056c444103e53222a6ef220afdb521504d35c06226737d62e7d8946df06d20020",
+      "path": "cogs/gdd_cotton_annual/paleocar_v3--1853--2000.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 501108775
+    },
+    {
+      "checksum": "1220b301c9f72b4037c82cd1c180809017643ce3b752e444c52fd301f3d677b556b6",
+      "path": "cogs/gdd_cotton_may_sept/paleocar_v3--0103--0352.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 753532519
+    },
+    {
+      "checksum": "122011c1b15450f0e5402986e9c4348f1a76f99852ebc209bbe763c9957101d23640",
+      "path": "cogs/gdd_cotton_may_sept/paleocar_v3--0353--0602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 233572461
+    },
+    {
+      "checksum": "12209870a3ca8882a860fa65cb3409c898d01964201c6e3f59828bbae045f70e9dec",
+      "path": "cogs/gdd_cotton_may_sept/paleocar_v3--0603--0852.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 753463677
+    },
+    {
+      "checksum": "1220b21799e681d6a3d17560cfdca48e59e77ddcfe9481f6b2ecc7c96b6361a0fd84",
+      "path": "cogs/gdd_cotton_may_sept/paleocar_v3--0853--1102.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 757881446
+    },
+    {
+      "checksum": "1220fda44bb1c9b67b7b89d1b04d38cb798568cc9ce31541d92c42c36171bc52303e",
+      "path": "cogs/gdd_cotton_may_sept/paleocar_v3--1103--1352.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 773123946
+    },
+    {
+      "checksum": "1220b90acde3a9b34e1b6a351694cea21ced6859a2b619e907e0fbe249cba616b872",
+      "path": "cogs/gdd_cotton_may_sept/paleocar_v3--1353--1602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 796433975
+    },
+    {
+      "checksum": "1220a62d2c69369c1373439d58c9cbaca21d82123465262b0e780477734e361e7f7b",
+      "path": "cogs/gdd_cotton_may_sept/paleocar_v3--1603--1852.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 821743007
+    },
+    {
+      "checksum": "122042cc9cd3c51a849d0819ea09ef7957cc4f595a30a2cde9ccdcbc047618b78c8a",
+      "path": "cogs/gdd_cotton_may_sept/paleocar_v3--1853--2000.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 485181956
+    },
+    {
+      "checksum": "1220e7dfdcff3a3d7a4af45d1ee08ee05cf6726eac9ec35065e0c84a8a0eef5b07ba",
+      "path": "cogs/gdd_cotton_water_year/paleocar_v3--0103--0352.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 794121360
+    },
+    {
+      "checksum": "12202b25e159818e3acbaf454d4ae3bfe8a4a8887c4a8b5d26a760c7e722702e8b24",
+      "path": "cogs/gdd_cotton_water_year/paleocar_v3--0353--0602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 245914037
+    },
+    {
+      "checksum": "122032d45cc4d14e0ccee283fd8f0b8879ae5c10fda0d4e0ad8c64606fbdc22bce9c",
+      "path": "cogs/gdd_cotton_water_year/paleocar_v3--0603--0852.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 794087935
+    },
+    {
+      "checksum": "122010370610b97a368d9e4ca801d82062c268405c5d7e259ac8f4c2957ff94d5cff",
+      "path": "cogs/gdd_cotton_water_year/paleocar_v3--0853--1102.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 798648150
+    },
+    {
+      "checksum": "1220b5f82fa9ebab03ad790e2f250ff42d25ac2967a1bf1b53e33459913e0ce3ded0",
+      "path": "cogs/gdd_cotton_water_year/paleocar_v3--1103--1352.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 812432265
+    },
+    {
+      "checksum": "12204355f9c307f4b1643e1482857ca883294b24101828548f22843b4e5dcd5a3071",
+      "path": "cogs/gdd_cotton_water_year/paleocar_v3--1353--1602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 829749021
+    },
+    {
+      "checksum": "122076d54f5382fcf57e85bc3645a79897d50edc00715cd6fd4aec1a7ee64a02c4dd",
+      "path": "cogs/gdd_cotton_water_year/paleocar_v3--1603--1852.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 839576914
+    },
+    {
+      "checksum": "1220e8027e14351d766fd89a063efee036236177ff31e51f0934af98fa9fea20491c",
+      "path": "cogs/gdd_cotton_water_year/paleocar_v3--1853--2000.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 496717979
+    },
+    {
+      "checksum": "1220be4a179e4411a12c22618ef5f935c05523095d9d51c1aaeb7df7b47222c5a203",
+      "path": "cogs/gdd_maize_annual/paleocar_v3--0103--0352.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 802369199
+    },
+    {
+      "checksum": "122071124fa10efc73711f7108ad3d32b79b0181900f0ae7263ae5d8a262ac578492",
+      "path": "cogs/gdd_maize_annual/paleocar_v3--0353--0602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 248662593
+    },
+    {
+      "checksum": "122082cfccef009959ebc374ac22bf8ad08738d8a8d0a8e5c44a096fae5836f8a5c6",
+      "path": "cogs/gdd_maize_annual/paleocar_v3--0603--0852.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 802380415
+    },
+    {
+      "checksum": "1220b5bde21ba92f36387ed9b4cfa9cd363509e894dea65fc017710ece0a599a783c",
+      "path": "cogs/gdd_maize_annual/paleocar_v3--0853--1102.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 806406345
+    },
+    {
+      "checksum": "1220bfeaac04c721b31bc1ee8928aefaba031095b2b897b31eea07f1ab054e48c25b",
+      "path": "cogs/gdd_maize_annual/paleocar_v3--1103--1352.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 821084773
+    },
+    {
+      "checksum": "122020ef0f781023159a85fb6285c72479de419693154e59a2ac2329ac83886fe3e5",
+      "path": "cogs/gdd_maize_annual/paleocar_v3--1353--1602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 839557364
+    },
+    {
+      "checksum": "12200093432dd65939103d4e49caaf953e67361c614518394646a1a3a3fe9028a1dc",
+      "path": "cogs/gdd_maize_annual/paleocar_v3--1603--1852.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 858566790
+    },
+    {
+      "checksum": "1220e020a37fc17f0baebc7b96908e454b5241e940ef523d4dc330fed250e33a15cc",
+      "path": "cogs/gdd_maize_annual/paleocar_v3--1853--2000.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 510242347
+    },
+    {
+      "checksum": "12201222c46c348c63eba7264c2e948ed011ada0ce9bbabb411bb2f31245b818001e",
+      "path": "cogs/gdd_maize_may_sept/paleocar_v3--0103--0352.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 735992168
+    },
+    {
+      "checksum": "1220fa14d9f7d9e6916d7d2bcb5cbef4a364a94fd6c52d3656219b99d1b41c1964f5",
+      "path": "cogs/gdd_maize_may_sept/paleocar_v3--0353--0602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 228370694
+    },
+    {
+      "checksum": "1220fdbddb0cf54cf7a0530596f070c2da438f562bf28a7d34828a64eca310f003d1",
+      "path": "cogs/gdd_maize_may_sept/paleocar_v3--0603--0852.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 735941260
+    },
+    {
+      "checksum": "122001387e4fdafa63eab4820f7ff718cb203c6f9f92b3757434f8bc4c549ad5fcdf",
+      "path": "cogs/gdd_maize_may_sept/paleocar_v3--0853--1102.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 743565804
+    },
+    {
+      "checksum": "1220545986f69002e610569590e50dcb046399d9a3ed3410e38a160bff20a9a91d97",
+      "path": "cogs/gdd_maize_may_sept/paleocar_v3--1103--1352.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 762571883
+    },
+    {
+      "checksum": "1220e52faa4463a27f665ceacd5c2b3eec149f04ca4b58789fea7969e0fc5bfd9560",
+      "path": "cogs/gdd_maize_may_sept/paleocar_v3--1353--1602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 784587880
+    },
+    {
+      "checksum": "1220398afef78addca222518816c3f3108508f5e5d941a7267d0b2bd74f7eae3c242",
+      "path": "cogs/gdd_maize_may_sept/paleocar_v3--1603--1852.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 809075508
+    },
+    {
+      "checksum": "122068856f7a0020a425f065ea142950d6b8076023c995060cb3339ab7ef091b6c6e",
+      "path": "cogs/gdd_maize_may_sept/paleocar_v3--1853--2000.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 479315020
+    },
+    {
+      "checksum": "1220f6b9ca5c42e7b787407052ebe84f027b7d09bb671025fe57bc3a4e4e644c7429",
+      "path": "cogs/gdd_maize_water_year/paleocar_v3--0103--0352.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 801538476
+    },
+    {
+      "checksum": "12208c2dd200121d276099e47c0bc8dd56a8edf666c4468c7e0c60b0213e5ddcdfee",
+      "path": "cogs/gdd_maize_water_year/paleocar_v3--0353--0602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 248348674
+    },
+    {
+      "checksum": "122047f306584849728fd2d659f4a4e57658c9e2db6f3bfc4070385cbcf68e263eec",
+      "path": "cogs/gdd_maize_water_year/paleocar_v3--0603--0852.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 801562224
+    },
+    {
+      "checksum": "1220203b80f22b2556cd786a1bff93c7eeb0bc32fb12b8acca5baf77fb32f9cdacb7",
+      "path": "cogs/gdd_maize_water_year/paleocar_v3--0853--1102.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 806121118
+    },
+    {
+      "checksum": "122032c433eed7bb505bef3d8d018452d731d96685f9da2a1124e10b1c75586f7168",
+      "path": "cogs/gdd_maize_water_year/paleocar_v3--1103--1352.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 820052056
+    },
+    {
+      "checksum": "1220b66154c734f1c02eeda3e6003fde5d49b16dcbaab34a31b7bdb08f75fef0efd7",
+      "path": "cogs/gdd_maize_water_year/paleocar_v3--1353--1602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 838804766
+    },
+    {
+      "checksum": "12203fb37928b45bb15af61c1c3b0dcb0ab36e3032ec454fa60d32dfc7ac4270a9f6",
+      "path": "cogs/gdd_maize_water_year/paleocar_v3--1603--1852.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 853412748
+    },
+    {
+      "checksum": "12200837b65a20fafb9b8ed84c662aa687578d7afabeaf6c977d8ee4ef889bd8ab73",
+      "path": "cogs/gdd_maize_water_year/paleocar_v3--1853--2000.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 505153029
+    },
+    {
+      "checksum": "12203979de1e8d26834c9b759761839b2940640b7615c46d3f9a0a5450f7db0ff929",
+      "path": "cogs/gdd_wheat_annual/paleocar_v3--0103--0352.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 824508997
+    },
+    {
+      "checksum": "1220a6b5e2b1311e8f85d37efab620bc64d964ddb4a37205c928e693ccc458588be3",
+      "path": "cogs/gdd_wheat_annual/paleocar_v3--0353--0602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 255512379
+    },
+    {
+      "checksum": "1220b4ed093b33a402ecb2c52973a8207a4f51f0e9ff7a7e94cd570c44ebaeecd713",
+      "path": "cogs/gdd_wheat_annual/paleocar_v3--0603--0852.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 824533030
+    },
+    {
+      "checksum": "12200b1869df9d2cc0f56058ab3bfb46993df5f5db75bf5a62d748f7529442cc6d3b",
+      "path": "cogs/gdd_wheat_annual/paleocar_v3--0853--1102.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 829486293
+    },
+    {
+      "checksum": "12206814805fa6d3647e48c89e59db943beb8182f42c5194ac5464d93a151ea3f722",
+      "path": "cogs/gdd_wheat_annual/paleocar_v3--1103--1352.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 847734637
+    },
+    {
+      "checksum": "12203355f361b3cf608bcec2d91394cc89231885a14589f1d6fd2f59f4dd31134b93",
+      "path": "cogs/gdd_wheat_annual/paleocar_v3--1353--1602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 869952936
+    },
+    {
+      "checksum": "12200571e9cd7d62f363f776f92b60c7be3d4d37e95dc9e97a2047b093192575815f",
+      "path": "cogs/gdd_wheat_annual/paleocar_v3--1603--1852.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 878950987
+    },
+    {
+      "checksum": "122040be47fc73ffa242548215e7d9a869012c1145d373473691bb9e6a1d0f09551f",
+      "path": "cogs/gdd_wheat_annual/paleocar_v3--1853--2000.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 521477706
+    },
+    {
+      "checksum": "122050fc81db61ccd33ec7dff0161efd0ffcd28033917220ae9bf2ef8a6ec6116012",
+      "path": "cogs/gdd_wheat_may_sept/paleocar_v3--0103--0352.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 733976473
+    },
+    {
+      "checksum": "1220f5fb5e0f117c99a7b8f04962104b50449d1530138458ac8dd442ad615b8857fd",
+      "path": "cogs/gdd_wheat_may_sept/paleocar_v3--0353--0602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 227783931
+    },
+    {
+      "checksum": "1220165c803ba5ea69a05332f2736aadb41de42628e341ea351e4127c04f03e13956",
+      "path": "cogs/gdd_wheat_may_sept/paleocar_v3--0603--0852.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 733893876
+    },
+    {
+      "checksum": "1220f24be93ff0f1f12d798879240158e11df347645f5206f063e882070f45f2c567",
+      "path": "cogs/gdd_wheat_may_sept/paleocar_v3--0853--1102.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 743639004
+    },
+    {
+      "checksum": "1220f594782789fad272610e5d2a15c424466fb05132ae6ad8f4d3707f996d7fc363",
+      "path": "cogs/gdd_wheat_may_sept/paleocar_v3--1103--1352.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 763328881
+    },
+    {
+      "checksum": "122092eb404da3c272554b88ce1366412d4cb094d4bda7d3fbe7886d716897b67101",
+      "path": "cogs/gdd_wheat_may_sept/paleocar_v3--1353--1602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 792592520
+    },
+    {
+      "checksum": "1220b96e31505285d657bdab5069f5c632e49bd296055761a8754f5cf95303d1a4fd",
+      "path": "cogs/gdd_wheat_may_sept/paleocar_v3--1603--1852.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 821873859
+    },
+    {
+      "checksum": "12207c23a5e3d8de0f2c2b183539048b026e944eefe74bfdefdf81bc0da3aa60bdfc",
+      "path": "cogs/gdd_wheat_may_sept/paleocar_v3--1853--2000.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 486149427
+    },
+    {
+      "checksum": "1220470c502516ec61ee42391753f54805654c78921810fe3c6c398bafafd0436a29",
+      "path": "cogs/gdd_wheat_water_year/paleocar_v3--0103--0352.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 824248798
+    },
+    {
+      "checksum": "1220560e30216d88f34781058f4290f0a306a6313c9d55dd5736637320be1572805f",
+      "path": "cogs/gdd_wheat_water_year/paleocar_v3--0353--0602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 255401518
+    },
+    {
+      "checksum": "12205419cb620bd9c0f730df996609830738072e445d48d246885351823c506cba78",
+      "path": "cogs/gdd_wheat_water_year/paleocar_v3--0603--0852.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 824265848
+    },
+    {
+      "checksum": "12203204e912c13f05c43f5b059cd90d15912dac52d9bcb15f6bc62c0e4f9518bb07",
+      "path": "cogs/gdd_wheat_water_year/paleocar_v3--0853--1102.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 829759818
+    },
+    {
+      "checksum": "1220e21ee68d2dcf3f28178bf783d7ab977eb3a6e67aad8e067abbaff8bc5a07ecda",
+      "path": "cogs/gdd_wheat_water_year/paleocar_v3--1103--1352.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 846706295
+    },
+    {
+      "checksum": "1220ab04b06b2d88e9598175aa6970e7289044d50d03a2b57cc2440bad00aad1e0c4",
+      "path": "cogs/gdd_wheat_water_year/paleocar_v3--1353--1602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 870027481
+    },
+    {
+      "checksum": "12205cc517c3a62374242e018431a644062434f1b38c6a7958dc0cb34870144fa99c",
+      "path": "cogs/gdd_wheat_water_year/paleocar_v3--1603--1852.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 881804370
+    },
+    {
+      "checksum": "1220adbab496dd54cd507a780c01e526552046a86f8aafab6ddf0bc3b5dc26ae5292",
+      "path": "cogs/gdd_wheat_water_year/paleocar_v3--1853--2000.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 521087769
+    },
+    {
+      "checksum": "12203b63fc59afd7163b2c505c9916a6f190e36dd2d9225e8e6a70b36d603579cc85",
+      "path": "cogs/ppt_annual/paleocar_v3--0103--0352.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 487750479
+    },
+    {
+      "checksum": "1220c2061d990e90739c84f3b73f9d68c41a7a9389280dda98f0a40158eee80ac2e8",
+      "path": "cogs/ppt_annual/paleocar_v3--0353--0602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 152743240
+    },
+    {
+      "checksum": "12202b07f8b6dd72eccad11ab05d6ae6f15dad642b2fb5b398a70959a43812e32387",
+      "path": "cogs/ppt_annual/paleocar_v3--0603--0852.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 487516082
+    },
+    {
+      "checksum": "12208f0919f01dc93bd7e6cdebfee2e30386d18a82440438f607780c736a82c05efb",
+      "path": "cogs/ppt_annual/paleocar_v3--0853--1102.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 494628165
+    },
+    {
+      "checksum": "1220e98b6b091a7bf2c1a385673a1f25076f0d922b34cd26cb38f144340558a5ed05",
+      "path": "cogs/ppt_annual/paleocar_v3--1103--1352.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 525167995
+    },
+    {
+      "checksum": "1220e244d95d490f7f589ca745908b95732fefabe93176a0d784508d1bf6f3daa272",
+      "path": "cogs/ppt_annual/paleocar_v3--1353--1602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 590773325
+    },
+    {
+      "checksum": "1220b18d57e83e84425f1332115ab35b0f2fc64f7eaabf9127cba22130135b6a52e6",
+      "path": "cogs/ppt_annual/paleocar_v3--1603--1852.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 656616210
+    },
+    {
+      "checksum": "12201f60c8e05d06a26091416d7495a6ddb6cf304b99afc502e2bf5e2d78e0f4748c",
+      "path": "cogs/ppt_annual/paleocar_v3--1853--2000.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 392292532
+    },
+    {
+      "checksum": "12202014883c5443a596dae06adeb0973e583e69e9a0f4b9c480171e79682e111612",
+      "path": "cogs/ppt_may_sept/paleocar_v3--0103--0352.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 376112060
+    },
+    {
+      "checksum": "12201560c7a2f478a39e10d55a0b54081f998622c2b239b863545ef5e4235c039e5e",
+      "path": "cogs/ppt_may_sept/paleocar_v3--0353--0602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 118115135
+    },
+    {
+      "checksum": "12209d465c510496d0c9cc5f05f4554e638f4bdd97d37acfb246ca277781ff2bd35c",
+      "path": "cogs/ppt_may_sept/paleocar_v3--0603--0852.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 375559495
+    },
+    {
+      "checksum": "122032d1066b3ef6d8c5d41b8fb23840fef298f9f3153c9c5f60dda1f5b416d20f7f",
+      "path": "cogs/ppt_may_sept/paleocar_v3--0853--1102.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 386940820
+    },
+    {
+      "checksum": "12203d9254b116a12bf92b359cb9e5c5c40e0265fdd48c34f31e62a0c04c87082985",
+      "path": "cogs/ppt_may_sept/paleocar_v3--1103--1352.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 425702428
+    },
+    {
+      "checksum": "1220d7bda2688709bff92b88d067d7891baf2ade2c79d94df9ca83704fdf657f8328",
+      "path": "cogs/ppt_may_sept/paleocar_v3--1353--1602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 506160728
+    },
+    {
+      "checksum": "12206eb20f8a967510795646ee5f2cf709fa0a5a2507c71231a32809c9d2c7e314a0",
+      "path": "cogs/ppt_may_sept/paleocar_v3--1603--1852.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 578510921
+    },
+    {
+      "checksum": "12209af4e4868913292203747b32449e922126b34185c965b7f9ae1f12e2379c0ad4",
+      "path": "cogs/ppt_may_sept/paleocar_v3--1853--2000.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 345139366
+    },
+    {
+      "checksum": "1220a2c105810763ae515ead8135de3b485f67343e5fb4deb19f25f80c14dc7b6b6f",
+      "path": "cogs/ppt_water_year/paleocar_v3--0103--0352.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 486713981
+    },
+    {
+      "checksum": "1220bd7b5baa7b63ea2f9aad4f23b4821610146d6f2d1b05a4ad4275c6f5ace31082",
+      "path": "cogs/ppt_water_year/paleocar_v3--0353--0602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 152402523
+    },
+    {
+      "checksum": "1220efc8bcfb2db9a274072e6da4cb514d01bca533dafe779b59844f2e753fa44c08",
+      "path": "cogs/ppt_water_year/paleocar_v3--0603--0852.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 486497069
+    },
+    {
+      "checksum": "12205846e25cbb550e095144476f81d73179cbd54b2d8ab88eb45a5ce16e11fe4984",
+      "path": "cogs/ppt_water_year/paleocar_v3--0853--1102.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 495192076
+    },
+    {
+      "checksum": "12208e72f7c679c398cf5331fe607df89d7148354af65e0577855e79c6d2558f745e",
+      "path": "cogs/ppt_water_year/paleocar_v3--1103--1352.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 535713328
+    },
+    {
+      "checksum": "12203a0df062cab23c2fcf59122c6ab9af02e4beac4f7fe542e8c966875ff60945d2",
+      "path": "cogs/ppt_water_year/paleocar_v3--1353--1602.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 586450611
+    },
+    {
+      "checksum": "1220695de0876447efb58c083f6671f51f71eb134b81c3985a19d016767b1d97429f",
+      "path": "cogs/ppt_water_year/paleocar_v3--1603--1852.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 621700045
+    },
+    {
+      "checksum": "12204de018f8a9ed6248361c9aa81ec8e29a0cd8dfc66431457afb37d72fb7bb5bc1",
+      "path": "cogs/ppt_water_year/paleocar_v3--1853--2000.tif",
+      "roles": [
+        "data"
+      ],
+      "size": 369775871
+    },
+    {
+      "checksum": "1220eb32ea58da2c17fd989d17da0fe080859afe08465df5ca5cb2c7530e2c1d87f8",
+      "path": "collection.json",
+      "roles": [
+        "stac",
+        "collection"
+      ],
+      "size": 46940
+    },
+    {
+      "checksum": "122073df9a7f3264c9e2608c3ef055bed97ba12ffe190d89bd587f42adff744cbdb7",
+      "path": "items/paleocar_v3--0103--0352.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 780104
+    },
+    {
+      "checksum": "12209d4aa461b3ef0bf09cc6e0d869ef176c19cff9be7d7ff7fa655f0c8b76529314",
+      "path": "items/paleocar_v3--0353--0602.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 494338
+    },
+    {
+      "checksum": "1220bb01829acbe5f83eb00615ce64dabc374a68d99600c6a227878adbb1697483fc",
+      "path": "items/paleocar_v3--0603--0852.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 780111
+    },
+    {
+      "checksum": "1220792558339bbf1a0861c59059c34af7d9aaad37e00048ea4a1c71df89ee090d79",
+      "path": "items/paleocar_v3--0853--1102.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 779957
+    },
+    {
+      "checksum": "1220196eb659da78f53edcc838eb4ec04d29a84bb2809aec717237a88816c3c5fb84",
+      "path": "items/paleocar_v3--1103--1352.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 779579
+    },
+    {
+      "checksum": "1220fbb9759e76fbee4eadd39eb18ffeaa4a02e87e2e3e860e4cf8e44e65adc4e87a",
+      "path": "items/paleocar_v3--1353--1602.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 779456
+    },
+    {
+      "checksum": "12205631d223bb2a3134aacfdac1e6a2abaec9021f77a3df8450a203af152f876b2f",
+      "path": "items/paleocar_v3--1603--1852.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 779482
+    },
+    {
+      "checksum": "122063662368a41e43acc0092c0d49d0e563d05576c172e6b8ed23e73985c757975a",
+      "path": "items/paleocar_v3--1853--2000.json",
+      "roles": [
+        "stac",
+        "item"
+      ],
+      "size": 466824
+    },
+    {
+      "checksum": "1220a819bd35252136db843e97fea9242ab1f34ee712ba5cdc733d507a2287b6b5f3",
+      "path": "overview.yml",
+      "roles": [
+        "derived"
+      ],
+      "size": 7938
+    }
+  ],
+  "producer": {
+    "name": "skope-api dataset pipeline",
+    "revision": "ac0d27acc1d0c481762b3b4df4bd59241111a28b",
+    "version": "0.1.0"
+  },
+  "release_id": "paleocar_v3-r-2026.11.04",
+  "schema_version": "1.0.0",
+  "sources": [
+    {
+      "checksum": "12204386dbde76acd840a144bc4974fd754e27e872d222f7ca8a342bb86760473c99",
+      "href": "s3://skope/paleocar_v3/gdd_cotton_annual/prediction_scaled.tif",
+      "id": "gdd_cotton_annual"
+    },
+    {
+      "checksum": "1220c907706877c1cbd4c8c01aac60db2a444dd72ffdaa87474268d6310f7cb9bc80",
+      "href": "s3://skope/paleocar_v3/gdd_cotton_maysept/prediction_scaled.tif",
+      "id": "gdd_cotton_may_sept"
+    },
+    {
+      "checksum": "1220b3d052d51aebdd8e002b28c77307c8065d4a405cc0a325a98268a55204f6aa31",
+      "href": "s3://skope/paleocar_v3/gdd_cotton_wateryear/prediction_scaled.tif",
+      "id": "gdd_cotton_water_year"
+    },
+    {
+      "checksum": "12200fb51265a30f256df544623c6659daab4ff84d077e98283a4d42dfbbe24961fc",
+      "href": "s3://skope/paleocar_v3/gdd_maize_annual/prediction_scaled.tif",
+      "id": "gdd_maize_annual"
+    },
+    {
+      "checksum": "12204b274b4a1a7c076dee16070f6297e054a74b27896d196edc2e3a5b63fab795ea",
+      "href": "s3://skope/paleocar_v3/gdd_maize_maysept/prediction_scaled.tif",
+      "id": "gdd_maize_may_sept"
+    },
+    {
+      "checksum": "1220d243736e136aafa6cdb5d2dd87bfe4003394d200285b3949cf8bf697596165b9",
+      "href": "s3://skope/paleocar_v3/gdd_maize_wateryear/prediction_scaled.tif",
+      "id": "gdd_maize_water_year"
+    },
+    {
+      "checksum": "122077c53d7d6b99e8947f68d4a297d01adec6108b59054dc5f0ad58ec0d517329b6",
+      "href": "s3://skope/paleocar_v3/gdd_wheat_annual/prediction_scaled.tif",
+      "id": "gdd_wheat_annual"
+    },
+    {
+      "checksum": "1220897c2fd817c5dbfa0ea5828896a3308f049bb587e1e2ff253090ba474fefccc3",
+      "href": "s3://skope/paleocar_v3/gdd_wheat_maysept/prediction_scaled.tif",
+      "id": "gdd_wheat_may_sept"
+    },
+    {
+      "checksum": "12205e0f5e2fc9b02b2b654aaf6b8a9f985d614aa43985a9265b2a62172d0260fa12",
+      "href": "s3://skope/paleocar_v3/gdd_wheat_wateryear/prediction_scaled.tif",
+      "id": "gdd_wheat_water_year"
+    },
+    {
+      "checksum": "12209cec240a41ec6683488b51bd0c11081776d476d1de763277608f052819fc6fb5",
+      "href": "s3://skope/paleocar_v3/ppt_annual/prediction_scaled.tif",
+      "id": "ppt_annual"
+    },
+    {
+      "checksum": "12200cd487fcc264ff9b3e00fe496f1b37f98579f5571ee9268e2d673e6a290792f6",
+      "href": "s3://skope/paleocar_v3/ppt_maysept/prediction_scaled.tif",
+      "id": "ppt_may_sept"
+    },
+    {
+      "checksum": "12202de0d24e3e1d50c4cbc1cb635b428cf58b31594a507aea5c3ccb0ce57dfacca1",
+      "href": "s3://skope/paleocar_v3/ppt_wateryear/prediction_scaled.tif",
+      "id": "ppt_water_year"
+    }
+  ],
+  "status": "complete"
+}
