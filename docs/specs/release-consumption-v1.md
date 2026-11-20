@@ -384,8 +384,7 @@ PROTO-006, and PROTO-003 replace those behaviors.
 - **CUT-002:** The contract tests for `/metadata`, static and temporal tiles,
   extraction, summary statistics, grid-based request limits, display ranges,
   schema-version mismatch, environment pins, paired deployment, and paired
-  rollback MUST pass before `timeseries/metadata.yml` is deleted or the breaking
-  production cutover is deployed.
+  rollback MUST pass before the breaking production cutover is deployed.
 
 - **CUT-003:** The API and SKOPE UI MUST use the canonical PaleoCAR v3
   identifier `gdd_maize_may_sept`. The legacy `gdd_may_sept` alias MUST NOT be
@@ -393,9 +392,8 @@ PROTO-006, and PROTO-003 replace those behaviors.
 
 The cutover removes, from both the API and SKOPE UI: the legacy `wmsLayer`,
 `timeseriesServiceUri`, `min`, and `max` fields; the `gdd_may_sept` alias; the
-SRTM `2009` key; `COLOR_MAX_PCT`; the API's runtime colour fetch from TiTiler;
-and the checked-in `deploy/metadata/{dev,staging,prod}.yml` registries, whose
-content moves to release overviews, the display files, and the pin files.
+SRTM `2009` key; `COLOR_MAX_PCT`; and the API's runtime colour fetch from
+TiTiler.
 
 ## 10. Open questions
 

@@ -1,5 +1,5 @@
 # PROVISIONAL (2026-11-13). Written from the legacy registry
-# (deploy/metadata/prod.yml) and NOAA NCEI study 19783 before a science review
+# (deploy/metadata/prod.yml, now removed) and NOAA NCEI study 19783 before a science review
 # (spec §20.1). The license, providers, temporal semantics, and units are
 # provisional, as for paleocar_v3. The variable identifiers are the legacy
 # ones, kept unchanged (Section 8.2).

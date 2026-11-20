@@ -499,8 +499,8 @@ reader that content in one flat file without walking the catalog.
 
 ## 8. Current metadata migration
 
-The following mapping covers every dataset and variable field currently present
-in `timeseries/metadata.yml`. The migration compiler consumes these fields as
+The following mapping covers every dataset and variable field of the legacy
+registry, `timeseries/metadata.yml` (now removed). The migration compiler consumes these fields as
 review evidence; the new `/metadata` serializer does not reproduce the old
 shape.
 
