@@ -45,10 +45,14 @@ class FileEdit:
     after: str
 
     def diff(self) -> str:
-        return "".join(difflib.unified_diff(
-            self.before.splitlines(keepends=True), self.after.splitlines(keepends=True),
-            f"a/{self.label}", f"b/{self.label}",
-        ))
+        return "".join(
+            difflib.unified_diff(
+                self.before.splitlines(keepends=True),
+                self.after.splitlines(keepends=True),
+                f"a/{self.label}",
+                f"b/{self.label}",
+            )
+        )
 
 
 def manifest_path(path: Path) -> Path:
@@ -56,15 +60,21 @@ def manifest_path(path: Path) -> Path:
     return path / MANIFEST if path.is_dir() else path
 
 
-def plan_pin(manifest_file: Path, *, datasets: Path, pins: Path, environment: str, report: Report) -> list[FileEdit] | None:
+def plan_pin(
+    manifest_file: Path, *, datasets: Path, pins: Path, environment: str, report: Report
+) -> list[FileEdit] | None:
     """The edits that pin this release in `environment`, or None if any check fails."""
-    manifest = load_document(ReleaseManifest, manifest_file, requirement="MAN-001", report=report)
+    manifest = load_document(
+        ReleaseManifest, manifest_file, requirement="MAN-001", report=report
+    )
     if manifest is None:
         return None
     dataset = manifest.dataset.id
     authoring = datasets / dataset
     if not authoring.is_dir():
-        report.add("META-001", f"no authoring directory for {dataset}", path=str(authoring))
+        report.add(
+            "META-001", f"no authoring directory for {dataset}", path=str(authoring)
+        )
         return None
     pin = {
         "dataset": dataset,
@@ -73,9 +83,21 @@ def plan_pin(manifest_file: Path, *, datasets: Path, pins: Path, environment: st
         "manifest_sha256": hashlib.sha256(manifest_file.read_bytes()).hexdigest(),
     }
     edits = [
-        _ledger_edit(authoring / "releases.yml", f"datasets/{dataset}/releases.yml", pin, report),
-        _pin_edit(pins / f"{environment}.yml", f"deploy/releases/{environment}.yml", pin, report),
-        _checksum_edit(authoring / "source-manifest.yml", f"datasets/{dataset}/source-manifest.yml", manifest, report),
+        _ledger_edit(
+            authoring / "releases.yml", f"datasets/{dataset}/releases.yml", pin, report
+        ),
+        _pin_edit(
+            pins / f"{environment}.yml",
+            f"deploy/releases/{environment}.yml",
+            pin,
+            report,
+        ),
+        _checksum_edit(
+            authoring / "source-manifest.yml",
+            f"datasets/{dataset}/source-manifest.yml",
+            manifest,
+            report,
+        ),
     ]
     if not report.ok:
         return None
@@ -89,17 +111,32 @@ def write_pin(edits: list[FileEdit]) -> None:
 
 def _ledger_edit(path: Path, label: str, pin: dict, report: Report) -> FileEdit | None:
     ledger = load_ledger(path, report)
-    entry = {"release_id": pin["release_id"], "declaration_digest": pin["declaration_digest"]}
+    entry = {
+        "release_id": pin["release_id"],
+        "declaration_digest": pin["declaration_digest"],
+    }
     for existing in ledger.releases:
         if existing.release_id != pin["release_id"]:
             continue
         if existing.declaration_digest != pin["declaration_digest"]:
-            report.add("REL-006", f"the ledger records {pin['release_id']} with digest {existing.declaration_digest}", path=label)
+            report.add(
+                "REL-006",
+                f"the ledger records {pin['release_id']} with digest {existing.declaration_digest}",
+                path=label,
+            )
         elif existing.withdrawn:
-            report.add("REL-006", f"{pin['release_id']} is withdrawn ({existing.withdrawn}) and is never pinned", path=label)
+            report.add(
+                "REL-006",
+                f"{pin['release_id']} is withdrawn ({existing.withdrawn}) and is never pinned",
+                path=label,
+            )
         return None
     before = path.read_text("utf-8") if path.exists() else ""
-    after = _with_newline(before) if before else LEDGER_HEADER.format(dataset=pin["dataset"])
+    after = (
+        _with_newline(before)
+        if before
+        else LEDGER_HEADER.format(dataset=pin["dataset"])
+    )
     after += f'  - release_id: "{entry["release_id"]}"\n    declaration_digest: "{entry["declaration_digest"]}"\n'
     expected = (_load(before) or {}).get("releases") or []
     _check(after, lambda doc: doc.get("releases") == [*expected, entry], label, report)
@@ -116,7 +153,9 @@ def _pin_edit(path: Path, label: str, pin: dict, report: Report) -> FileEdit | N
     if pin in entries:
         return None
     lines = _with_newline(before).splitlines(keepends=True)
-    start = _find(lines, rf"(\s*)- dataset:\s*[\"']?{re.escape(pin['dataset'])}[\"']?\s*(#.*)?")
+    start = _find(
+        lines, rf"(\s*)- dataset:\s*[\"']?{re.escape(pin['dataset'])}[\"']?\s*(#.*)?"
+    )
     if start is None:
         # A dataset not pinned yet goes at the end of the list.
         at = end = len(lines)
@@ -134,12 +173,19 @@ def _pin_edit(path: Path, label: str, pin: dict, report: Report) -> FileEdit | N
     ]
     after = "".join(lines[:at] + block + lines[end:])
     rest = {k: v for k, v in doc.items() if k != "releases"}
-    _check(after, lambda new: new.get("releases") == expected and {k: v for k, v in new.items() if k != "releases"} == rest,
-           label, report)
+    _check(
+        after,
+        lambda new: new.get("releases") == expected
+        and {k: v for k, v in new.items() if k != "releases"} == rest,
+        label,
+        report,
+    )
     return FileEdit(path, label, before, after)
 
 
-def _checksum_edit(path: Path, label: str, manifest: ReleaseManifest, report: Report) -> FileEdit | None:
+def _checksum_edit(
+    path: Path, label: str, manifest: ReleaseManifest, report: Report
+) -> FileEdit | None:
     if not path.is_file():
         report.add("META-004", "source manifest not found", path=label)
         return None
@@ -148,27 +194,58 @@ def _checksum_edit(path: Path, label: str, manifest: ReleaseManifest, report: Re
     measured = {source.id: source for source in manifest.sources}
     variables = doc.get("variables") or []
     if sorted(v.get("id") for v in variables) != sorted(measured):
-        report.add("META-004", "the source manifest's variables differ from the release's sources; "
-                   "it has changed since this release was built", path=label)
+        report.add(
+            "META-004",
+            "the source manifest's variables differ from the release's sources; "
+            "it has changed since this release was built",
+            path=label,
+        )
         return None
     lines = before.splitlines(keepends=True)
     expected = yaml.safe_load(before)
     for variable, wanted in zip(variables, expected["variables"]):
-        vid, source, release_source = variable["id"], variable["source"], measured[variable["id"]]
+        vid, source, release_source = (
+            variable["id"],
+            variable["source"],
+            measured[variable["id"]],
+        )
         ctx = {"path": label, "variable": vid}
         prepared = source.get("prepare")
         if (prepared is None) != (release_source.prepare is None):
-            report.add("META-004", "the source manifest and the release disagree on whether this source is prepared", **ctx)
+            report.add(
+                "META-004",
+                "the source manifest and the release disagree on whether this source is prepared",
+                **ctx,
+            )
             continue
         # A prepared source's inputs first: their lines come after the `source:` line.
         for i, item in enumerate((prepared or {}).get("inputs") or []):
             checksum = release_source.prepare.inputs[i].checksum
-            if _declare(lines, vid, item.get("checksum"), checksum, r"(\s*)- uri:.*", nth=i, child_indent="  ",
-                        what=f"input {i + 1}", report=report, ctx=ctx):
+            if _declare(
+                lines,
+                vid,
+                item.get("checksum"),
+                checksum,
+                r"(\s*)- uri:.*",
+                nth=i,
+                child_indent="  ",
+                what=f"input {i + 1}",
+                report=report,
+                ctx=ctx,
+            ):
                 wanted["source"]["prepare"]["inputs"][i]["checksum"] = checksum
         anchor = r"(\s*)uri:.*" if prepared is None else r"(\s*)source:\s*(#.*)?"
-        if _declare(lines, vid, source.get("checksum"), release_source.checksum, anchor,
-                    child_indent=None if prepared is None else "  ", what="source", report=report, ctx=ctx):
+        if _declare(
+            lines,
+            vid,
+            source.get("checksum"),
+            release_source.checksum,
+            anchor,
+            child_indent=None if prepared is None else "  ",
+            what="source",
+            report=report,
+            ctx=ctx,
+        ):
             wanted["source"]["checksum"] = release_source.checksum
     after = "".join(lines)
     if after == before:
@@ -177,8 +254,19 @@ def _checksum_edit(path: Path, label: str, manifest: ReleaseManifest, report: Re
     return FileEdit(path, label, before, after)
 
 
-def _declare(lines: list[str], variable_id: str, declared: str | None, checksum: str, anchor: str, *,
-             nth: int = 0, child_indent: str | None, what: str, report: Report, ctx) -> bool:
+def _declare(
+    lines: list[str],
+    variable_id: str,
+    declared: str | None,
+    checksum: str,
+    anchor: str,
+    *,
+    nth: int = 0,
+    child_indent: str | None,
+    what: str,
+    report: Report,
+    ctx,
+) -> bool:
     """Insert `checksum:` after the variable's `nth` line matching `anchor`; True when inserted.
 
     The new line takes the anchor's indent, plus `child_indent` when it is a
@@ -187,7 +275,11 @@ def _declare(lines: list[str], variable_id: str, declared: str | None, checksum:
     """
     if declared is not None:
         if declared != checksum:
-            report.add("META-004", f"declared {what} checksum {declared} differs from the measured {checksum}", **ctx)
+            report.add(
+                "META-004",
+                f"declared {what} checksum {declared} differs from the measured {checksum}",
+                **ctx,
+            )
         return False
     start = _find(lines, rf"(\s*)- id:\s*[\"']?{re.escape(variable_id)}[\"']?\s*(#.*)?")
     if start is not None:
@@ -198,10 +290,15 @@ def _declare(lines: list[str], variable_id: str, declared: str | None, checksum:
             if match is None:
                 continue
             if seen == nth:
-                lines.insert(i + 1, f'{match.group(1)}{child_indent or ""}checksum: "{checksum}"\n')
+                lines.insert(
+                    i + 1,
+                    f'{match.group(1)}{child_indent or ""}checksum: "{checksum}"\n',
+                )
                 return True
             seen += 1
-    report.add("META-004", f"cannot find where the {what} checksum goes; add it by hand", **ctx)
+    report.add(
+        "META-004", f"cannot find where the {what} checksum goes; add it by hand", **ctx
+    )
     return False
 
 
@@ -246,4 +343,8 @@ def _check(after: str, holds, label: str, report: Report) -> None:
     except yaml.YAMLError:
         ok = False
     if not ok:
-        report.add("PIN-001", "could not edit this file safely; make the change by hand", path=label)
+        report.add(
+            "PIN-001",
+            "could not edit this file safely; make the change by hand",
+            path=label,
+        )

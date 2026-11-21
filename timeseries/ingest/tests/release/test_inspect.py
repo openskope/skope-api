@@ -23,7 +23,13 @@ from stage_helpers import plan_for
 @pytest.fixture
 def staged(temporal_dataset, tmp_path):
     report = Report()
-    plan = preflight_dataset(DatasetFiles(temporal_dataset()), release_id="synth-r-2026.10.07", mirror=None, producer=Producer("p", "0", "abc"), report=report)
+    plan = preflight_dataset(
+        DatasetFiles(temporal_dataset()),
+        release_id="synth-r-2026.10.07",
+        mirror=None,
+        producer=Producer("p", "0", "abc"),
+        report=report,
+    )
     staging = tmp_path / "staging"
     write_cogs(plan, staging, tmp_path / "scratch")
     return plan, staging
@@ -35,7 +41,9 @@ def test_observation_of_valid_cogs(staged):
     obs = observe(plan, staging, report)
     assert obs is not None, report.to_text()
     assert [a.path for a in obs.assets][:3] == [
-        "cogs/alpha/synth--0100--0101.tif", "cogs/alpha/synth--0102--0103.tif", "cogs/alpha/synth--0104--0104.tif",
+        "cogs/alpha/synth--0100--0101.tif",
+        "cogs/alpha/synth--0102--0103.tif",
+        "cogs/alpha/synth--0104--0104.tif",
     ]
     asset = obs.asset("alpha", 1)
     assert [b.name for b in asset.bands] == ["0102", "0103"]
@@ -54,17 +62,26 @@ def test_statistics_match_the_pixels(staged, tmp_path):
         assert (band.minimum, band.maximum) == (values.min(), values.max())
         assert band.mean == pytest.approx(values.mean(), rel=1e-10)
         assert band.stddev == pytest.approx(values.std(), rel=1e-10)
-        assert band.valid_percent == pytest.approx(100 * values.size / (30 * 40), abs=0.005)
+        assert band.valid_percent == pytest.approx(
+            100 * values.size / (30 * 40), abs=0.005
+        )
 
 
 def test_float_statistics_match_in_the_band_type(temporal_dataset, tmp_path):
     """COG-004: a float32 band's embedded extremes, written as text, match its pixels."""
     floats = {"dtype": gdal.GDT_Float32, "nodata": FLOAT32_NODATA}
-    directory = temporal_dataset(source_kwargs={"alpha": floats, "beta": floats},
-                                 manifest={"data_type": "float32", "nodata": FLOAT32_NODATA, "predictor": 3})
+    directory = temporal_dataset(
+        source_kwargs={"alpha": floats, "beta": floats},
+        manifest={"data_type": "float32", "nodata": FLOAT32_NODATA, "predictor": 3},
+    )
     report = Report()
-    plan = preflight_dataset(DatasetFiles(directory), release_id="synth-r-2026.10.07", mirror=None,
-                             producer=Producer("p", "0", "abc"), report=report)
+    plan = preflight_dataset(
+        DatasetFiles(directory),
+        release_id="synth-r-2026.10.07",
+        mirror=None,
+        producer=Producer("p", "0", "abc"),
+        report=report,
+    )
     assert plan is not None, report.to_text()
     staging = tmp_path / "staging"
     write_cogs(plan, staging, tmp_path / "scratch")
@@ -76,10 +93,27 @@ def _staged_with(temporal_dataset, tmp_path, name, interleave):
     """A multi-block staged release in the given interleave."""
     report = Report()
     size = {"width": 300, "height": 200}
-    release = {"created": CREATED, "chunk_size": 2,
-               "cog": {"blocksize": 128, "interleave": interleave, "compress": "ZSTD", "level": 9, "bigtiff": "IF_SAFER"}}
-    directory = temporal_dataset(source_kwargs={"alpha": size, "beta": size}, manifest={"release": release})
-    plan = preflight_dataset(DatasetFiles(directory), release_id="synth-r-2026.10.07", mirror=None, producer=Producer("p", "0", "abc"), report=report)
+    release = {
+        "created": CREATED,
+        "chunk_size": 2,
+        "cog": {
+            "blocksize": 128,
+            "interleave": interleave,
+            "compress": "ZSTD",
+            "level": 9,
+            "bigtiff": "IF_SAFER",
+        },
+    }
+    directory = temporal_dataset(
+        source_kwargs={"alpha": size, "beta": size}, manifest={"release": release}
+    )
+    plan = preflight_dataset(
+        DatasetFiles(directory),
+        release_id="synth-r-2026.10.07",
+        mirror=None,
+        producer=Producer("p", "0", "abc"),
+        report=report,
+    )
     assert plan is not None, report.to_text()
     staging = tmp_path / name
     write_cogs(plan, staging, tmp_path / f"scratch-{name}")
@@ -87,13 +121,24 @@ def _staged_with(temporal_dataset, tmp_path, name, interleave):
 
 
 @pytest.mark.parametrize("interleave", ["BAND", "TILE"])
-def test_inspects_band_and_tile_interleaved_cogs(temporal_dataset, tmp_path, interleave):
+def test_inspects_band_and_tile_interleaved_cogs(
+    temporal_dataset, tmp_path, interleave
+):
     """Inspection reads either layout."""
-    plan, staging = _staged_with(temporal_dataset, tmp_path, interleave.lower(), interleave)
+    plan, staging = _staged_with(
+        temporal_dataset, tmp_path, interleave.lower(), interleave
+    )
     rel = plan.layout.cog_path("alpha", 0)
     report = Report()
-    asset = inspect_asset(staging / rel, rel, plan=plan, variable=plan.variables[0], chunk=0,
-                          expected_names=list(plan.layout.chunk_keys(0)), report=report)
+    asset = inspect_asset(
+        staging / rel,
+        rel,
+        plan=plan,
+        variable=plan.variables[0],
+        chunk=0,
+        expected_names=list(plan.layout.chunk_keys(0)),
+        report=report,
+    )
     assert asset is not None, report.to_text()
     assert asset.interleave == interleave and asset.blocksize == 128
     assert asset.checksum == gdalio.sha256_multihash(staging / rel)
@@ -101,8 +146,15 @@ def test_inspects_band_and_tile_interleaved_cogs(temporal_dataset, tmp_path, int
 
 def reinspect(plan, staging, rel):
     report = Report()
-    inspect_asset(staging / rel, rel, plan=plan, variable=plan.variables[0], chunk=0,
-                  expected_names=["0100", "0101"], report=report)
+    inspect_asset(
+        staging / rel,
+        rel,
+        plan=plan,
+        variable=plan.variables[0],
+        chunk=0,
+        expected_names=["0100", "0101"],
+        report=report,
+    )
     return {f.requirement for f in report.errors}
 
 
@@ -110,7 +162,17 @@ def test_missing_statistics_are_detected(staged):
     plan, staging = staged
     rel = "cogs/alpha/synth--0100--0101.tif"
     path = staging / rel
-    gdal.Translate(str(path) + ".tmp.tif", str(path), format="COG", creationOptions=["STATISTICS=NO", "COMPRESS=ZSTD", "BLOCKSIZE=256", "INTERLEAVE=BAND"])
+    gdal.Translate(
+        str(path) + ".tmp.tif",
+        str(path),
+        format="COG",
+        creationOptions=[
+            "STATISTICS=NO",
+            "COMPRESS=ZSTD",
+            "BLOCKSIZE=256",
+            "INTERLEAVE=BAND",
+        ],
+    )
     copy = gdal.Open(str(path) + ".tmp.tif")
     has_stats = "STATISTICS_MEAN" in copy.GetRasterBand(1).GetMetadata()
     copy = None
@@ -124,8 +186,15 @@ def test_wrong_band_description_is_detected(staged):
     plan, staging = staged
     rel = "cogs/alpha/synth--0100--0101.tif"
     report = Report()
-    inspect_asset(staging / rel, rel, plan=plan, variable=plan.variables[0], chunk=0,
-                  expected_names=["0100", "0102"], report=report)
+    inspect_asset(
+        staging / rel,
+        rel,
+        plan=plan,
+        variable=plan.variables[0],
+        chunk=0,
+        expected_names=["0100", "0102"],
+        report=report,
+    )
     assert "COG-006" in {f.requirement for f in report.errors}
 
 
@@ -140,7 +209,12 @@ def test_non_cog_is_rejected(staged):
     plan, staging = staged
     rel = "cogs/alpha/synth--0100--0101.tif"
     path = staging / rel
-    gdal.Translate(str(path) + ".gtiff", str(path), format="GTiff", creationOptions=["TILED=NO", "COMPRESS=NONE"])
+    gdal.Translate(
+        str(path) + ".gtiff",
+        str(path),
+        format="GTiff",
+        creationOptions=["TILED=NO", "COMPRESS=NONE"],
+    )
     (staging / (rel + ".gtiff")).replace(path)
     assert {"COG-001", "COG-003"} & reinspect(plan, staging, rel)
 
@@ -152,24 +226,37 @@ def test_non_cog_is_rejected(staged):
 def gap_plan(temporal_dataset):
     sources = {"alpha": {"empty": ["0101"]}, "beta": {"empty": ["0101"]}}
     gap = {"first": "0101", "last": "0101", "reason": "No reconstruction."}
-    return plan_for(temporal_dataset(source_kwargs=sources, curated={"empty_timesteps": [gap]}))
+    return plan_for(
+        temporal_dataset(source_kwargs=sources, curated={"empty_timesteps": [gap]})
+    )
 
 
 def test_declared_empty_bands_round_trip(gap_plan, tmp_path, capfd):
     staging = tmp_path / "staging"
     write_cogs(gap_plan, staging, tmp_path / "scratch")
-    assert "no valid pixels" not in capfd.readouterr().err  # a declared empty band is not an error
+    assert (
+        "no valid pixels" not in capfd.readouterr().err
+    )  # a declared empty band is not an error
 
     report = Report()
     obs = observe(gap_plan, staging, report)
     assert obs is not None, report.to_text()
     full, empty = obs.asset("alpha", 0).bands
-    assert set(full.statistics) == {"minimum", "maximum", "mean", "stddev", "valid_percent"}
+    assert set(full.statistics) == {
+        "minimum",
+        "maximum",
+        "mean",
+        "stddev",
+        "valid_percent",
+    }
     assert (empty.name, empty.statistics) == ("0101", {"valid_percent": 0.0})
 
     write_stac(obs, staging)
     item = json.loads((staging / "items" / "synth--0100--0101.json").read_text())
-    assert item["assets"]["alpha"]["bands"][1] == {"name": "0101", "statistics": {"valid_percent": 0.0}}
+    assert item["assets"]["alpha"]["bands"][1] == {
+        "name": "0101",
+        "statistics": {"valid_percent": 0.0},
+    }
     check_stac_against_bytes(obs, staging, report)
     assert report.ok, report.to_text()
 
@@ -178,7 +265,9 @@ def test_an_undeclared_empty_band_is_obs_007(gap_plan, tmp_path):
     staging = tmp_path / "staging"
     write_cogs(gap_plan, staging, tmp_path / "scratch")
     undeclared = dataclasses.replace(gap_plan, empty_timesteps=frozenset())
-    assert reinspect(undeclared, staging, "cogs/alpha/synth--0100--0101.tif") == {"OBS-007"}
+    assert reinspect(undeclared, staging, "cogs/alpha/synth--0100--0101.tif") == {
+        "OBS-007"
+    }
 
 
 def test_a_scratch_that_cannot_be_read_fails_the_conversion(tmp_path):

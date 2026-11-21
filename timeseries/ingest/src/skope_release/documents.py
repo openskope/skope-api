@@ -32,12 +32,18 @@ class _StrictLoader(yaml.SafeLoader):
 
 
 _StrictLoader.yaml_implicit_resolvers = {
-    key: [(tag, regexp) for tag, regexp in resolvers if tag != "tag:yaml.org,2002:timestamp"]
+    key: [
+        (tag, regexp)
+        for tag, regexp in resolvers
+        if tag != "tag:yaml.org,2002:timestamp"
+    ]
     for key, resolvers in yaml.SafeLoader.yaml_implicit_resolvers.items()
 }
 
 
-def _construct_mapping(loader: yaml.SafeLoader, node: yaml.MappingNode, deep: bool = False) -> dict:
+def _construct_mapping(
+    loader: yaml.SafeLoader, node: yaml.MappingNode, deep: bool = False
+) -> dict:
     mapping = {}
     for key_node, value_node in node.value:
         key = loader.construct_object(key_node, deep=deep)
@@ -49,37 +55,61 @@ def _construct_mapping(loader: yaml.SafeLoader, node: yaml.MappingNode, deep: bo
     return mapping
 
 
-_StrictLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _construct_mapping)
+_StrictLoader.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _construct_mapping
+)
 
 
 def load_yaml(path: Path) -> Any:
     with path.open(encoding="utf-8") as handle:
-        return yaml.load(handle, Loader=_StrictLoader)  # noqa: S506 - SafeLoader subclass
+        return yaml.load(
+            handle, Loader=_StrictLoader
+        )  # noqa: S506 - SafeLoader subclass
 
 
-def validate(model: type[M], data: Any, *, requirement: str, path: Path | str, report: Report, **context) -> M | None:
+def validate(
+    model: type[M],
+    data: Any,
+    *,
+    requirement: str,
+    path: Path | str,
+    report: Report,
+    **context,
+) -> M | None:
     """Validate `data` against `model` in strict JSON mode, recording failures."""
     try:
         return model.model_validate_json(json.dumps(data, allow_nan=False))
     except ValidationError as exc:
         for error in exc.errors():
             location = ".".join(str(part) for part in error["loc"]) or "<document>"
-            report.add(requirement, f"{location}: {error['msg']}", path=str(path), **context)
+            report.add(
+                requirement, f"{location}: {error['msg']}", path=str(path), **context
+            )
     except (TypeError, ValueError) as exc:
-        report.add(requirement, f"not representable as JSON: {exc}", path=str(path), **context)
+        report.add(
+            requirement, f"not representable as JSON: {exc}", path=str(path), **context
+        )
     return None
 
 
-def load_document(model: type[M], path: Path, *, requirement: str, report: Report, **context) -> M | None:
+def load_document(
+    model: type[M], path: Path, *, requirement: str, report: Report, **context
+) -> M | None:
     if not path.is_file():
         report.add(requirement, "file not found", path=str(path), **context)
         return None
     try:
-        data = load_yaml(path) if path.suffix in {".yml", ".yaml"} else json.loads(path.read_text("utf-8"))
+        data = (
+            load_yaml(path)
+            if path.suffix in {".yml", ".yaml"}
+            else json.loads(path.read_text("utf-8"))
+        )
     except (yaml.YAMLError, json.JSONDecodeError) as exc:
         report.add(requirement, f"cannot parse: {exc}", path=str(path), **context)
         return None
-    return validate(model, data, requirement=requirement, path=path, report=report, **context)
+    return validate(
+        model, data, requirement=requirement, path=path, report=report, **context
+    )
 
 
 def _check_finite(value: Any) -> None:
@@ -96,7 +126,9 @@ def _check_finite(value: Any) -> None:
 def dumps_json(value: Any) -> bytes:
     """Deterministic JSON bytes (REL-005)."""
     _check_finite(value)
-    text = json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False, allow_nan=False)
+    text = json.dumps(
+        value, indent=2, sort_keys=True, ensure_ascii=False, allow_nan=False
+    )
     return (text + "\n").encode("utf-8")
 
 

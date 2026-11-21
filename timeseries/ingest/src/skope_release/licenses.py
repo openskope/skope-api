@@ -20,7 +20,9 @@ def validate_dataset_license(value: str) -> str:
     if value == "other":
         return value
     message = "license must be a canonical listed SPDX identifier or `other`"
-    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*", value) or value.startswith("LicenseRef-"):
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*", value) or value.startswith(
+        "LicenseRef-"
+    ):
         raise ValueError(message)
     try:
         canonical = canonicalize_license_expression(value)
@@ -33,6 +35,8 @@ def validate_dataset_license(value: str) -> str:
 
 DatasetLicense = Annotated[
     str,
-    Field(description="One canonical listed SPDX license identifier, or `other` with a source URL."),
+    Field(
+        description="One canonical listed SPDX license identifier, or `other` with a source URL."
+    ),
     AfterValidator(validate_dataset_license),
 ]

@@ -61,7 +61,9 @@ API_ENV = {"GDAL_DISABLE_READDIR_ON_OPEN": "EMPTY_DIR", "VSI_CACHE": "TRUE"}
 VIEWPORT = (1280, 800)
 FIT_PADDING = 20
 CLIENT_TILE_SIZE = 128
-TILE_ZOOM_SHIFT = math.log2(512 / CLIENT_TILE_SIZE)  # MapLibre's covering zoom for this tileSize
+TILE_ZOOM_SHIFT = math.log2(
+    512 / CLIENT_TILE_SIZE
+)  # MapLibre's covering zoom for this tileSize
 # Visualize (pages/dataset/[id]/visualize): the map takes half the page width and the
 # height minus 250 px, and `fitToGeoJson` frames the study area in it.
 VISUALIZE_VIEWPORT = (640, 550)
@@ -146,14 +148,20 @@ def extraction_window(geometry: dict, src) -> tuple[Window, np.ndarray]:
     """resolve_spatial_window and calculate_spatial_coverage, as the API computes them."""
     shape = transform_geom("EPSG:4326", src.crs, geometry)
     xs, ys = zip(*_coords(shape))
-    window = rasterio.windows.from_bounds(min(xs), min(ys), max(xs), max(ys), transform=src.transform)
+    window = rasterio.windows.from_bounds(
+        min(xs), min(ys), max(xs), max(ys), transform=src.transform
+    )
     window = window.round_lengths().round_offsets()
-    window = Window(window.col_off, window.row_off, max(1, window.width), max(1, window.height))
+    window = Window(
+        window.col_off, window.row_off, max(1, window.width), max(1, window.height)
+    )
     wt = rasterio.windows.transform(window, src.transform)
     out_shape = (int(window.height), int(window.width))
     mask = geometry_mask([shape], transform=wt, invert=True, out_shape=out_shape)
     if mask.sum() == 0:
-        mask = geometry_mask([shape], transform=wt, invert=True, out_shape=out_shape, all_touched=True)
+        mask = geometry_mask(
+            [shape], transform=wt, invert=True, out_shape=out_shape, all_touched=True
+        )
     return window, mask
 
 
@@ -164,10 +172,13 @@ def _coords(geometry: dict):
         else:
             for x in c:
                 yield from walk(x)
+
     yield from walk(geometry["coordinates"])
 
 
-def extract_file(uri: str, bands: list[int], window: Window, mask: np.ndarray, chunk_size: int):
+def extract_file(
+    uri: str, bands: list[int], window: Window, mask: np.ndarray, chunk_size: int
+):
     """Mirror of `extract_summarystat_timeseries` (app/core/zonal_stats.py)."""
     means, medians = [], []
     with rasterio.Env(**API_ENV), rasterio.open(uri) as src:
@@ -206,8 +217,14 @@ def run_extraction(task: dict) -> dict:
 
     def once():
         with ThreadPoolExecutor(API_THREADS) as pool:
-            results = list(pool.map(lambda fb: extract_file(fb[0], fb[1], window, mask, chunk), mapping))
-        return np.concatenate([r[1] for r in results]), np.concatenate([r[2] for r in results])
+            results = list(
+                pool.map(
+                    lambda fb: extract_file(fb[0], fb[1], window, mask, chunk), mapping
+                )
+            )
+        return np.concatenate([r[1] for r in results]), np.concatenate(
+            [r[2] for r in results]
+        )
 
     if task["mode"] == "warm":
         once()
@@ -217,10 +234,17 @@ def run_extraction(task: dict) -> dict:
     started = time.perf_counter()
     means, medians = once()
     seconds = time.perf_counter() - started
-    return {"seconds": seconds, "io": delta(proc_io(), io0), "disk": delta(disk_reads(variant / "meta.json"), disk0),
-            "window": [int(window.width), int(window.height)], "cells": int(mask.sum()), "files": len(mapping),
-            "concurrency": min(API_THREADS, len(mapping)), "values": len(means),
-            "digest": digest(np.round(means, 3), np.round(medians, 3))}
+    return {
+        "seconds": seconds,
+        "io": delta(proc_io(), io0),
+        "disk": delta(disk_reads(variant / "meta.json"), disk0),
+        "window": [int(window.width), int(window.height)],
+        "cells": int(mask.sum()),
+        "files": len(mapping),
+        "concurrency": min(API_THREADS, len(mapping)),
+        "values": len(means),
+        "digest": digest(np.round(means, 3), np.round(medians, 3)),
+    }
 
 
 # --- map views -------------------------------------------------------
@@ -231,8 +255,12 @@ def _mercator_y(lat: float) -> float:
     return 0.5 - math.log((1 + s) / (1 - s)) / (4 * math.pi)
 
 
-def _fit(bbox: tuple[float, float, float, float], viewport: tuple[int, int], padding: int,
-         max_zoom: float = math.inf) -> dict:
+def _fit(
+    bbox: tuple[float, float, float, float],
+    viewport: tuple[int, int],
+    padding: int,
+    max_zoom: float = math.inf,
+) -> dict:
     """The covering tile zoom and centre of MapLibre's fitBounds. A point's zero-size bbox gets `max_zoom`."""
     west, south, east, north = bbox
     w, h = viewport
@@ -242,11 +270,16 @@ def _fit(bbox: tuple[float, float, float, float], viewport: tuple[int, int], pad
         zooms.append(math.log2((w - 2 * padding) / (dx * 512)))
     if dy:
         zooms.append(math.log2((h - 2 * padding) / (dy * 512)))
-    return {"zoom": round(min(zooms) + TILE_ZOOM_SHIFT), "center": ((west + east) / 2, (south + north) / 2),
-            "viewport": viewport}
+    return {
+        "zoom": round(min(zooms) + TILE_ZOOM_SHIFT),
+        "center": ((west + east) / 2, (south + north) / 2),
+        "viewport": viewport,
+    }
 
 
-def map_views(bounds: tuple[float, float, float, float], native_res_deg: float) -> dict[str, dict]:
+def map_views(
+    bounds: tuple[float, float, float, float], native_res_deg: float
+) -> dict[str, dict]:
     """The tiles MapLibre requests for the initial (fit-to-bbox) view, a native-resolution view, and the visualize
     map framed on each extraction area."""
     import morecantile
@@ -261,12 +294,20 @@ def map_views(bounds: tuple[float, float, float, float], native_res_deg: float) 
     z = 0
     while 40_075_016.7 / 2**z / 256 > native_m:
         z += 1
-    views["native"] = {"zoom": z, "center": ((west + east) / 2, lat), "viewport": VIEWPORT}
+    views["native"] = {
+        "zoom": z,
+        "center": ((west + east) / 2, lat),
+        "viewport": VIEWPORT,
+    }
 
     for name, geometry in load_areas().items():
         xs, ys = zip(*_coords(geometry))
-        views[f"area-{name}"] = _fit((min(xs), min(ys), max(xs), max(ys)), VISUALIZE_VIEWPORT, AREA_FIT_PADDING,
-                                     MAX_FIT_ZOOM)
+        views[f"area-{name}"] = _fit(
+            (min(xs), min(ys), max(xs), max(ys)),
+            VISUALIZE_VIEWPORT,
+            AREA_FIT_PADDING,
+            MAX_FIT_ZOOM,
+        )
 
     for view in views.values():
         z, (lon, lat) = view["zoom"], view["center"]
@@ -313,9 +354,15 @@ def run_view(task: dict) -> dict:
     each TiTiler worker process is one process here."""
     variant = Path(task["variant"])
     meta = json.loads((variant / "meta.json").read_text())
-    where = {key: (variant / f["path"], i + 1) for f in meta["files"] for i, key in enumerate(f["keys"])}
+    where = {
+        key: (variant / f["path"], i + 1)
+        for f in meta["files"]
+        for i, key in enumerate(f["keys"])
+    }
     with rasterio.open(variant / meta["files"][0]["path"]) as src:
-        bounds = tuple(rasterio.warp.transform_bounds(src.crs, "EPSG:4326", *src.bounds))
+        bounds = tuple(
+            rasterio.warp.transform_bounds(src.crs, "EPSG:4326", *src.bounds)
+        )
         res = src.res[0]
     tiles = map_views(bounds, res)[task["view"]]["tiles"]
     all_keys = [k for f in meta["files"] for k in f["keys"]]
@@ -327,7 +374,9 @@ def run_view(task: dict) -> dict:
         for key in steps:
             path, band = where[key]
             started = time.perf_counter()
-            for blob in pool.map(_tile, [(t, path, band, task["tile_path"]) for t in tiles]):
+            for blob in pool.map(
+                _tile, [(t, path, band, task["tile_path"]) for t in tiles]
+            ):
                 h.update(blob)
             times.append(time.perf_counter() - started)
         return times, h.hexdigest()[:16]
@@ -342,9 +391,16 @@ def run_view(task: dict) -> dict:
         disk0 = disk_reads(variant / "meta.json")
         times, seq_digest = sequence(pool)
         disk1 = disk_reads(variant / "meta.json")
-    return {"seconds": sum(times) / len(times), "step_seconds": times, "io": None, "disk": delta(disk1, disk0),
-            "tiles": len(tiles), "zoom": tiles[0][2] if tiles else None, "concurrency": workers,
-            "digest": seq_digest}
+    return {
+        "seconds": sum(times) / len(times),
+        "step_seconds": times,
+        "io": None,
+        "disk": delta(disk1, disk0),
+        "tiles": len(tiles),
+        "zoom": tiles[0][2] if tiles else None,
+        "concurrency": workers,
+        "digest": seq_digest,
+    }
 
 
 # --- orchestration ------------------------------------------------------------
@@ -355,14 +411,21 @@ def one(task: dict) -> None:
     result = run_extraction(task) if task["op"] == "extract" else run_view(task)
     result["peak_rss_delta"] = peak_rss_bytes() - base
     children = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
-    result["peak_rss_worker"] = children if sys.platform == "darwin" else children * 1024
+    result["peak_rss_worker"] = (
+        children if sys.platform == "darwin" else children * 1024
+    )
     print(json.dumps(result))
 
 
 def environment() -> dict:
-    env = {"python": platform.python_version(), "platform": platform.platform(), "cpus": os.cpu_count(),
-           "rasterio": rasterio.__version__, "gdal": rasterio.__gdal_version__,
-           "gdal_cachemax": os.environ.get("GDAL_CACHEMAX")}
+    env = {
+        "python": platform.python_version(),
+        "platform": platform.platform(),
+        "cpus": os.cpu_count(),
+        "rasterio": rasterio.__version__,
+        "gdal": rasterio.__gdal_version__,
+        "gdal_cachemax": os.environ.get("GDAL_CACHEMAX"),
+    }
     try:
         import rio_tiler
 
@@ -372,21 +435,41 @@ def environment() -> dict:
     return env
 
 
-def tasks_for(variant: Path, ops: list[str], mode: str, first_round: bool, tile_workers: int) -> list[dict]:
+def tasks_for(
+    variant: Path, ops: list[str], mode: str, first_round: bool, tile_workers: int
+) -> list[dict]:
     meta = json.loads((variant / "meta.json").read_text())
     tasks = []
     if "extract" in ops:
-        ranges = [r for r in EXTRACT_RANGES if r < meta["keys"]] + [None]  # None = every timestep
+        ranges = [r for r in EXTRACT_RANGES if r < meta["keys"]] + [
+            None
+        ]  # None = every timestep
         for area in load_areas():
             for years in ranges:
                 tasks.append({"op": "extract", "area": area, "years": years})
     if "views" in ops:
         for view in ("fit", "native", *(f"area-{area}" for area in load_areas())):
-            tasks.append({"op": "view", "view": view, "steps": SEQUENCE, "tile_path": "vrt",
-                          "tile_workers": tile_workers})
-            if first_round and meta["baseline"] and view in ("fit", "native"):  # the release's tiles before the one-band fix, for the record
-                tasks.append({"op": "view", "view": view, "steps": SEQUENCE, "tile_path": "direct",
-                              "tile_workers": tile_workers})
+            tasks.append(
+                {
+                    "op": "view",
+                    "view": view,
+                    "steps": SEQUENCE,
+                    "tile_path": "vrt",
+                    "tile_workers": tile_workers,
+                }
+            )
+            if (
+                first_round and meta["baseline"] and view in ("fit", "native")
+            ):  # the release's tiles before the one-band fix, for the record
+                tasks.append(
+                    {
+                        "op": "view",
+                        "view": view,
+                        "steps": SEQUENCE,
+                        "tile_path": "direct",
+                        "tile_workers": tile_workers,
+                    }
+                )
     for t in tasks:
         t.update(variant=str(variant), name=variant.name, mode=mode)
     return tasks
@@ -395,7 +478,9 @@ def tasks_for(variant: Path, ops: list[str], mode: str, first_round: bool, tile_
 def run(args) -> None:
     variants = sorted(p.parent for p in Path(args.variants).glob("*/meta.json"))
     if args.only:
-        variants = [v for v in variants if any(fnmatch.fnmatch(v.name, g) for g in args.only)]
+        variants = [
+            v for v in variants if any(fnmatch.fnmatch(v.name, g) for g in args.only)
+        ]
     if not variants:
         sys.exit(f"no built variants under {args.variants}")
     env = environment()
@@ -405,28 +490,61 @@ def run(args) -> None:
     metas = {}
     for v in variants:
         m = json.loads((v / "meta.json").read_text())
-        metas[v.name] = {k: m[k] for k in ("block", "interleave", "chunk", "dtype", "baseline", "keys", "first_key",
-                                           "last_key", "size_bytes", "build_seconds", "gdal")}
+        metas[v.name] = {
+            k: m[k]
+            for k in (
+                "block",
+                "interleave",
+                "chunk",
+                "dtype",
+                "baseline",
+                "keys",
+                "first_key",
+                "last_key",
+                "size_bytes",
+                "build_seconds",
+                "gdal",
+            )
+        }
         metas[v.name]["file_count"] = len(m["files"])
     for round_ in range(1, args.rounds + 1):
         order = variants[:]
         rng.shuffle(order)
         for variant in order:
-            for task in tasks_for(variant, args.ops, args.mode, round_ == 1, args.tile_workers):
-                proc = subprocess.run([sys.executable, __file__, "one", json.dumps(task)],
-                                      capture_output=True, text=True, timeout=args.timeout)
+            for task in tasks_for(
+                variant, args.ops, args.mode, round_ == 1, args.tile_workers
+            ):
+                proc = subprocess.run(
+                    [sys.executable, __file__, "one", json.dumps(task)],
+                    capture_output=True,
+                    text=True,
+                    timeout=args.timeout,
+                )
                 if proc.returncode != 0:
                     record = {"error": proc.stderr.strip().splitlines()[-1:]}
                 else:
                     record = json.loads(proc.stdout.strip().splitlines()[-1])
-                record.update(task=task, variant_meta=metas[variant.name], setting=args.setting, round=round_,
-                              env=env, at=time.time())
+                record.update(
+                    task=task,
+                    variant_meta=metas[variant.name],
+                    setting=args.setting,
+                    round=round_,
+                    env=env,
+                    at=time.time(),
+                )
                 with out.open("a") as fh:
                     fh.write(json.dumps(record) + "\n")
                 label = task.get("area") or f"{task.get('view')}x{task.get('steps')}"
-                shown = f"{record['seconds']:.3f} s" if "seconds" in record else record["error"]
-                print(f"[{args.setting}/{args.mode} r{round_}] {variant.name} {task['op']} {label} "
-                      f"{task.get('years', '')} {shown}", flush=True)
+                shown = (
+                    f"{record['seconds']:.3f} s"
+                    if "seconds" in record
+                    else record["error"]
+                )
+                print(
+                    f"[{args.setting}/{args.mode} r{round_}] {variant.name} {task['op']} {label} "
+                    f"{task.get('years', '')} {shown}",
+                    flush=True,
+                )
 
 
 def parity(args) -> None:
@@ -441,24 +559,39 @@ def parity(args) -> None:
     chunk = API_MAX_CELLS // (int(window.width) * int(window.height))
     _, m1, d1 = extract_file(uri, bands, window, mask, chunk)
     _, m2, d2 = extract_summarystat_timeseries(uri, bands, window, mask, chunk)
-    same = np.array_equal(m1, m2, equal_nan=True) and np.array_equal(d1, d2, equal_nan=True)
-    print(f"{variant.name}: mirror {'matches' if same else 'DIFFERS FROM'} the API's extraction")
+    same = np.array_equal(m1, m2, equal_nan=True) and np.array_equal(
+        d1, d2, equal_nan=True
+    )
+    print(
+        f"{variant.name}: mirror {'matches' if same else 'DIFFERS FROM'} the API's extraction"
+    )
     sys.exit(0 if same else 1)
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     sub = p.add_subparsers(dest="command", required=True)
     r = sub.add_parser("run")
     r.add_argument("--variants", required=True)
     r.add_argument("--out", required=True)
-    r.add_argument("--setting", required=True, help="A (native), B (Docker, bind mount), C (staging simulation)")
+    r.add_argument(
+        "--setting",
+        required=True,
+        help="A (native), B (Docker, bind mount), C (staging simulation)",
+    )
     r.add_argument("--ops", nargs="+", choices=["extract", "views"], required=True)
     r.add_argument("--mode", choices=["warm", "cold"], required=True)
     r.add_argument("--rounds", type=int, default=3)
     r.add_argument("--only", nargs="*")
     r.add_argument("--seed", type=int, default=1)
-    r.add_argument("--tile-workers", type=int, default=TILE_WORKERS, help="TiTiler worker processes to simulate")
+    r.add_argument(
+        "--tile-workers",
+        type=int,
+        default=TILE_WORKERS,
+        help="TiTiler worker processes to simulate",
+    )
     r.add_argument("--timeout", type=int, default=900)
     sub.add_parser("one").add_argument("task")
     sub.add_parser("parity").add_argument("--variants", required=True)

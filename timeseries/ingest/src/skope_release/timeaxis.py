@@ -64,18 +64,25 @@ def format_key(instant: datetime, precision: Precision) -> str:
         return f"{instant.year:04d}-{instant.month:02d}"
     if precision == "day":
         return f"{instant.year:04d}-{instant.month:02d}-{instant.day:02d}"
-    return f"{instant.year:04d}-{instant.month:02d}-{instant.day:02d}T{instant:%H:%M:%S}Z"
+    return (
+        f"{instant.year:04d}-{instant.month:02d}-{instant.day:02d}T{instant:%H:%M:%S}Z"
+    )
 
 
 def parse_step(step: str) -> tuple[int, str]:
     """Return (count, unit) with unit one of Y, M, D, H, MIN, S."""
     match = _STEP.match(step)
     if not match:
-        raise AxisError(f"step {step!r} must be a single-unit ISO 8601 duration such as P1Y or PT6H")
+        raise AxisError(
+            f"step {step!r} must be a single-unit ISO 8601 duration such as P1Y or PT6H"
+        )
     if match.group(1):
         count, unit = int(match.group(1)), match.group(2)
     else:
-        count, unit = int(match.group(3)), {"H": "H", "M": "MIN", "S": "S"}[match.group(4)]
+        count, unit = (
+            int(match.group(3)),
+            {"H": "H", "M": "MIN", "S": "S"}[match.group(4)],
+        )
     if count < 1:
         raise AxisError("a regular step must be positive (OBS-004)")
     return count, unit
@@ -84,12 +91,18 @@ def parse_step(step: str) -> tuple[int, str]:
 def add_steps(instant: datetime, count: int, unit: str, n: int) -> datetime:
     """Calendar arithmetic: `instant + n * (count unit)`."""
     if unit in {"Y", "M"}:
-        months = instant.year * 12 + (instant.month - 1) + n * count * (12 if unit == "Y" else 1)
+        months = (
+            instant.year * 12
+            + (instant.month - 1)
+            + n * count * (12 if unit == "Y" else 1)
+        )
         year, month = divmod(months, 12)
         try:
             return instant.replace(year=year, month=month + 1)
         except ValueError as exc:
-            raise AxisError(f"{instant:%Y-%m-%d} plus {n * count}{unit} is not a calendar date") from exc
+            raise AxisError(
+                f"{instant:%Y-%m-%d} plus {n * count}{unit} is not a calendar date"
+            ) from exc
     seconds = {"D": 86400, "H": 3600, "MIN": 60, "S": 1}[unit]
     return instant + timedelta(seconds=n * count * seconds)
 
@@ -131,26 +144,39 @@ class Axis:
             seconds = {"D": 86400, "H": 3600, "MIN": 60, "S": 1}[unit] * count_
             estimate = int((last - start).total_seconds() // seconds)
         if add_steps(start, count_, unit, estimate) != last:
-            raise AxisError(f"origin {origin} plus whole steps of {step} never reaches end {end} (OBS-004)")
+            raise AxisError(
+                f"origin {origin} plus whole steps of {step} never reaches end {end} (OBS-004)"
+            )
         return cls("regular", precision, estimate + 1, origin, step=step)
 
     @classmethod
-    def enumerated(cls, values: list[str] | tuple[str, ...], precision: Precision) -> "Axis":
+    def enumerated(
+        cls, values: list[str] | tuple[str, ...], precision: Precision
+    ) -> "Axis":
         if not values:
             raise AxisError("an enumerated axis needs at least one value")
         instants = [parse_key(v, precision) for v in values]
         for prev, cur, key in zip(instants, instants[1:], values[1:]):
             if cur <= prev:
-                raise AxisError(f"enumerated values must be unique and strictly increasing at {key} (OBS-004)")
-        return cls("enumerated", precision, len(values), values[0], values=tuple(values))
+                raise AxisError(
+                    f"enumerated values must be unique and strictly increasing at {key} (OBS-004)"
+                )
+        return cls(
+            "enumerated", precision, len(values), values[0], values=tuple(values)
+        )
 
     def key(self, index: int) -> str:
         if not 0 <= index < self.count:
-            raise UnknownTimestep(f"index {index} is outside the axis [0, {self.count})")
+            raise UnknownTimestep(
+                f"index {index} is outside the axis [0, {self.count})"
+            )
         if self.values is not None:
             return self.values[index]
         count, unit = parse_step(self.step)
-        return format_key(add_steps(parse_key(self.origin, self.precision), count, unit, index), self.precision)
+        return format_key(
+            add_steps(parse_key(self.origin, self.precision), count, unit, index),
+            self.precision,
+        )
 
     def keys(self) -> tuple[str, ...]:
         if self.values is not None:
@@ -168,19 +194,27 @@ class Axis:
         start = parse_key(self.origin, self.precision)
         count, unit = parse_step(self.step)
         if unit in {"Y", "M"}:
-            months = (instant.year * 12 + instant.month) - (start.year * 12 + start.month)
+            months = (instant.year * 12 + instant.month) - (
+                start.year * 12 + start.month
+            )
             candidate = months // (count * (12 if unit == "Y" else 1))
         else:
             seconds = {"D": 86400, "H": 3600, "MIN": 60, "S": 1}[unit] * count
             candidate = int((instant - start).total_seconds() // seconds)
         if not 0 <= candidate < self.count or self.key(candidate) != key:
-            raise UnknownTimestep(f"{key} is not on the axis (origin {self.origin}, step {self.step})")
+            raise UnknownTimestep(
+                f"{key} is not on the axis (origin {self.origin}, step {self.step})"
+            )
         return candidate
 
     def select(self, lower: str, upper: str) -> list[int]:
         """Indices of the timesteps within [lower, upper] (PROTO-007)."""
         lo, hi = parse_key(lower, self.precision), parse_key(upper, self.precision)
-        return [i for i, k in enumerate(self.keys()) if lo <= parse_key(k, self.precision) <= hi]
+        return [
+            i
+            for i, k in enumerate(self.keys())
+            if lo <= parse_key(k, self.precision) <= hi
+        ]
 
 
 @dataclass(frozen=True)

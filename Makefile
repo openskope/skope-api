@@ -204,7 +204,8 @@ test-ingest: prepare ##- Build and run the ingest tests (UPDATE_CONTRACTS=1 rewr
 	@trap '$(TEST_COMPOSE) --profile test down --remove-orphans' EXIT INT TERM; \
 		$(TEST_COMPOSE) --profile test run --rm --no-deps \
 		-v "$(CURDIR)/tests/contracts:/ingest/tests/contracts$(if $(filter 1,$(UPDATE_CONTRACTS)),,:ro)" \
-		-e UPDATE_CONTRACTS=$(UPDATE_CONTRACTS) ingest-test
+		-e UPDATE_CONTRACTS=$(UPDATE_CONTRACTS) ingest-test \
+		sh -c 'black --check src scripts tests && pytest tests'
 
 test-runtime: prepare ##- Build fresh runtime images and exercise real tiles, extraction and analysis
 	python3 -m unittest discover -s tests -p test_runtime_images.py

@@ -38,8 +38,12 @@ RFC3339_UTC_PATTERN = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
 MULTIHASH_SHA256_PATTERN = r"^1220[0-9a-f]{64}$"  # STAC-009, File Info 2.1.0
 SHA256_HEX_PATTERN = r"^[0-9a-f]{64}$"
 DOI_PATTERN = r"^10\.\d{4,9}/\S+$"
-RELEASE_ID_PATTERN = r"^[a-z][a-z0-9_]*-r-\d{4}\.\d{2}\.\d{2}(-([2-9]|[1-9]\d+))?$"  # REL-006
-PREPARE_SCRIPT_PATTERN = r"^scripts/[a-z][a-z0-9_]*\.py$"  # META-013: one file in scripts/
+RELEASE_ID_PATTERN = (
+    r"^[a-z][a-z0-9_]*-r-\d{4}\.\d{2}\.\d{2}(-([2-9]|[1-9]\d+))?$"  # REL-006
+)
+PREPARE_SCRIPT_PATTERN = (
+    r"^scripts/[a-z][a-z0-9_]*\.py$"  # META-013: one file in scripts/
+)
 
 Identifier = Annotated[str, StringConstraints(pattern=IDENTIFIER_PATTERN)]
 TimestepKey = Annotated[str, StringConstraints(pattern=TIMESTEP_PATTERN)]
@@ -63,9 +67,13 @@ HttpsUrl = Annotated[str, AfterValidator(_https)]
 
 def _orcid(value: str) -> str:
     """Canonical ORCID URI with a valid ISO 7064 11,2 check digit (META-010)."""
-    match = re.fullmatch(r"https://orcid\.org/(\d{4})-(\d{4})-(\d{4})-(\d{3}[\dX])", value)
+    match = re.fullmatch(
+        r"https://orcid\.org/(\d{4})-(\d{4})-(\d{4})-(\d{3}[\dX])", value
+    )
     if not match:
-        raise ValueError("must be a canonical ORCID URI, https://orcid.org/0000-0000-0000-0000")
+        raise ValueError(
+            "must be a canonical ORCID URI, https://orcid.org/0000-0000-0000-0000"
+        )
     digits = "".join(match.groups())
     total = 0
     for ch in digits[:-1]:
@@ -156,9 +164,15 @@ class CuratedTemporal(Strict):
     @model_validator(mode="after")
     def _one_axis_form(self):
         if (self.step is None) == (self.values is None):
-            raise ValueError("declare exactly one of `step` (regular axis) or `values` (enumerated axis)")
+            raise ValueError(
+                "declare exactly one of `step` (regular axis) or `values` (enumerated axis)"
+            )
         if self.values is not None:
-            if not self.values or self.values[0] != self.origin or self.values[-1] != self.end:
+            if (
+                not self.values
+                or self.values[0] != self.origin
+                or self.values[-1] != self.end
+            ):
                 raise ValueError("`values` must start at `origin` and end at `end`")
         return self
 
@@ -178,11 +192,16 @@ class CuratedVariable(Strict):
     unit: NonEmpty  # "unitless" when the quantity has no unit (META-002)
     category: NonEmpty | None = None
     categories: dict[int, NonEmpty] | None = None  # encoded value -> meaning
-    valid_range: tuple[float, float] | None = None  # review evidence only; not published (META-007)
+    valid_range: tuple[float, float] | None = (
+        None  # review evidence only; not published (META-007)
+    )
 
     @model_validator(mode="after")
     def _range_order(self):
-        if self.valid_range is not None and not self.valid_range[0] < self.valid_range[1]:
+        if (
+            self.valid_range is not None
+            and not self.valid_range[0] < self.valid_range[1]
+        ):
             raise ValueError("valid_range must be [lower, upper] with lower < upper")
         return self
 
@@ -218,12 +237,18 @@ class Curated(Strict):
             if self.temporal is None:
                 raise ValueError("a TemporalCubeDataset requires `temporal` (META-002)")
             if self.temporal_extent is not None:
-                raise ValueError("`temporal_extent` is for a StaticRasterDataset; use `temporal`")
+                raise ValueError(
+                    "`temporal_extent` is for a StaticRasterDataset; use `temporal`"
+                )
         else:
             if self.temporal is not None:
-                raise ValueError("a StaticRasterDataset has no temporal axis (ORG-001, API-006)")
+                raise ValueError(
+                    "a StaticRasterDataset has no temporal axis (ORG-001, API-006)"
+                )
             if self.empty_timesteps:
-                raise ValueError("`empty_timesteps` is for a TemporalCubeDataset; a static band is never empty (OBS-007)")
+                raise ValueError(
+                    "`empty_timesteps` is for a TemporalCubeDataset; a static band is never empty (OBS-007)"
+                )
         if self.license == "other" and self.license_href is None:
             raise ValueError("license `other` requires `license_href`")
         ids = [v.id for v in self.variables]
@@ -231,15 +256,22 @@ class Curated(Strict):
             raise ValueError("variable identifiers must be unique (VAL-003)")
         orcids = {}
         for person in self.people:
-            if person.orcid and orcids.setdefault(person.orcid, person.name) != person.name:
-                raise ValueError(f"ORCID {person.orcid} is associated with conflicting names (META-010)")
+            if (
+                person.orcid
+                and orcids.setdefault(person.orcid, person.name) != person.name
+            ):
+                raise ValueError(
+                    f"ORCID {person.orcid} is associated with conflicting names (META-010)"
+                )
         return self
 
 
 # ---------------------------------------------------------------------------
 # source-manifest.yml (META-004)
 
-DataType = Literal["uint8", "int8", "uint16", "int16", "uint32", "int32", "float32", "float64"]
+DataType = Literal[
+    "uint8", "int8", "uint16", "int16", "uint32", "int32", "float32", "float64"
+]
 Resampling = Literal["AVERAGE", "MODE", "NEAREST", "BILINEAR", "CUBIC", "LANCZOS"]
 
 
@@ -256,7 +288,9 @@ class CogOptions(Strict):
 
 class ReleaseBlock(Strict):
     created: Rfc3339Utc  # REL-006; never read from the clock
-    chunk_size: int | None = Field(default=None, ge=1)  # omitted for a static dataset (Section 20.2)
+    chunk_size: int | None = Field(
+        default=None, ge=1
+    )  # omitted for a static dataset (Section 20.2)
     cog: CogOptions
 
 
@@ -307,7 +341,9 @@ class Source(Strict):
     @model_validator(mode="after")
     def _band_mapping(self):
         if (self.bands is None) == (self.band is None):
-            raise ValueError("declare exactly one of `bands: descriptions` (temporal) or `band: N` (static)")
+            raise ValueError(
+                "declare exactly one of `bands: descriptions` (temporal) or `band: N` (static)"
+            )
         return self
 
 
@@ -389,7 +425,9 @@ class ManifestSource(Strict):
     @model_validator(mode="after")
     def _one_origin(self):
         if (self.href is None) == (self.prepare is None):
-            raise ValueError("a source records exactly one of `href` or `prepare` (MAN-002)")
+            raise ValueError(
+                "a source records exactly one of `href` or `prepare` (MAN-002)"
+            )
         return self
 
 
@@ -452,7 +490,9 @@ class OverviewTimeEnumerated(_OverviewTimeBase):
         return self
 
 
-OverviewTime = Annotated[Union[OverviewTimeRegular, OverviewTimeEnumerated], Field(discriminator="kind")]
+OverviewTime = Annotated[
+    Union[OverviewTimeRegular, OverviewTimeEnumerated], Field(discriminator="kind")
+]
 
 
 class OverviewProvider(Strict):
@@ -517,12 +557,18 @@ class Overview(Strict):
     def _profile(self):
         temporal = self.dataset.profile == "TemporalCubeDataset"
         if temporal != (self.dataset.time is not None):
-            raise ValueError("`time` is required for a temporal dataset and absent for a static one (API-006)")
+            raise ValueError(
+                "`time` is required for a temporal dataset and absent for a static one (API-006)"
+            )
         for vid, var in self.variables.items():
             if temporal and (var.asset_href or var.band_name):
-                raise ValueError(f"{vid}: asset_href/band_name are for static datasets only")
+                raise ValueError(
+                    f"{vid}: asset_href/band_name are for static datasets only"
+                )
             if not temporal and not (var.asset_href and var.band_name):
-                raise ValueError(f"{vid}: a static dataset names its asset_href and band_name")
+                raise ValueError(
+                    f"{vid}: a static dataset names its asset_href and band_name"
+                )
         return self
 
 

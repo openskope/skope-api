@@ -13,7 +13,13 @@ from skope_release.fetch import fetch_dataset
 from skope_release.findings import Report
 from skope_release.preflight import DatasetFiles, preflight_dataset
 
-from release_fixtures import curated_doc, manifest_doc, write_dataset, write_source, years
+from release_fixtures import (
+    curated_doc,
+    manifest_doc,
+    write_dataset,
+    write_source,
+    years,
+)
 from stage_helpers import PRODUCER
 
 RELEASE_ID = "synth-r-2026.10.07"
@@ -38,27 +44,50 @@ def setup(tmp_path):
     manifest = manifest_doc("synth", {"alpha": "unused"})
     manifest["variables"][0]["source"] = {
         "bands": "descriptions",
-        "prepare": {"script": "scripts/prepare_synth.py", "inputs": [{"uri": UPSTREAM}]},
+        "prepare": {
+            "script": "scripts/prepare_synth.py",
+            "inputs": [{"uri": UPSTREAM}],
+        },
     }
-    files = DatasetFiles(write_dataset(tmp_path, "synth", curated_doc("synth", ["alpha"]), manifest))
+    files = DatasetFiles(
+        write_dataset(tmp_path, "synth", curated_doc("synth", ["alpha"]), manifest)
+    )
     return files, tmp_path / "mirror", root, upstream
 
 
 def remote(tmp_path):
-    return lambda uri: str(tmp_path / "remote" / urlparse(uri).netloc / urlparse(uri).path.lstrip("/"))
+    return lambda uri: str(
+        tmp_path / "remote" / urlparse(uri).netloc / urlparse(uri).path.lstrip("/")
+    )
 
 
 def fetch(files, mirror, root, tmp_path, tools=TOOLS):
     report = Report()
-    outcomes = dict(fetch_dataset(files, mirror=mirror, report=report, remote=remote(tmp_path), scripts_root=root, toolchain=tools))
+    outcomes = dict(
+        fetch_dataset(
+            files,
+            mirror=mirror,
+            report=report,
+            remote=remote(tmp_path),
+            scripts_root=root,
+            toolchain=tools,
+        )
+    )
     assert report.ok, report.to_text()
     return outcomes
 
 
 def preflight(files, mirror, root, tools=TOOLS):
     report = Report()
-    plan = preflight_dataset(files, release_id=RELEASE_ID, mirror=mirror, producer=PRODUCER, report=report,
-                             scripts_root=root, toolchain=tools)
+    plan = preflight_dataset(
+        files,
+        release_id=RELEASE_ID,
+        mirror=mirror,
+        producer=PRODUCER,
+        report=report,
+        scripts_root=root,
+        toolchain=tools,
+    )
     return plan, report
 
 
@@ -66,18 +95,26 @@ def requirements(report):
     return [f.requirement for f in report.errors]
 
 
-def test_preflight_reads_the_prepared_source_and_resolves_its_input_checksums(setup, tmp_path):
+def test_preflight_reads_the_prepared_source_and_resolves_its_input_checksums(
+    setup, tmp_path
+):
     files, mirror, root, upstream = setup
     fetch(files, mirror, root, tmp_path)
     plan, report = preflight(files, mirror, root)
     assert plan is not None, report.to_text()
     variable = plan.variables[0]
     assert variable.source_uri is None
-    assert variable.source_read_path == str(prepare.output_path(mirror, "synth", "alpha"))
+    assert variable.source_read_path == str(
+        prepare.output_path(mirror, "synth", "alpha")
+    )
     source = plan.resolved_manifest.variables[0].source
     assert source.prepare.inputs[0].checksum == gdalio.sha256_multihash(upstream)
-    assert source.checksum == gdalio.sha256_multihash(upstream)  # the stand-in script copies it
-    assert plan.prepare_scripts == {"alpha": prepare.sha256_hex(root / "scripts" / "prepare_synth.py")}
+    assert source.checksum == gdalio.sha256_multihash(
+        upstream
+    )  # the stand-in script copies it
+    assert plan.prepare_scripts == {
+        "alpha": prepare.sha256_hex(root / "scripts" / "prepare_synth.py")
+    }
 
 
 def test_a_prepared_source_is_read_only_from_the_mirror(setup, tmp_path):
@@ -85,7 +122,9 @@ def test_a_prepared_source_is_read_only_from_the_mirror(setup, tmp_path):
     _, report = preflight(files, None, root)
     assert requirements(report) == ["OBS-016"]
     _, report = preflight(files, mirror, root)  # not fetched on this host
-    assert requirements(report) == ["OBS-016"] and "run fetch" in report.errors[0].message
+    assert (
+        requirements(report) == ["OBS-016"] and "run fetch" in report.errors[0].message
+    )
 
 
 @pytest.mark.parametrize("change", ["script", "toolchain"])
@@ -98,7 +137,10 @@ def test_a_stale_record_is_refused(setup, tmp_path, change):
     else:
         tools = {**TOOLS, "gdal_image": "gdal@sha256:2"}
     _, report = preflight(files, mirror, root, tools)
-    assert requirements(report) == ["OBS-016"] and f"the {change} changed" in report.errors[0].message
+    assert (
+        requirements(report) == ["OBS-016"]
+        and f"the {change} changed" in report.errors[0].message
+    )
 
 
 def test_an_output_changed_after_fetch_is_refused(setup, tmp_path):
@@ -118,15 +160,21 @@ def test_the_release_manifest_records_the_inputs_and_the_script(setup, tmp_path)
     (tmp_path / "releases").mkdir()
     published, _ = build_and_publish(plan, tmp_path / "releases")
     manifest = json.loads((published.path / "release-manifest.json").read_text())
-    assert manifest["sources"] == [{
-        "id": "alpha",
-        "checksum": gdalio.sha256_multihash(upstream),
-        "prepare": {
-            "script": "scripts/prepare_synth.py",
-            "script_sha256": prepare.sha256_hex(root / "scripts" / "prepare_synth.py"),
-            "inputs": [{"href": UPSTREAM, "checksum": gdalio.sha256_multihash(upstream)}],
-        },
-    }]
+    assert manifest["sources"] == [
+        {
+            "id": "alpha",
+            "checksum": gdalio.sha256_multihash(upstream),
+            "prepare": {
+                "script": "scripts/prepare_synth.py",
+                "script_sha256": prepare.sha256_hex(
+                    root / "scripts" / "prepare_synth.py"
+                ),
+                "inputs": [
+                    {"href": UPSTREAM, "checksum": gdalio.sha256_multihash(upstream)}
+                ],
+            },
+        }
+    ]
 
 
 def test_a_script_edit_that_keeps_the_bytes_keeps_the_digest(setup, tmp_path):
@@ -155,12 +203,23 @@ def test_pin_declares_the_input_and_output_checksums(setup, tmp_path):
         "release_root: /srv/datasets/releases\nreleases:\n  - dataset: other\n    release_id: other-r-2026.01.01\n"
         f"    declaration_digest: {'1' * 64}\n    manifest_sha256: {'2' * 64}\n"
     )
-    argv = ["--datasets", str(tmp_path / "datasets"), "pin", str(published.path), "--env", "staging", "--pins", str(pins), "--write"]
+    argv = [
+        "--datasets",
+        str(tmp_path / "datasets"),
+        "pin",
+        str(published.path),
+        "--env",
+        "staging",
+        "--pins",
+        str(pins),
+        "--write",
+    ]
     assert main(argv) == 0
     source = yaml.safe_load(files.source_manifest.read_text())["variables"][0]["source"]
     assert source["checksum"] == gdalio.sha256_multihash(upstream)
-    assert source["prepare"]["inputs"] == [{"uri": UPSTREAM, "checksum": gdalio.sha256_multihash(upstream)}]
+    assert source["prepare"]["inputs"] == [
+        {"uri": UPSTREAM, "checksum": gdalio.sha256_multihash(upstream)}
+    ]
     again, report = preflight(files, mirror, root)
     assert again is not None, report.to_text()
     assert again.declaration_digest == published.declaration_digest
-

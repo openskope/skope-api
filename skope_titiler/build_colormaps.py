@@ -9,6 +9,7 @@ name, so tiles render with exactly the colours the API serves for legends.
 - set: entry i is colour i, for categorical values 0..n-1; the rest are
   transparent.
 """
+
 import sys
 from pathlib import Path
 
@@ -24,7 +25,9 @@ def _hex_to_rgb(h: str) -> tuple:
 
 def _ramp(stops: list, name: str = "") -> np.ndarray:
     if len(stops) < 2:
-        raise ValueError(f"Ramp {name!r} must have at least 2 colours, got {len(stops)}.")
+        raise ValueError(
+            f"Ramp {name!r} must have at least 2 colours, got {len(stops)}."
+        )
     n = len(stops)
     positions = [i / (n - 1) for i in range(n)]
     result = np.zeros((256, 4), dtype=np.uint8)

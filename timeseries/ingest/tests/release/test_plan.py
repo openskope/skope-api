@@ -19,19 +19,33 @@ from skope_release.preflight import DatasetFiles, preflight_dataset
 
 def test_states_are_issued_only_by_their_stage(temporal_dataset):
     report = Report()
-    plan = preflight_dataset(DatasetFiles(temporal_dataset()), release_id=None, mirror=None, producer=Producer("p", "0", "abc"), report=report)
+    plan = preflight_dataset(
+        DatasetFiles(temporal_dataset()),
+        release_id=None,
+        mirror=None,
+        producer=Producer("p", "0", "abc"),
+        report=report,
+    )
     assert plan is not None and plan._issuer is _PLAN_ISSUER
     with pytest.raises(StateError):
         ValidatedBuildPlan(**{**plan.__dict__, "_issuer": object()})
     with pytest.raises(StateError):
-        FinalObservation(**{name: None for name in FinalObservation.__dataclass_fields__})
+        FinalObservation(
+            **{name: None for name in FinalObservation.__dataclass_fields__}
+        )
     with pytest.raises(dataclasses.FrozenInstanceError):
         plan.release_id = "changed"
 
 
 def test_stages_accept_only_their_input_state(temporal_dataset):
     report = Report()
-    plan = preflight_dataset(DatasetFiles(temporal_dataset()), release_id=None, mirror=None, producer=Producer("p", "0", "abc"), report=report)
+    plan = preflight_dataset(
+        DatasetFiles(temporal_dataset()),
+        release_id=None,
+        mirror=None,
+        producer=Producer("p", "0", "abc"),
+        report=report,
+    )
     assert require_plan(plan) is plan
     with pytest.raises(StateError):
         require_plan({"release_id": "x"})

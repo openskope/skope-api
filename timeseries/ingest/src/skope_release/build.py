@@ -116,7 +116,12 @@ def stage_release(plan: object, staging: Path) -> tuple[str, Report]:
     report.raise_if_errors("cross-artifact validation")
 
     log.info("%s: generating overview.yml", plan.release_id)
-    write_overview(staging, release_id=plan.release_id, declaration_digest=plan.declaration_digest, report=report)
+    write_overview(
+        staging,
+        release_id=plan.release_id,
+        declaration_digest=plan.declaration_digest,
+        report=report,
+    )
     report.raise_if_errors("overview generation")
 
     manifest = build_manifest(observation, staging, report)
@@ -130,7 +135,10 @@ def build_and_publish(plan: object, release_root: Path) -> tuple[Published, Repo
     _check_revision(plan, report)
     destination = release_root / plan.release_id
     if destination.exists():
-        report.add("TXN-002", f"{destination} already exists; a published release is never rebuilt in place")
+        report.add(
+            "TXN-002",
+            f"{destination} already exists; a published release is never rebuilt in place",
+        )
     report.raise_if_errors("publication preconditions")
 
     staging_root = release_root / STAGING_DIR
@@ -139,7 +147,9 @@ def build_and_publish(plan: object, release_root: Path) -> tuple[Published, Repo
     staging = staging_root / f"{plan.release_id}.{token}"
     staging.mkdir()
     if staging.stat().st_dev != release_root.stat().st_dev:
-        report.add("TXN-002", "staging and the release root are on different filesystems")
+        report.add(
+            "TXN-002", "staging and the release root are on different filesystems"
+        )
         report.raise_if_errors("publication preconditions")
 
     lease = Lease(staging_root / f"{staging.name}.lease", plan.release_id)
@@ -156,12 +166,19 @@ def build_and_publish(plan: object, release_root: Path) -> tuple[Published, Repo
         os.rename(staging, destination)
         os.chmod(destination, RELEASE_DIR_MODE)
     except ReleaseError as exc:
-        exc.report.add("TXN-008", f"build failed; staging left at {staging} for inspection or cleanup", severity="warning")
+        exc.report.add(
+            "TXN-008",
+            f"build failed; staging left at {staging} for inspection or cleanup",
+            severity="warning",
+        )
         raise
     finally:
         lease.release()
     log.info("published %s", destination)
-    return Published(plan.release_id, destination, plan.declaration_digest, manifest_sha), report
+    return (
+        Published(plan.release_id, destination, plan.declaration_digest, manifest_sha),
+        report,
+    )
 
 
 def verify_reproducible(plan: object, published: Path) -> Report:
@@ -175,13 +192,21 @@ def verify_reproducible(plan: object, published: Path) -> Report:
     try:
         _, stage_report = stage_release(plan, rebuild)
         report.extend(stage_report.findings)
-        ours, theirs = release_files(rebuild) + ["release-manifest.json"], release_files(published) + ["release-manifest.json"]
+        ours, theirs = release_files(rebuild) + [
+            "release-manifest.json"
+        ], release_files(published) + ["release-manifest.json"]
         if sorted(ours) != sorted(theirs):
-            report.add("REL-009", f"file lists differ: {sorted(set(ours) ^ set(theirs))}")
+            report.add(
+                "REL-009", f"file lists differ: {sorted(set(ours) ^ set(theirs))}"
+            )
         for rel in sorted(set(ours) & set(theirs)):
             if sha256_multihash(rebuild / rel) != sha256_multihash(published / rel):
                 requirement = "API-007" if rel == "overview.yml" else "REL-009"
-                report.add(requirement, "rebuilt bytes differ from the published bytes", path=rel)
+                report.add(
+                    requirement,
+                    "rebuilt bytes differ from the published bytes",
+                    path=rel,
+                )
     finally:
         shutil.rmtree(rebuild, ignore_errors=True)
     return report

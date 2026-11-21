@@ -23,8 +23,14 @@ skope-release = "skope_release.cli:main"
 
 [dependency-groups]
 dev = [
+    "black==26.10.1",
     "pytest",
 ]
+
+[tool.black]
+# A prepare script's SHA-256 is part of each prepared source's provenance
+# (META-013), so reformatting one would make its published records stale.
+extend-exclude = "^/scripts/prepare_"
 
 [tool.setuptools.packages.find]
 where = ["src"]

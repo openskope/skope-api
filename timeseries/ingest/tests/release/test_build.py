@@ -28,7 +28,9 @@ def publish(directory, root, **kwargs):
 
 
 def tree(root: Path) -> list[str]:
-    return sorted(p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file())
+    return sorted(
+        p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file()
+    )
 
 
 @pytest.fixture
@@ -64,7 +66,9 @@ def test_published_release_is_read_only_for_everyone(released):
     """TXN-018: files 0444, directories 0555, whatever the umask."""
     published, _ = released
     for path in [published.path, *published.path.rglob("*")]:
-        assert stat.S_IMODE(path.stat().st_mode) == (0o555 if path.is_dir() else 0o444), path
+        assert stat.S_IMODE(path.stat().st_mode) == (
+            0o555 if path.is_dir() else 0o444
+        ), path
 
 
 def test_modes_are_set_around_the_rename(temporal_dataset, tmp_path, monkeypatch):
@@ -76,7 +80,9 @@ def test_modes_are_set_around_the_rename(temporal_dataset, tmp_path, monkeypatch
     def checked_rename(source, destination):
         source = Path(source)
         seen["top"] = stat.S_IMODE(source.stat().st_mode)
-        seen["manifest"] = stat.S_IMODE((source / "release-manifest.json").stat().st_mode)
+        seen["manifest"] = stat.S_IMODE(
+            (source / "release-manifest.json").stat().st_mode
+        )
         seen["cogs"] = stat.S_IMODE((source / "cogs").stat().st_mode)
         rename(source, destination)
 
@@ -92,20 +98,33 @@ def test_long_steps_log_progress(temporal_dataset, tmp_path, caplog):
     published = publish(temporal_dataset(), tmp_path / "releases")
     messages = [r.getMessage() for r in caplog.records]
     inspected = [m for m in messages if m.startswith("inspected ")]
-    assert len(inspected) == 6 and inspected[-1].startswith("inspected 6 of 6 COGs: cogs/")
+    assert len(inspected) == 6 and inspected[-1].startswith(
+        "inspected 6 of 6 COGs: cogs/"
+    )
     checksummed = [m for m in messages if m.startswith("checksummed ")]
-    assert len(checksummed) == 11 and checksummed[-1].startswith("checksummed 11 of 11 files")
+    assert len(checksummed) == 11 and checksummed[-1].startswith(
+        "checksummed 11 of 11 files"
+    )
 
     caplog.clear()
     assert verify_release(published.path, Report()) is not None
-    verified = [r.getMessage() for r in caplog.records if r.getMessage().startswith("verified ")]
+    verified = [
+        r.getMessage() for r in caplog.records if r.getMessage().startswith("verified ")
+    ]
     assert len(verified) == 11 and verified[-1].startswith("verified 11 of 11 files")
 
 
 def test_static_release(static_dataset, tmp_path):
     """AT-024 (synthetic): one Collection asset, no Items, no time."""
-    published = publish(static_dataset(), tmp_path / "releases", release_id="elev-r-2026.10.07")
-    assert tree(published.path) == ["cogs/elevation.tif", "collection.json", "overview.yml", "release-manifest.json"]
+    published = publish(
+        static_dataset(), tmp_path / "releases", release_id="elev-r-2026.10.07"
+    )
+    assert tree(published.path) == [
+        "cogs/elevation.tif",
+        "collection.json",
+        "overview.yml",
+        "release-manifest.json",
+    ]
     overview = yaml.safe_load((published.path / "overview.yml").read_text())
     assert "time" not in overview["dataset"]
     assert overview["variables"]["elevation"]["asset_href"] == "cogs/elevation.tif"
@@ -113,9 +132,15 @@ def test_static_release(static_dataset, tmp_path):
 
 def test_release_with_declared_empty_timesteps(temporal_dataset, tmp_path):
     """OBS-007, STAC-008: a declared empty band passes every build check."""
-    sources = {"alpha": {"empty": ["0102", "0103"]}, "beta": {"empty": ["0102", "0103"]}}
+    sources = {
+        "alpha": {"empty": ["0102", "0103"]},
+        "beta": {"empty": ["0102", "0103"]},
+    }
     gap = {"first": "0102", "last": "0103", "reason": "No reconstruction."}
-    published = publish(temporal_dataset(source_kwargs=sources, curated={"empty_timesteps": [gap]}), tmp_path / "releases")
+    published = publish(
+        temporal_dataset(source_kwargs=sources, curated={"empty_timesteps": [gap]}),
+        tmp_path / "releases",
+    )
     report = Report()
     assert verify_release(published.path, report) is not None, report.to_text()
 
@@ -157,10 +182,16 @@ def test_failure_leaves_no_release(temporal_dataset, tmp_path, monkeypatch):
     with pytest.raises(RuntimeError, match="injected"):
         build_and_publish(plan_for(directory, release_id="other-r-2026.10.07"), root)
     assert not (root / "other-r-2026.10.07").exists()
-    staged = [p for p in (root / ".staging").iterdir() if p.is_dir() and p.name.startswith("other-r-")]
+    staged = [
+        p
+        for p in (root / ".staging").iterdir()
+        if p.is_dir() and p.name.startswith("other-r-")
+    ]
     assert staged and not (staged[0] / "release-manifest.json").exists()
     assert not list((root / ".staging").glob("*.lease"))
-    assert {rel: (earlier.path / rel).read_bytes() for rel in tree(earlier.path)} == before
+    assert {
+        rel: (earlier.path / rel).read_bytes() for rel in tree(earlier.path)
+    } == before
 
 
 def test_publication_preconditions(released, tmp_path):

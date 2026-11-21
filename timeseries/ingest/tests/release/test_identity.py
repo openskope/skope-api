@@ -20,7 +20,13 @@ DIGEST = "a" * 64
 
 def resolved(**manifest_overrides):
     report = Report()
-    cur = validate(Curated, curated_doc("synth", ["alpha", "beta"]), requirement="T", path="c", report=report)
+    cur = validate(
+        Curated,
+        curated_doc("synth", ["alpha", "beta"]),
+        requirement="T",
+        path="c",
+        report=report,
+    )
     man = manifest_doc("synth", {"alpha": "s3://b/a.tif", "beta": "s3://b/b.tif"})
     for variable in man["variables"]:
         variable["source"]["checksum"] = "1220" + "0" * 64
@@ -33,7 +39,9 @@ def digest_of(cur, man):
 
 
 def ids(*entries):
-    return Ledger.model_validate({"releases": [{"release_id": r, "declaration_digest": d} for r, d in entries]})
+    return Ledger.model_validate(
+        {"releases": [{"release_id": r, "declaration_digest": d} for r, d in entries]}
+    )
 
 
 @pytest.mark.parametrize(
@@ -47,22 +55,45 @@ def test_parse_release_id(release_id, expected):
     assert parse_release_id(release_id) == expected
 
 
-@pytest.mark.parametrize("release_id", ["paleocar_v3-r-2026.10.07-1", "paleocar_v3-r-2026.10.07-02", "paleocar_v3-2026.10.07", "r-2026.10.07"])
+@pytest.mark.parametrize(
+    "release_id",
+    [
+        "paleocar_v3-r-2026.10.07-1",
+        "paleocar_v3-r-2026.10.07-02",
+        "paleocar_v3-2026.10.07",
+        "r-2026.10.07",
+    ],
+)
 def test_invalid_release_ids(release_id):
     with pytest.raises(ValueError):
         parse_release_id(release_id)
 
 
-def check(release_id, ledger=Ledger(), created="2026-10-07T12:00:00Z", digest=DIGEST, dataset="synth"):
+def check(
+    release_id,
+    ledger=Ledger(),
+    created="2026-10-07T12:00:00Z",
+    digest=DIGEST,
+    dataset="synth",
+):
     report = Report()
-    check_release_id(release_id, dataset_id=dataset, created=created, digest=digest, ledger=ledger, report=report)
+    check_release_id(
+        release_id,
+        dataset_id=dataset,
+        created=created,
+        digest=digest,
+        ledger=ledger,
+        report=report,
+    )
     return report
 
 
 def test_release_id_rules():
     assert check("synth-r-2026.10.07").ok
     assert not check("other-r-2026.10.07").ok  # names another dataset
-    assert not check("synth-r-2026.10.08").ok  # date must equal release.created's UTC date
+    assert not check(
+        "synth-r-2026.10.08"
+    ).ok  # date must equal release.created's UTC date
     assert not check("synth-r-2026.10.07-2").ok  # -2 only after the first ID of the day
 
 
@@ -75,7 +106,9 @@ def test_same_day_sequence_is_per_dataset():
 def test_an_id_is_bound_to_one_digest():
     ledger = ids(("synth-r-2026.10.07", "b" * 64))
     assert not check("synth-r-2026.10.07", ledger).ok  # MAN-011
-    assert check("synth-r-2026.10.07", ledger, digest="b" * 64).ok  # a retry keeps the ID
+    assert check(
+        "synth-r-2026.10.07", ledger, digest="b" * 64
+    ).ok  # a retry keeps the ID
 
 
 def test_two_ids_never_share_a_digest():
@@ -85,7 +118,15 @@ def test_two_ids_never_share_a_digest():
 
 def test_withdrawn_ids_are_not_reused():
     ledger = Ledger.model_validate(
-        {"releases": [{"release_id": "synth-r-2026.10.07", "declaration_digest": DIGEST, "withdrawn": "bad nodata"}]}
+        {
+            "releases": [
+                {
+                    "release_id": "synth-r-2026.10.07",
+                    "declaration_digest": DIGEST,
+                    "withdrawn": "bad nodata",
+                }
+            ]
+        }
     )
     assert not check("synth-r-2026.10.07", ledger).ok
 
@@ -125,7 +166,10 @@ def test_every_declared_input_changes_the_digest(change):
 
 def test_the_digest_of_a_fixed_declaration_is_stable():
     """REL-006: a model change that alters every declaration's digest would orphan the ledgers' release IDs."""
-    assert digest_of(*resolved()) == "65c20065ab0f604844b5e3af328fadd930687ab1bae65beef66664937328c43c"
+    assert (
+        digest_of(*resolved())
+        == "65c20065ab0f604844b5e3af328fadd930687ab1bae65beef66664937328c43c"
+    )
 
 
 def test_a_prepared_source_projects_its_inputs_not_a_uri():
@@ -133,15 +177,30 @@ def test_a_prepared_source_projects_its_inputs_not_a_uri():
     cur, man = resolved()
     data = man.model_dump(mode="json", exclude_none=True)
     data["variables"][0]["source"] = {
-        "bands": "descriptions", "checksum": "1220" + "0" * 64,
-        "prepare": {"script": "scripts/prepare_synth.py", "inputs": [{"uri": "https://example.org/a.nc", "checksum": "1220" + "2" * 64}]},
+        "bands": "descriptions",
+        "checksum": "1220" + "0" * 64,
+        "prepare": {
+            "script": "scripts/prepare_synth.py",
+            "inputs": [
+                {"uri": "https://example.org/a.nc", "checksum": "1220" + "2" * 64}
+            ],
+        },
     }
     report = Report()
     prepared = validate(SourceManifest, data, requirement="T", path="m", report=report)
-    source = declaration_projection(cur, prepared)["source_manifest"]["variables"]["alpha"]["source"]
+    source = declaration_projection(cur, prepared)["source_manifest"]["variables"][
+        "alpha"
+    ]["source"]
     assert "uri" not in source and "prepare" in source
-    assert "prepare" not in declaration_projection(cur, man)["source_manifest"]["variables"]["alpha"]["source"]
-    data["variables"][0]["source"]["prepare"]["inputs"][0]["checksum"] = "1220" + "3" * 64
+    assert (
+        "prepare"
+        not in declaration_projection(cur, man)["source_manifest"]["variables"][
+            "alpha"
+        ]["source"]
+    )
+    data["variables"][0]["source"]["prepare"]["inputs"][0]["checksum"] = (
+        "1220" + "3" * 64
+    )
     changed = validate(SourceManifest, data, requirement="T", path="m", report=report)
     assert digest_of(cur, prepared) != digest_of(cur, changed)
 

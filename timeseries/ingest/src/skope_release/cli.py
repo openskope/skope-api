@@ -24,7 +24,9 @@ def _env_path(name: str, default: str | None = None) -> Path | None:
 
 
 def _producer() -> Producer:
-    return Producer(PRODUCER_NAME, __version__, os.environ.get("PRODUCER_REVISION", "unknown"))
+    return Producer(
+        PRODUCER_NAME, __version__, os.environ.get("PRODUCER_REVISION", "unknown")
+    )
 
 
 def _print_report(title: str, report: Report, as_json: bool) -> None:
@@ -56,7 +58,10 @@ def cmd_preflight(args) -> int:
     from .preflight import preflight_many
 
     plans, reports = preflight_many(
-        _dataset_dirs(args), release_ids=_release_ids(args.release), mirror=args.source_mirror, producer=_producer()
+        _dataset_dirs(args),
+        release_ids=_release_ids(args.release),
+        mirror=args.source_mirror,
+        producer=_producer(),
     )
     failed = []
     for dataset, report in reports.items():
@@ -75,11 +80,15 @@ def cmd_fetch(args) -> int:
     from .preflight import DatasetFiles
 
     if args.source_mirror is None:
-        raise SystemExit("fetch needs a source mirror: --source-mirror or SKOPE_RELEASE_SOURCE_MIRROR (OBS-014)")
+        raise SystemExit(
+            "fetch needs a source mirror: --source-mirror or SKOPE_RELEASE_SOURCE_MIRROR (OBS-014)"
+        )
     failed = []
     for directory in _dataset_dirs(args):
         report = Report()
-        outcomes = fetch_dataset(DatasetFiles(directory), mirror=args.source_mirror, report=report)
+        outcomes = fetch_dataset(
+            DatasetFiles(directory), mirror=args.source_mirror, report=report
+        )
         _print_report(f"fetch {directory.name}", report, args.json)
         for variable, outcome in outcomes:
             print(f"{variable}: {outcome}")
@@ -97,9 +106,16 @@ def cmd_build(args) -> int:
     release_ids = _release_ids(args.release)
     missing = [d for d in args.dataset if d not in release_ids]
     if missing:
-        raise SystemExit(f"assign a release ID with --release DATASET=ID for: {', '.join(missing)} (REL-006)")
+        raise SystemExit(
+            f"assign a release ID with --release DATASET=ID for: {', '.join(missing)} (REL-006)"
+        )
     # MIG-003: every dataset is preflighted before any transformation starts.
-    plans, reports = preflight_many(_dataset_dirs(args), release_ids=release_ids, mirror=args.source_mirror, producer=_producer())
+    plans, reports = preflight_many(
+        _dataset_dirs(args),
+        release_ids=release_ids,
+        mirror=args.source_mirror,
+        producer=_producer(),
+    )
     failed = [d for d in args.dataset if d not in plans]
     for dataset in failed:
         _print_report(f"preflight {dataset}", reports[dataset], args.json)
@@ -111,7 +127,9 @@ def cmd_build(args) -> int:
             _print_report(f"build {dataset}: {exc.stage} failed", exc.report, args.json)
             failed.append(dataset)
             continue
-        except Exception as exc:  # noqa: BLE001 - one dataset's failure must not stop the others (MIG-003)
+        except (
+            Exception
+        ) as exc:  # noqa: BLE001 - one dataset's failure must not stop the others (MIG-003)
             print(f"== build {dataset} failed: {exc!r}")
             failed.append(dataset)
             continue
@@ -153,21 +171,43 @@ def cmd_verify_reproducible(args) -> int:
     from .preflight import DatasetFiles, preflight_dataset
 
     report = Report()
-    manifest = load_document(ReleaseManifest, args.release_path / "release-manifest.json", requirement="MAN-001", report=report)
+    manifest = load_document(
+        ReleaseManifest,
+        args.release_path / "release-manifest.json",
+        requirement="MAN-001",
+        report=report,
+    )
     if manifest is None:
         _print_report("verify-reproducible", report, args.json)
         return 1
     files = DatasetFiles(args.datasets / manifest.dataset.id)
-    producer = Producer(manifest.producer.name, manifest.producer.version, manifest.producer.revision)
-    plan = preflight_dataset(files, release_id=None, mirror=args.source_mirror, producer=producer, report=report)
+    producer = Producer(
+        manifest.producer.name, manifest.producer.version, manifest.producer.revision
+    )
+    plan = preflight_dataset(
+        files,
+        release_id=None,
+        mirror=args.source_mirror,
+        producer=producer,
+        report=report,
+    )
     if plan is None:
         _print_report("verify-reproducible: preflight", report, args.json)
         return 1
     if plan.declaration_digest != manifest.declaration.digest:
-        report.add("MAN-011", "the current declaration's digest differs from the release's; it is a different declaration")
+        report.add(
+            "MAN-011",
+            "the current declaration's digest differs from the release's; it is a different declaration",
+        )
         _print_report("verify-reproducible", report, args.json)
         return 1
-    plan = preflight_dataset(files, release_id=manifest.release_id, mirror=args.source_mirror, producer=producer, report=Report())
+    plan = preflight_dataset(
+        files,
+        release_id=manifest.release_id,
+        mirror=args.source_mirror,
+        producer=producer,
+        report=Report(),
+    )
     result = verify_reproducible(plan, args.release_path)
     _print_report(f"verify-reproducible {manifest.release_id}", result, args.json)
     return 0 if result.ok else 1
@@ -177,7 +217,13 @@ def cmd_pin(args) -> int:
     from .pin import manifest_path, plan_pin, write_pin
 
     report = Report()
-    edits = plan_pin(manifest_path(args.manifest), datasets=args.datasets, pins=args.pins, environment=args.env, report=report)
+    edits = plan_pin(
+        manifest_path(args.manifest),
+        datasets=args.datasets,
+        pins=args.pins,
+        environment=args.env,
+        report=report,
+    )
     if report.findings or edits is None:
         _print_report("pin", report, args.json)
     if edits is None:
@@ -189,7 +235,9 @@ def cmd_pin(args) -> int:
         print(edit.diff())
     if args.write:
         write_pin(edits)
-        print(f"wrote {len(edits)} file(s); review them with git diff before committing")
+        print(
+            f"wrote {len(edits)} file(s); review them with git diff before committing"
+        )
     else:
         print("nothing written; run again with --write to apply these changes")
     return 0
@@ -204,43 +252,99 @@ def cmd_export_schemas(args) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="skope-release", description="Build, validate, and publish SKOPE dataset releases.")
-    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    parser = argparse.ArgumentParser(
+        prog="skope-release",
+        description="Build, validate, and publish SKOPE dataset releases.",
+    )
+    parser.add_argument(
+        "--version", action="version", version=f"%(prog)s {__version__}"
+    )
     parser.add_argument("--json", action="store_true", help="print findings as JSON")
-    parser.add_argument("--datasets", type=Path, default=_env_path("SKOPE_RELEASE_DATASETS", "datasets"), help="authoring root (datasets/<id>/)")
-    parser.add_argument("--source-mirror", type=Path, default=_env_path("SKOPE_RELEASE_SOURCE_MIRROR"), help="local <bucket>/<key> copies of s3:// sources")
-    parser.add_argument("--release-root", type=Path, default=_env_path("SKOPE_RELEASE_ROOT", "releases"))
+    parser.add_argument(
+        "--datasets",
+        type=Path,
+        default=_env_path("SKOPE_RELEASE_DATASETS", "datasets"),
+        help="authoring root (datasets/<id>/)",
+    )
+    parser.add_argument(
+        "--source-mirror",
+        type=Path,
+        default=_env_path("SKOPE_RELEASE_SOURCE_MIRROR"),
+        help="local <bucket>/<key> copies of s3:// sources",
+    )
+    parser.add_argument(
+        "--release-root", type=Path, default=_env_path("SKOPE_RELEASE_ROOT", "releases")
+    )
     parser.add_argument("-v", "--verbose", action="store_true")
     sub = parser.add_subparsers(dest="command", metavar="COMMAND")
 
-    p = sub.add_parser("preflight", help="validate declarations and sources; write nothing (VAL-004)")
+    p = sub.add_parser(
+        "preflight", help="validate declarations and sources; write nothing (VAL-004)"
+    )
     p.add_argument("dataset", nargs="+")
-    p.add_argument("--release", action="append", metavar="DATASET=RELEASE_ID", help="also check the release ID")
+    p.add_argument(
+        "--release",
+        action="append",
+        metavar="DATASET=RELEASE_ID",
+        help="also check the release ID",
+    )
     p.set_defaults(func=cmd_preflight)
 
-    p = sub.add_parser("fetch", help="copy declared sources into the source mirror (OBS-014)")
+    p = sub.add_parser(
+        "fetch", help="copy declared sources into the source mirror (OBS-014)"
+    )
     p.add_argument("dataset", nargs="+")
     p.set_defaults(func=cmd_fetch)
 
     p = sub.add_parser("build", help="build and publish one release per dataset")
     p.add_argument("dataset", nargs="+")
-    p.add_argument("--release", action="append", metavar="DATASET=RELEASE_ID", required=True)
+    p.add_argument(
+        "--release", action="append", metavar="DATASET=RELEASE_ID", required=True
+    )
     p.set_defaults(func=cmd_build)
 
-    p = sub.add_parser("verify", help="verify published releases against their manifests (TXN-011)")
+    p = sub.add_parser(
+        "verify", help="verify published releases against their manifests (TXN-011)"
+    )
     p.add_argument("release_path", nargs="+", type=Path)
-    p.add_argument("--quick", action="store_true", help="presence and size only (the startup checks)")
+    p.add_argument(
+        "--quick",
+        action="store_true",
+        help="presence and size only (the startup checks)",
+    )
     p.set_defaults(func=cmd_verify)
 
-    p = sub.add_parser("verify-reproducible", help="rebuild a release in scratch and byte-compare it")
+    p = sub.add_parser(
+        "verify-reproducible", help="rebuild a release in scratch and byte-compare it"
+    )
     p.add_argument("release_path", type=Path)
     p.set_defaults(func=cmd_verify_reproducible)
 
-    p = sub.add_parser("pin", help="show, then with --write apply, the edits that pin a published release")
-    p.add_argument("manifest", type=Path, help="a release directory or its release-manifest.json (or a copy of it)")
-    p.add_argument("--env", required=True, help="the environment whose pin file to edit (deploy/releases/<env>.yml)")
-    p.add_argument("--pins", type=Path, default=_env_path("SKOPE_RELEASE_PINS", "deploy/releases"), help="the pin files' directory")
-    p.add_argument("--write", action="store_true", help="apply the edits instead of only showing them")
+    p = sub.add_parser(
+        "pin",
+        help="show, then with --write apply, the edits that pin a published release",
+    )
+    p.add_argument(
+        "manifest",
+        type=Path,
+        help="a release directory or its release-manifest.json (or a copy of it)",
+    )
+    p.add_argument(
+        "--env",
+        required=True,
+        help="the environment whose pin file to edit (deploy/releases/<env>.yml)",
+    )
+    p.add_argument(
+        "--pins",
+        type=Path,
+        default=_env_path("SKOPE_RELEASE_PINS", "deploy/releases"),
+        help="the pin files' directory",
+    )
+    p.add_argument(
+        "--write",
+        action="store_true",
+        help="apply the edits instead of only showing them",
+    )
     p.set_defaults(func=cmd_pin)
 
     p = sub.add_parser("export-schemas", help="regenerate the committed JSON Schemas")
@@ -251,7 +355,10 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(asctime)s %(levelname)s %(message)s",
+    )
     if args.command is None:
         parser.print_help()
         return 2

@@ -56,14 +56,23 @@ class Windows:
     def __iter__(self):
         for y in range(0, self.height, self.window_height):
             for x in range(0, self.width, self.window_width):
-                yield x, y, min(self.window_width, self.width - x), min(self.window_height, self.height - y)
+                yield x, y, min(self.window_width, self.width - x), min(
+                    self.window_height, self.height - y
+                )
 
     @property
     def full_width(self) -> bool:
         return self.window_width == self.width
 
 
-def read_windows(width: int, height: int, bands: int, itemsize: int, block_width: int, block_height: int) -> Windows:
+def read_windows(
+    width: int,
+    height: int,
+    bands: int,
+    itemsize: int,
+    block_width: int,
+    block_height: int,
+) -> Windows:
     block_width, block_height = min(block_width, width), min(block_height, height)
     per_block = block_width * block_height * bands * itemsize
     across = max(1, READ_BUDGET_BYTES // per_block)
@@ -83,7 +92,9 @@ def source_windows(ds, bands: list[int]) -> Windows:
     first = ds.GetRasterBand(bands[0])
     block_width, block_height = first.GetBlockSize()
     itemsize = gdal.GetDataTypeSizeBytes(first.DataType)
-    return read_windows(ds.RasterXSize, ds.RasterYSize, len(bands), itemsize, block_width, block_height)
+    return read_windows(
+        ds.RasterXSize, ds.RasterYSize, len(bands), itemsize, block_width, block_height
+    )
 
 
 def configure() -> None:
@@ -192,7 +203,9 @@ def crs_code(srs: osr.SpatialReference) -> str | None:
     return f"{authority}:{code}" if authority and code else None
 
 
-def wgs84_bbox(srs_wkt: str, geotransform, width: int, height: int) -> tuple[float, float, float, float]:
+def wgs84_bbox(
+    srs_wkt: str, geotransform, width: int, height: int
+) -> tuple[float, float, float, float]:
     """WGS 84 bbox of the grid's outer edge, from its corners (Section 20.2)."""
     src = osr.SpatialReference()
     src.ImportFromWkt(srs_wkt)
