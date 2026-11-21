@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     max_geometry_shapes: int = Field(default=100, ge=1, le=1_000)
     max_geometry_coordinates: int = Field(default=10_000, ge=4, le=1_000_000)
     redis_url: str | None = None
-    sentry_dsn: str = "https://9b9dc2f60562380edeb675c39fe1c896@sentry.comses.net/4"
+    sentry_dsn: str = ""
     tile_server_url: str
     # The pin file and where the pin's release_root is mounted (PIN-001).
     release_pin_path: str = "config/releases.yml"

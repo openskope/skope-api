@@ -1,4 +1,5 @@
 max_processing_time: 20000
 max_concurrent_jobs: 4
 name: 'SKOPE Production API Services'
+sentry_dsn: 'https://9b9dc2f60562380edeb675c39fe1c896@sentry.comses.net/4'
 tile_server_url: 'http://titiler:80'
