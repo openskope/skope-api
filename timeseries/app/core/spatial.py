@@ -1,7 +1,7 @@
 """Map a requested area onto a dataset's grid: its read window and its cells."""
 
 import math
-from typing import Sequence, Tuple
+from typing import Sequence
 
 import numpy as np
 import rasterio
@@ -53,7 +53,7 @@ def calculate_spatial_coverage(
     dataset_transform: rasterio.Affine,
     window: Window,
     dataset_crs: str,
-) -> Tuple[np.ndarray, int, float]:
+) -> tuple[np.ndarray, int, float]:
     window_transform = rasterio.windows.transform(window, dataset_transform)
     mask = geometry_mask(
         shapes,

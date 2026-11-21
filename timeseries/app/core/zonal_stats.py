@@ -7,7 +7,7 @@ import anyio
 import numpy as np
 import rasterio
 from rasterio.windows import Window
-from typing import Callable, Dict, List, Iterator, Tuple, Sequence
+from typing import Callable, Iterator, Sequence
 
 # Local imports
 from app.telemetry import log_event
@@ -59,19 +59,19 @@ def generate_band_chunks(
 
 def extract_summarystat_timeseries(
     file_uri: str,
-    band_indices: List[int],
+    band_indices: list[int],
     window: Window,
     precomputed_mask: np.ndarray,
     chunk_size: int,
     check_cancelled: Callable[[], None] | None = None,
-) -> Tuple[str, np.ndarray, np.ndarray]:
+) -> tuple[str, np.ndarray, np.ndarray]:
     """Returns (uri, mean_array, median_array) — both zonal statistics are always computed
     so the analysis layer can select either without a second raster read.
 
     `check_cancelled` runs before and after each chunk read. Cancellation is
     cooperative: an in-progress native read must finish or fail first."""
-    mean_results: List[float] = []
-    median_results: List[float] = []
+    mean_results: list[float] = []
+    median_results: list[float] = []
     n_inside = int(precomputed_mask.sum())
     try:
         with rasterio.Env(**RASTERIO_ENV_KWARGS):
@@ -116,12 +116,12 @@ def extract_summarystat_timeseries(
 
 async def execute_timeseries_job(
     request: TimeseriesRequest,
-    file_mapping: Dict[str, List[int]],
-    timestep_list: List[str],
+    file_mapping: dict[str, list[int]],
+    timestep_list: list[str],
     dataset_crs: str,
-    dataset_transform_array: List[float],
+    dataset_transform_array: list[float],
     max_concurrency: int = 10,
-) -> Tuple[TimeseriesResponse, dict]:
+) -> tuple[TimeseriesResponse, dict]:
     """Reads the area over `timestep_list` (the whole axis) into a base series,
     and answers the request from it the way /analyze does."""
     uris = list(file_mapping.keys())
@@ -142,9 +142,9 @@ async def execute_timeseries_job(
     )
 
     limiter = anyio.CapacityLimiter(max_concurrency)
-    results: List[Tuple[str, np.ndarray]] = []
+    results: list[tuple[str, np.ndarray]] = []
 
-    async def _worker_wrapper(uri: str, bands: List[int]):
+    async def _worker_wrapper(uri: str, bands: list[int]):
         async with limiter:
             result = await anyio.to_thread.run_sync(
                 extract_summarystat_timeseries,

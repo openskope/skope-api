@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Literal, Optional, Self, Union, Annotated
+from typing import Literal, Self, Union, Annotated
 from pydantic import (
     BaseModel,
     Field,
@@ -124,7 +124,7 @@ class ZScoreFixedInterval(BaseModel):
     """A Z-Score transform to the timeseries using a fixed interval"""
 
     type: Literal["ZScoreFixedInterval"] = "ZScoreFixedInterval"
-    time_range: Optional[TimeRange] = None
+    time_range: TimeRange | None = None
     model_config = ConfigDict(
         json_schema_extra={"example": {"type": "ZScoreFixedInterval"}}
     )
@@ -148,9 +148,9 @@ Transform = Annotated[
 
 class SummaryStat(BaseModel):
     name: str
-    mean: Optional[float]
-    median: Optional[float]
-    stdev: Optional[float]
+    mean: float | None
+    median: float | None
+    stdev: float | None
 
 
 class SeriesOptions(BaseModel):
@@ -173,10 +173,10 @@ class SeriesOptions(BaseModel):
 class Series(BaseModel):
     options: SeriesOptions
     time_range: TimeRange
-    timesteps: List[str] = Field(
+    timesteps: list[str] = Field(
         ..., description="The timestep of each value, in order (PROTO-007)"
     )
-    values: List[Optional[float]]
+    values: list[float | None]
 
     @model_validator(mode="after")
     def one_timestep_per_value(self) -> Self:
@@ -192,8 +192,8 @@ class TimeseriesResponse(BaseModel):
         ..., description="Area of cells in selected area in square meters"
     )
     n_cells: int = Field(..., description="Number of cells in selected area")
-    summary_stats: List[SummaryStat]
-    series: List[Series]
+    summary_stats: list[SummaryStat]
+    series: list[Series]
     transform: Transform
     zonal_statistic: ZonalStatistic
 
@@ -238,8 +238,8 @@ class JobStatusResponse(BaseModel):
     base series for /analyze, which is internal and never listed here."""
 
     status: JobStatus
-    result: Optional[TimeseriesResponse] = None
-    error: Optional[str] = None
+    result: TimeseriesResponse | None = None
+    error: str | None = None
     error_code: str | None = None
     lifecycle: JobLifecycle | None = None
 
@@ -249,13 +249,13 @@ class JobStatusResponse(BaseModel):
 
 
 class SeriesOptionsRequest(BaseModel):
-    requested_series_options: List[SeriesOptions] = Field(
+    requested_series_options: list[SeriesOptions] = Field(
         ..., min_length=1, max_length=settings.max_series_options
     )
 
     @field_validator("requested_series_options")
     @classmethod
-    def series_names_must_be_unique(cls, value: List[SeriesOptions]):
+    def series_names_must_be_unique(cls, value: list[SeriesOptions]):
         names = [option.name for option in value]
         if len(names) != len(set(names)):
             raise ValueError("Series option names must be unique.")
@@ -273,7 +273,7 @@ class TimeseriesRequest(SeriesOptionsRequest):
     ]
     zonal_statistic: ZonalStatistic
     transform: Transform
-    time_range: Optional[TimeRange]
+    time_range: TimeRange | None
     max_processing_time: int = Field(
         settings.max_processing_time, ge=0, le=settings.max_processing_time
     )
@@ -292,4 +292,4 @@ class TimeseriesAnalyzeRequest(SeriesOptionsRequest):
     extraction_id: str = Field(..., description="Job ID from POST /timeseries/extract")
     zonal_statistic: ZonalStatistic = ZonalStatistic.mean
     transform: Transform
-    time_range: Optional[TimeRange] = None
+    time_range: TimeRange | None = None

@@ -1,6 +1,5 @@
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import List
 
 from pydantic import ConfigDict
 from geojson_pydantic import Feature, FeatureCollection, Point, Polygon
@@ -19,7 +18,7 @@ settings = get_settings()
 
 class SkopeGeometry(metaclass=ABCMeta):
     @property
-    def shapes(self) -> List[geom.base.BaseGeometry]:
+    def shapes(self) -> list[geom.base.BaseGeometry]:
         """Converts the GeoJSON Pydantic model into a list of Shapely geometries."""
         return [geom.shape(self)]
 
@@ -78,11 +77,11 @@ class SkopePolygonModel(Polygon, BaseSkopePolygonModel):
 
 class SkopeFeatureModel(Feature, BaseSkopePolygonModel):
     @property
-    def shapes(self) -> List[geom.base.BaseGeometry]:
+    def shapes(self) -> list[geom.base.BaseGeometry]:
         return [geom.shape(self.geometry)]
 
 
 class SkopeFeatureCollectionModel(FeatureCollection, BaseSkopePolygonModel):
     @property
-    def shapes(self) -> List[geom.base.BaseGeometry]:
+    def shapes(self) -> list[geom.base.BaseGeometry]:
         return [geom.shape(feature.geometry) for feature in self.features]
