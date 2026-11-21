@@ -17,6 +17,18 @@ The repository has two parts, each with its own guide:
   releases an environment pins, and how to deploy it. Read it to choose what an
   environment serves, how it is shown, and to deploy, verify, or roll back.
 
+Both live under `timeseries/`, which, despite its name, holds the whole API
+(metadata and map tiles too) and the release tool. Around them:
+
+- **`deploy/`:** Dockerfiles, Compose files, and each environment's settings,
+  logging, release pin, and display files.
+- **`skope_titiler/`:** the internal TiTiler service and its colormaps.
+- **`scripts/`:** deployment helpers: runtime image bundles, their smoke test,
+  and reading a pin's release root.
+- **`tests/`:** tests for those scripts, and the contracts both parts' tests read.
+- **[`tools/`](tools/README.md):** checks against real data, outside `make test`.
+- **[`docs/`](docs/README.md):** the specifications and experiment reports.
+
 Decisions are in [`.agents/decisions/`](.agents/decisions/), and the rules both
 parts follow are in the [dataset release](docs/specs/dataset-release-v1.md) and
 [release consumption](docs/specs/release-consumption-v1.md) specifications.
