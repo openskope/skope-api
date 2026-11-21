@@ -86,6 +86,24 @@ def test_polygon_touching_bbox_edge_only_raises(dataset_bbox):
         poly.validate_geometry(dataset_bbox)
 
 
+def test_feature_collection_with_one_shape_on_the_dataset_is_accepted(dataset_bbox):
+    # The area is all of its shapes: the part on the dataset is read.
+    inside = _box_coords(-113.0, 36.0, -112.0, 37.0)
+    outside = _box_coords(-130.0, 45.0, -129.0, 46.0)
+    fc = SkopeFeatureCollectionModel(
+        type="FeatureCollection",
+        features=[
+            {
+                "type": "Feature",
+                "geometry": {"type": "Polygon", "coordinates": [coords]},
+                "properties": {},
+            }
+            for coords in (inside, outside)
+        ],
+    )
+    fc.validate_geometry(dataset_bbox)
+
+
 # ---------------------------------------------------------------------------
 # SkopeFeatureCollectionModel.shapes
 

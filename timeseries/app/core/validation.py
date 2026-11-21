@@ -35,6 +35,7 @@ def validate_geom_size(
     shapes: list[BaseGeometry],
     transform: Sequence[float],
     dataset_crs: str,
+    grid_shape: Sequence[int],
     max_cells: int,
 ) -> None:
     """
@@ -43,7 +44,7 @@ def validate_geom_size(
     """
     if all(isinstance(s, ShapelyPoint) for s in shapes):
         return  # A point is exactly 1 cell — always within limits
-    estimated_cells = estimate_cell_count(shapes, transform, dataset_crs)
+    estimated_cells = estimate_cell_count(shapes, transform, dataset_crs, grid_shape)
 
     if estimated_cells > max_cells:
         raise ValueError(

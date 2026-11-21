@@ -11,6 +11,7 @@ from fastapi import (
 )
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ValidationError
+from shapely.geometry import box
 
 from app.config import get_settings
 from app.telemetry import log_event
@@ -264,6 +265,9 @@ async def create_timeseries_job(
 
     _check_windows(payload, release)
 
+    # An area must overlap the dataset and be a valid polygon; a 422 otherwise.
+    payload.selected_area.validate_geometry(box(*release.overview.dataset.extent.bbox))
+
     # Pre-flight geometry size check on the dataset's grid
     grid = release.overview.dataset.grid
     try:
@@ -271,6 +275,7 @@ async def create_timeseries_job(
             shapes=payload.selected_area.shapes,
             transform=grid.transform,
             dataset_crs=grid.code,
+            grid_shape=grid.shape,
             max_cells=settings.default_max_cells,
         )
     except ValueError as e:

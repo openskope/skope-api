@@ -12,6 +12,8 @@ import uuid
 from dataclasses import replace
 
 import pytest
+from pyproj import Geod
+from shapely.geometry import box as shapely_box
 from fastapi.responses import Response
 from fastapi.testclient import TestClient
 
@@ -252,6 +254,60 @@ def test_extract_unknown_variable_returns_404(pipeline_client):
         EXTRACT_URL, json=payload, headers={"Idempotency-Key": uuid.uuid4().hex}
     )
     assert resp.status_code == 404
+
+
+def _box(x0, y0, x1, y1):
+    return {
+        "type": "Polygon",
+        "coordinates": [[[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]]],
+    }
+
+
+@pytest.mark.parametrize(
+    "area, message",
+    [
+        (_box(-100.0, 10.0, -99.0, 11.0), "outside this dataset's region"),
+        (
+            {
+                "type": "Polygon",
+                "coordinates": [
+                    [[-122.5, 44.5], [-121.5, 43.5], [-121.5, 44.5], [-122.5, 43.5]]
+                    + [[-122.5, 44.5]]
+                ],
+            },
+            "not a valid polygon",
+        ),
+    ],
+    ids=["outside", "crosses-itself"],
+)
+def test_extract_refuses_an_area_it_cannot_read(pipeline_client, area, message):
+    resp = pipeline_client.post(
+        EXTRACT_URL,
+        json=_extract_payload("test_annual", "0001", "0005", selected_area=area),
+        headers={"Idempotency-Key": uuid.uuid4().hex},
+    )
+
+    assert resp.status_code == 422
+    assert message in resp.json()["detail"][0]["msg"]
+
+
+def test_extract_reads_the_part_of_an_area_on_the_dataset(pipeline_client):
+    # The grid ends at -118: the area's cells on it are columns 3 and 4 of row 3.
+    area = _box(-119.6, 41.0, -110.0, 42.0)
+
+    job_id = _do_extract(
+        pipeline_client, "test_annual", "0001", "0005", selected_area=area
+    )
+    job = _get_status(pipeline_client, job_id)
+
+    assert job["status"] == "SUCCESS", job
+    result = job["result"]
+    assert result["n_cells"] == 2
+    assert result["series"][0]["values"] == [1.0, 2.0, 3.0, 4.0, 5.0]
+    overlap, _ = Geod(ellps="WGS84").geometry_area_perimeter(
+        shapely_box(-119.6, 41.0, -118.0, 42.0)
+    )
+    assert result["area"] == pytest.approx(abs(overlap), rel=1e-9)
 
 
 # ---------------------------------------------------------------------------

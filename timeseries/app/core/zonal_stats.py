@@ -120,6 +120,7 @@ async def execute_timeseries_job(
     timestep_list: list[str],
     dataset_crs: str,
     dataset_transform_array: list[float],
+    dataset_shape: Sequence[int],
     max_concurrency: int = 10,
 ) -> tuple[TimeseriesResponse, dict]:
     """Reads the area over `timestep_list` (the whole axis) into a base series,
@@ -132,6 +133,7 @@ async def execute_timeseries_job(
         request.selected_area.shapes,
         dataset_transform_array,
         dataset_crs,
+        dataset_shape,
     )
 
     mask, n_cells, total_area = calculate_spatial_coverage(

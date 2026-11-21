@@ -48,6 +48,7 @@ async def run_timeseries_pipeline_task(
                 timestep_list=timestep_list,
                 dataset_crs=grid.code,
                 dataset_transform_array=list(grid.transform),
+                dataset_shape=grid.shape,
             )
             fields = {
                 "result": response.model_dump(mode="json"),

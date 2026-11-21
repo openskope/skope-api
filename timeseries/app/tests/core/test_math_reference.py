@@ -49,7 +49,9 @@ def _expected_cells(area, window):
 
 
 def _cells(area):
-    shapes, transform, window = resolve_spatial_window([area], GRID, "EPSG:4326")
+    shapes, transform, window = resolve_spatial_window(
+        [area], GRID, "EPSG:4326", (10, 10)
+    )
     mask, n_cells, _ = calculate_spatial_coverage(
         shapes, transform, window, "EPSG:4326"
     )

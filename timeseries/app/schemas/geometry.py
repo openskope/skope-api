@@ -4,6 +4,7 @@ from abc import ABCMeta, abstractmethod
 from pydantic import ConfigDict
 from geojson_pydantic import Feature, FeatureCollection, Point, Polygon
 from shapely import geometry as geom, get_num_coordinates
+from shapely.ops import unary_union
 from shapely.validation import explain_validity
 
 from app.config import get_settings
@@ -47,7 +48,7 @@ class SkopePointModel(Point, SkopeGeometry):
         point = geom.Point(self.coordinates)
         if not dataset_bbox.covers(point):
             raise SelectedAreaOutOfBoundsError(
-                "Selected area is not covered by the dataset region."
+                "The selected point is outside this dataset's region."
             )
 
     model_config = ConfigDict(
@@ -60,15 +61,19 @@ class BaseSkopePolygonModel(SkopeGeometry):
         for shape in self.shapes:
             if not shape.is_valid:
                 raise SelectedAreaPolygonIsNotValid(
-                    f"Selected area is not a valid polygon: {explain_validity(shape).lower()}"
+                    "The selected area is not a valid polygon "
+                    f"({explain_validity(shape).lower()}): an outline must not "
+                    "cross itself. Redraw it or fix the file."
                 )
 
-            # DE-9IM format: 'T********' indicates the interior of the bounding box
-            # must intersect the interior of the selected area.
-            if not dataset_bbox.relate_pattern(shape, "T********"):
-                raise SelectedAreaOutOfBoundsError(
-                    "No interior point of the selected area intersects the dataset region."
-                )
+        # DE-9IM format: 'T********' indicates the interior of the bounding box
+        # must intersect the interior of the selected area. The area is all of
+        # its shapes: the part on the dataset is read, the rest is not.
+        if not dataset_bbox.relate_pattern(unary_union(self.shapes), "T********"):
+            raise SelectedAreaOutOfBoundsError(
+                "The selected area is outside this dataset's region; "
+                "choose an area that overlaps it."
+            )
 
 
 class SkopePolygonModel(Polygon, BaseSkopePolygonModel):
