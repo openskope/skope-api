@@ -1,0 +1,5 @@
+# Formatting-only commits that git blame skips. GitHub reads this file; locally, run
+# git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# style: apply black beyond the app
+63e781135945fd0846bca171a6e1efc2157c0954
