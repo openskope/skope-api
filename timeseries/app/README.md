@@ -400,7 +400,8 @@ window. A passing build alone does not patch the running services.
 
 1. **Review dependency updates.** Dependabot proposes API package, base image,
    and GitHub Actions updates weekly. Scientific libraries and the release
-   toolchain are grouped separately for review; ingest lockfile updates are
+   toolchain are grouped separately for review; API package updates change
+   `pyproject.toml` and `uv.lock` together; ingest lockfile updates are
    proposed monthly. Review and merge appropriate updates before selecting the
    candidate commit. Major upgrades and changes to scientific encoding or
    numerical behavior need their own review. Enable Dependabot alerts and
@@ -542,6 +543,7 @@ environment's containers and should not be part of a routine deployment.
 | Dataset or variable ordering, map view, default variable | No | Display files |
 | Which release an environment serves, or hiding a dataset | No | Pin file |
 | Anything in a release's data or metadata | Yes | The release side ([ingest README](../ingest/README.md#changing-things-later)) |
+| An API package or its version | No | `pyproject.toml` here, then `uv lock` in this folder; the image installs exactly what `uv.lock` records |
 
 Replacing a release needs nothing done to the old one: pinning the new release
 is the whole change, and the old one stays where it is, unchanged, as the

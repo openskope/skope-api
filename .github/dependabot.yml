@@ -1,7 +1,7 @@
 version: 2
 updates:
-  - package-ecosystem: pip
-    directory: /deploy/requirements
+  - package-ecosystem: uv
+    directory: /timeseries/app
     schedule:
       interval: weekly
       day: monday

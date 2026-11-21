@@ -1,0 +1,50 @@
+[project]
+name = "skope-api"
+version = "0.1.0"
+description = "SKOPE dataset metadata, map tiles, and time series extraction."
+# The API image runs Python 3.13 (deploy/Dockerfile).
+requires-python = ">=3.13"
+dependencies = [
+    # Web framework
+    "fastapi==0.162.7",
+    "uvicorn==0.54.0",
+    # Data validation
+    "pydantic==2.14.3",
+    "pydantic-settings==2.16.3",
+    "geojson_pydantic==2.2.0",
+    # Geospatial (rasterio wheels bundle GDAL)
+    "rasterio==1.5.2",
+    "Shapely==2.2.0",
+    "pyproj==3.8.0",
+    # Numeric / scientific
+    "numpy==2.5.4",
+    "pandas==3.1.1",
+    # Async / HTTP
+    "anyio==4.16.0",
+    "httpx==0.28.1",
+    # Serialization / config
+    "PyYAML==6.0.3",
+    # Observability
+    "sentry-sdk==2.75.0",
+    # Job store
+    "redis==8.1.0",
+]
+
+# The image installs one group: dev for local development and tests,
+# production for staging and production (REQUIREMENTS in deploy/Dockerfile).
+[dependency-groups]
+dev = [
+    "pytest==9.2.0",
+    "pytest-asyncio==1.5.0",
+    "ipython==9.18.1",
+    "black==26.10.1",
+]
+production = [
+    "gunicorn==27.0.1",
+    "httptools==0.9.0",
+    "uvloop==0.23.0",
+]
+
+[tool.uv]
+# Not an installable package: this file only declares the API's dependencies.
+package = false
