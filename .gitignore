@@ -13,7 +13,7 @@ cog-input/
 timeseries/ingest/output/
 deploy-state/
 runtime-images/
-experiments/paleocar-v3-encoding/results/
+tools/paleocar-v3-encoding/results/
 
 
 ### Pulled from https://github.com/github/gitignore/blob/master/Python.gitignore

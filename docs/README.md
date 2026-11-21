@@ -7,6 +7,7 @@ The guides live beside the code they describe:
 | Get an overview, run the API locally, or learn what a dataset release is | [Root README](../README.md) |
 | Add or update a dataset: declare it, build a release, and publish it | [Ingest README](../timeseries/ingest/README.md) |
 | Choose what an environment serves, how it is shown, and deploy, verify, or roll back | [App README](../timeseries/app/README.md) |
+| Check the API's math against source data, or benchmark COG layouts | [Tools README](../tools/README.md) |
 
 This folder holds the reference material behind them:
 
@@ -15,5 +16,6 @@ This folder holds the reference material behind them:
 | [`specs/dataset-release-v1.md`](specs/dataset-release-v1.md) | The rules for building and publishing a release; requirement IDs such as OBS-011 |
 | [`specs/release-consumption-v1.md`](specs/release-consumption-v1.md) | The rules for serving releases: pins, display files, `/metadata`; requirement IDs such as PIN-004 |
 | [`experiments/`](experiments/) | Experiment reports that decisions rest on, such as the PaleoCAR v3 COG encoding |
+| [`telemetry.md`](telemetry.md) | The API's and TiTiler's JSON log events, their volume controls, and how to read them |
 
 Decisions and their reasons are in [`.agents/decisions/`](../.agents/decisions/).

@@ -3,7 +3,7 @@
 - Experiments: EXP-002, EXP-003 and EXP-004 of the
   [Dataset Release Specification v1](../specs/dataset-release-v1.md)
 - Run: stage 1 on 2026-10-08/09; stage 2 and the data type check on 2026-11-02/03
-- Harness: [`experiments/paleocar-v3-encoding/`](../../experiments/paleocar-v3-encoding/)
+- Harness: [`tools/paleocar-v3-encoding/`](../../tools/paleocar-v3-encoding/)
 - Result: **`BLOCKSIZE=128`, `INTERLEAVE=TILE`, 250 timesteps per file, `UInt16`**
 
 ## Question
@@ -279,8 +279,8 @@ the experiment ran, in the following ways.
 
 ## Reproducing
 
-From [`experiments/paleocar-v3-encoding/`](../../experiments/paleocar-v3-encoding/), with the dev stack stopped and
-`SOURCE` and `WORK` set as the harness [README](../../experiments/paleocar-v3-encoding/README.md) describes:
+From [`tools/paleocar-v3-encoding/`](../../tools/paleocar-v3-encoding/), with the dev stack stopped and
+`SOURCE` and `WORK` set as the harness [README](../../tools/paleocar-v3-encoding/README.md) describes:
 
 ```bash
 ./run.sh build --blocks 128 --interleaves TILE --chunks 100 --dtypes uint32 --no-baseline

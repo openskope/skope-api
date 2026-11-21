@@ -2,7 +2,7 @@
 
 - Run: 2026-11-06, against the dev API and the `paleocar_v3-r-2026.10.07` release (`ppt_annual`,
   `gdd_cotton_annual`)
-- Harness: [`experiments/backend-math-validation/`](../../experiments/backend-math-validation/)
+- Harness: [`tools/backend-math-validation/`](../../tools/backend-math-validation/)
 - Result: **three bugs found and fixed; after the fixes, 16 of 16 extractions and 1,440 of 1,440 analyze cases match
   the reference**
 
@@ -24,7 +24,7 @@ plausible whether or not the right cells, the right years or the right windows w
 - **Transforms and smoothers:** plain loops over the definitions in the script's docstring, applied to the whole
   axis and then cut to the range.
 
-The cases: 8 areas (see the [harness README](../../experiments/backend-math-validation/README.md)) × 2 variables, each
+The cases: 8 areas (see the [harness README](../../tools/backend-math-validation/README.md)) × 2 variables, each
 extracted over the whole axis and compared, then 90 `/analyze` cases each: mean and median × 5 transforms (none,
 z-score on the selected range, fixed reference 1000–1100, fixed reference inside the empty years 0450–0500, moving
 window 10) × 3 smoothers (none, trailing 5, centered 7) × 3 ranges (all, 0350–0700 across the empty years 0417–0589

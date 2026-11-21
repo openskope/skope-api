@@ -23,7 +23,7 @@ Run it inside the API image, which has every dependency, with the sources mounte
 
 ```bash
 docker run --rm \
-  -v "$PWD/experiments/backend-math-validation:/validation:ro" \
+  -v "$PWD/tools/backend-math-validation:/validation:ro" \
   -v /path/to/sources:/sources:ro -v /path/to/results:/results \
   -w /validation openskope/skope-api:dev \
   python validate.py --api http://host.docker.internal:8001 --dataset paleocar_v3 --areas areas.geojson \

@@ -3,7 +3,7 @@
 Each expected value is computed without the API's code: cells by testing cell
 centers with shapely, zonal statistics by brute-force NumPy in float64, and
 transforms and smoothers by plain loops over the definitions that
-`experiments/backend-math-validation/validate.py` checks against the source
+`tools/backend-math-validation/validate.py` checks against the source
 data. The API must agree with them to rounding.
 """
 
