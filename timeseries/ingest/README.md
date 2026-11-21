@@ -86,8 +86,8 @@ Things to check:
 - [ ] **Temporal values are quoted strings:** `"0103"`, not `0103`.
 - [ ] **No personal contact details** copied from legacy metadata.
 
-For a dataset whose metadata predates this format, the answers come from the
-dataset creator; see spec §20.2 for the questions.
+For a dataset whose metadata predates this format, the scientific facts (units,
+valid ranges, nodata, what a timestep means) come from the dataset creator.
 
 ### Check the source manifest
 
@@ -423,7 +423,6 @@ version's Collection with `predecessor-version`.
 | Batch builds | §14.4 (ORCH-006, ORCH-008), §18 (MIG-003) |
 | Overview and time-to-band rule | §15 (API-001–010) |
 | Validation passes and findings | §16 (VAL-001–008) |
-| Questions for a dataset creator | §20.2 |
 
 ## Code
 

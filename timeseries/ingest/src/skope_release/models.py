@@ -2,12 +2,12 @@
 
 Each model is strict and rejects unknown fields, so a schema violation fails
 at parse time. The committed JSON Schemas in `schemas/` are generated from
-these models (Section 20.3).
+these models (Section 20.2).
 
 Documents:
 - `Curated`: a dataset's `curated.yml` (Section 7).
 - `SourceManifest`: a dataset's `source-manifest.yml` (META-004).
-- `Ledger`: a dataset's `releases.yml` of assigned release IDs (Section 20.3).
+- `Ledger`: a dataset's `releases.yml` of assigned release IDs (Section 20.2).
 - `ReleaseManifest`: `release-manifest.json` (Section 13).
 - `Overview`: `overview.yml` (Section 15.2).
 """
@@ -256,7 +256,7 @@ class CogOptions(Strict):
 
 class ReleaseBlock(Strict):
     created: Rfc3339Utc  # REL-006; never read from the clock
-    chunk_size: int | None = Field(default=None, ge=1)  # omitted for a static dataset (Section 20.3)
+    chunk_size: int | None = Field(default=None, ge=1)  # omitted for a static dataset (Section 20.2)
     cog: CogOptions
 
 
@@ -332,7 +332,7 @@ class SourceManifest(Strict):
 
 
 # ---------------------------------------------------------------------------
-# releases.yml ledger (Section 20.3)
+# releases.yml ledger (Section 20.2)
 
 
 class LedgerEntry(Strict):

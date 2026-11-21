@@ -1,4 +1,4 @@
-"""`skope-release pin`: the ledger, pin, and source checksum edits (spec §20.3, PIN-001, META-004)."""
+"""`skope-release pin`: the ledger, pin, and source checksum edits (spec §20.2, PIN-001, META-004)."""
 
 import json
 import re

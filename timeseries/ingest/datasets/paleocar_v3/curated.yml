@@ -1,7 +1,6 @@
 # PROVISIONAL (2026-10-07). Written from the legacy registry before the dataset
-# creator answered the questions in docs/specs/dataset-release-v1.md §20.2.
-# The license, providers, temporal semantics, and units are provisional; see
-# §20.3. This prototype declares 2 of the 12 MIG-009 quantities.
+# creator reviewed it. The license, providers, temporal semantics, and units are
+# provisional; see §20.2. This prototype declares 2 of the 12 MIG-009 quantities.
 schema_version: "0.1.0"
 id: "paleocar_v3"
 version: "3"
@@ -80,7 +79,7 @@ empty_timesteps:
       chronologies are available (see the lineage).
 # Units: the GDD sources hold °C GDD, not the legacy registry's °F. At the same
 # pixels, paleocar_v2's °F GDD maize product averages 1.8 times this one's
-# (2026-10-08). Provisional until the dataset creator confirms (§20.2).
+# (2026-10-08). Provisional until the dataset creator confirms.
 variables:
   - id: "gdd_cotton_annual"
     title: "Annual (Jan–Dec) Cotton Growing Degree Days"

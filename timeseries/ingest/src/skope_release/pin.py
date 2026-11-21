@@ -1,4 +1,4 @@
-"""Pin a published release from its manifest (spec §20.3, release consumption PIN-001).
+"""Pin a published release from its manifest (spec §20.2, release consumption PIN-001).
 
 Pinning a release means three edits, all with values its release manifest holds:
   1. the ledger entry in `datasets/<dataset>/releases.yml` (REL-006);
@@ -31,7 +31,7 @@ from .models import ReleaseManifest
 
 LEDGER_HEADER = """\
 # Release IDs assigned to {dataset} and the declaration each one was built
-# from (REL-006, spec §20.3). An ID is never reused; a bad release gets
+# from (REL-006, spec §20.2). An ID is never reused; a bad release gets
 # `withdrawn: <reason>` instead of being removed.
 releases:
 """

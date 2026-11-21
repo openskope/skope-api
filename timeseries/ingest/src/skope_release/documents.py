@@ -101,7 +101,7 @@ def dumps_json(value: Any) -> bytes:
 
 
 # ---------------------------------------------------------------------------
-# Committed JSON Schemas (Section 20.3: generated from the models)
+# Committed JSON Schemas (Section 20.2: generated from the models)
 
 SCHEMA_VERSIONS = {
     "curated": "0.1.0",

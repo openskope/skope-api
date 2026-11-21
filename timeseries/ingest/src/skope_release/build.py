@@ -165,7 +165,7 @@ def build_and_publish(plan: object, release_root: Path) -> tuple[Published, Repo
 
 
 def verify_reproducible(plan: object, published: Path) -> Report:
-    """Rebuild a published release into scratch and byte-compare every file (API-007, Section 20.3)."""
+    """Rebuild a published release into scratch and byte-compare every file (API-007, Section 20.2)."""
     plan = require_plan(plan)
     report = Report()
     staging_root = published.parent / STAGING_DIR

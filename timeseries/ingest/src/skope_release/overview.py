@@ -32,7 +32,7 @@ WIDTH = 100
 
 
 # ---------------------------------------------------------------------------
-# Deterministic YAML emitter (REL-005, Section 20.3)
+# Deterministic YAML emitter (REL-005, Section 20.2)
 
 
 def _scalar(value: Any) -> str:

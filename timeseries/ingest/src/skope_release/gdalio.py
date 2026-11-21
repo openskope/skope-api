@@ -193,7 +193,7 @@ def crs_code(srs: osr.SpatialReference) -> str | None:
 
 
 def wgs84_bbox(srs_wkt: str, geotransform, width: int, height: int) -> tuple[float, float, float, float]:
-    """WGS 84 bbox of the grid's outer edge, from its corners (Section 20.3)."""
+    """WGS 84 bbox of the grid's outer edge, from its corners (Section 20.2)."""
     src = osr.SpatialReference()
     src.ImportFromWkt(srs_wkt)
     src.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)

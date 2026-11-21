@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-09-10
+- Amended by: [0008: Recover Extraction Submissions Within A Transient Store Lifetime](0008-recoverable-extraction-submissions.md), for admission and abandoned work
 
 ## Context
 

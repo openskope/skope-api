@@ -60,7 +60,7 @@ def _used_extensions(obj: dict[str, Any]) -> list[str]:
 
 
 def _period(obs: FinalObservation, first_key: str, last_key: str) -> tuple[datetime, datetime]:
-    """Inclusive start and end instants of a run of timesteps (ORG-004, Section 20.3)."""
+    """Inclusive start and end instants of a run of timesteps (ORG-004, Section 20.2)."""
     temporal = obs.curated.temporal
     start = parse_key(first_key, obs.axis.precision)
     last = parse_key(last_key, obs.axis.precision)

@@ -36,7 +36,7 @@ log = logging.getLogger(__name__)
 # Inspection reads each block once, so a small block cache is enough; the
 # build's 512 MB per process would multiply by the number of workers.
 INSPECT_CACHEMAX_MB = 64
-STAT_RELATIVE_TOLERANCE = 1e-10  # GDAL serializes ~13 significant digits (Section 20.3)
+STAT_RELATIVE_TOLERANCE = 1e-10  # GDAL serializes ~13 significant digits (Section 20.2)
 VALID_PERCENT_TOLERANCE = 0.005
 LOSSLESS = {"ZSTD", "DEFLATE", "LZW"}
 
@@ -159,7 +159,7 @@ def _inspect(
                 report.add("COG-006", f"band description {band.GetDescription()!r} should be {name!r}", **bctx)
             if not gdalio_same(band.GetNoDataValue(), enc.nodata):
                 report.add("COG-006", f"nodata {band.GetNoDataValue()} differs from {enc.nodata}", **bctx)
-            # GDAL encodes an identity scale (1) or offset (0) by omitting it (Section 20.3).
+            # GDAL encodes an identity scale (1) or offset (0) by omitting it (Section 20.2).
             scale = band.GetScale() if band.GetScale() is not None else 1.0
             offset = band.GetOffset() if band.GetOffset() is not None else 0.0
             if scale != enc.scale or offset != enc.offset:

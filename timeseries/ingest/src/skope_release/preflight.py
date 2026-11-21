@@ -23,7 +23,7 @@ from .models import Curated, SourceManifest
 from .plan import _PLAN_ISSUER, Grid, PlannedVariable, Producer, ValidatedBuildPlan
 from .timeaxis import Axis, AxisError, ChunkLayout
 
-GRID_TOLERANCE_PX = 1e-3  # Section 20.3
+GRID_TOLERANCE_PX = 1e-3  # Section 20.2
 CATEGORY_PRESERVING = {"MODE", "NEAREST"}
 
 
@@ -94,7 +94,7 @@ def _inspect_source(read_path: str) -> _SourceFacts:
 
 
 def _grid_differs(a: _SourceFacts, b: _SourceFacts) -> str | None:
-    """OBS-003 with the Section 20.3 tolerance, or None when equivalent."""
+    """OBS-003 with the Section 20.2 tolerance, or None when equivalent."""
     if not gdalio.same_crs(a.wkt, b.wkt):
         return "CRS differs"
     if (a.width, a.height) != (b.width, b.height):
@@ -286,7 +286,7 @@ def preflight_dataset(
         if axis is not None:
             empty = _declared_empty(curated, axis, report, path=str(files.curated), **ctx)
     elif manifest.release.chunk_size is not None:
-        report.add("META-004", "a static dataset's release block omits chunk_size (Section 20.3)", path=str(files.source_manifest), **ctx)
+        report.add("META-004", "a static dataset's release block omits chunk_size (Section 20.2)", path=str(files.source_manifest), **ctx)
 
     curated_by_id = {v.id: v for v in curated.variables}
     facts: dict[str, _SourceFacts] = {}

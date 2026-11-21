@@ -131,7 +131,7 @@ def test_float_narrowing_requires_exact_values(temporal_dataset, source_type, va
 
 
 def test_grids_must_align(temporal_dataset, tmp_path):
-    """OBS-003 with the Section 20.3 tolerance."""
+    """OBS-003 with the Section 20.2 tolerance."""
     keys = years(100, 5)
     directory = temporal_dataset()
     write_source(tmp_path / "sources" / "beta.tif", keys, geotransform=(-115.0 + 0.01 * 0.0005, 0.01, 0.0, 43.0, 0.0, -0.01))

@@ -1,8 +1,8 @@
 # SKOPE Release Consumption Specification v1
 
-- Status: Proposed
-- Version: 0.1
-- Date: 2026-10-01
+- Status: Accepted
+- Version: 1.0
+- Date: 2026-11-21
 - Companion: [SKOPE Dataset Release Specification v1](dataset-release-v1.md)
 - Decision record: [ADR
   0006](../../.agents/decisions/0006-stac-authoritative-dataset-releases.md)
@@ -12,9 +12,8 @@ described by [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119) and
 [RFC 8174](https://www.rfc-editor.org/rfc/rfc8174) when, and only when, they
 appear in uppercase.
 
-This document specifies a target architecture. It does not describe current
-behavior, and it does not prescribe implementation code. The same approval gate
-as the release specification applies.
+This document specifies a target architecture. It does not prescribe
+implementation code.
 
 ## 1. Purpose and scope
 

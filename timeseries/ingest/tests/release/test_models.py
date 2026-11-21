@@ -51,7 +51,7 @@ def test_required_temporal_semantics(field):
         {"transform": [1, 0, 0, 0, -1, 0]},
         {"ordering": 1},  # presentation (META-002)
         {"colormap": "viridis"},
-        {"status": "Published"},  # dropped (Section 20.3)
+        {"status": "Published"},  # dropped (Section 20.2)
     ],
 )
 def test_observed_and_presentation_fields_are_rejected(extra):

@@ -2,7 +2,7 @@
 
 - REL-006: `<dataset-id>-r-YYYY.MM.DD[-N]`, dated by `release.created`.
 - MAN-010: SHA-256 of the RFC 8785 projection of the resolved declaration.
-- MAN-011 and Section 20.3: one release ID is bound to one digest forever,
+- MAN-011 and Section 20.2: one release ID is bound to one digest forever,
   recorded in the dataset's `releases.yml` ledger.
 """
 
@@ -42,7 +42,7 @@ def check_release_id(
     ledger: Ledger,
     report: Report,
 ) -> None:
-    """REL-006, MAN-011, and the ledger rules of Section 20.3."""
+    """REL-006, MAN-011, and the ledger rules of Section 20.2."""
     try:
         id_dataset, id_date, sequence = parse_release_id(release_id)
     except ValueError as exc:
@@ -104,7 +104,7 @@ def load_ledger(path: Path, report: Report) -> Ledger:
 
 
 def declaration_projection(curated: Curated, resolved: SourceManifest) -> dict[str, Any]:
-    """The canonical declaration graph (MAN-010, Section 20.3).
+    """The canonical declaration graph (MAN-010, Section 20.2).
 
     `resolved` must carry every source checksum. Unordered collections
     (variables) are keyed by identifier; ordered arrays keep their order.
