@@ -13,7 +13,7 @@ Shapely==2.2.0
 pyproj==3.8.0
 
 # Numeric / scientific
-numpy==2.5.4
+numpy==2.5.5
 pandas==3.1.1
 scipy==1.18.1
 
