@@ -25,7 +25,7 @@ from app.registry.compose import (
 from app.registry.display import DisplayFileError, check_display, load_display
 from app.registry.metadata import build_metadata
 from app.store.jobs import cleanup_stale_jobs, create_job_store
-from app.routers.v3 import api as v3_api
+from app.routers import api
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -134,4 +134,4 @@ async def timeseries_error_handler(request: Request, exc: TimeseriesValidationEr
     )
 
 
-app.include_router(v3_api.router)
+app.include_router(api.router)

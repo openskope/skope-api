@@ -11,9 +11,19 @@ from skope_release.preflight import DatasetFiles, preflight_dataset
 PRODUCER = Producer("skope-api dataset pipeline", "0.1.0", "abc123")
 
 
-def plan_for(directory: Path, release_id: str | None = "synth-r-2026.10.07", producer: Producer = PRODUCER):
+def plan_for(
+    directory: Path,
+    release_id: str | None = "synth-r-2026.10.07",
+    producer: Producer = PRODUCER,
+):
     report = Report()
-    plan = preflight_dataset(DatasetFiles(directory), release_id=release_id, mirror=None, producer=producer, report=report)
+    plan = preflight_dataset(
+        DatasetFiles(directory),
+        release_id=release_id,
+        mirror=None,
+        producer=producer,
+        report=report,
+    )
     assert plan is not None, report.to_text()
     return plan
 

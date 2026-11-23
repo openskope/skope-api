@@ -29,7 +29,9 @@ from .plan import PlannedVariable, ValidatedBuildPlan, require_plan
 log = logging.getLogger(__name__)
 
 
-def cog_creation_options(plan: ValidatedBuildPlan, variable: PlannedVariable) -> list[str]:
+def cog_creation_options(
+    plan: ValidatedBuildPlan, variable: PlannedVariable
+) -> list[str]:
     """Creation options are part of the declaration (META-004, Section 12.1)."""
     cog = plan.resolved_manifest.release.cog
     enc = variable.encoding
@@ -49,13 +51,24 @@ def cog_creation_options(plan: ValidatedBuildPlan, variable: PlannedVariable) ->
     return options
 
 
-def _prepare_scratch(path: Path, plan: ValidatedBuildPlan, variable: PlannedVariable, bands: int, windows: gdalio.Windows, names: list[str]):
+def _prepare_scratch(
+    path: Path,
+    plan: ValidatedBuildPlan,
+    variable: PlannedVariable,
+    bands: int,
+    windows: gdalio.Windows,
+    names: list[str],
+):
     """A scratch file whose blocks are the read windows, so every write fills whole blocks."""
     enc = variable.encoding
     if windows.full_width:
         layout = ["TILED=NO", f"BLOCKYSIZE={windows.window_height}"]
     else:
-        layout = ["TILED=YES", f"BLOCKXSIZE={windows.window_width}", f"BLOCKYSIZE={windows.window_height}"]
+        layout = [
+            "TILED=YES",
+            f"BLOCKXSIZE={windows.window_width}",
+            f"BLOCKYSIZE={windows.window_height}",
+        ]
     ds = gdal.GetDriverByName("GTiff").Create(
         str(path),
         plan.grid.width,
@@ -116,7 +129,9 @@ def _embed_exact_statistics(scratch: Path) -> None:
         except RuntimeError as exc:
             if "no valid pixels" not in str(exc):
                 raise
-            band.SetMetadataItem("STATISTICS_VALID_PERCENT", "0")  # as GDAL embeds it for an empty band
+            band.SetMetadataItem(
+                "STATISTICS_VALID_PERCENT", "0"
+            )  # as GDAL embeds it for an empty band
     ds = None
 
 
@@ -124,10 +139,20 @@ def _to_cog(scratch: Path, target: Path, options: list[str], threads: int) -> No
     target.parent.mkdir(parents=True, exist_ok=True)
     _embed_exact_statistics(scratch)
     # NUM_THREADS is operational, not declared: the bytes are the same for any value.
-    gdal.Translate(str(target), str(scratch), format="COG", creationOptions=[*options, f"NUM_THREADS={threads}"])
+    gdal.Translate(
+        str(target),
+        str(scratch),
+        format="COG",
+        creationOptions=[*options, f"NUM_THREADS={threads}"],
+    )
 
 
-def write_temporal_variable(plan: ValidatedBuildPlan, variable: PlannedVariable, staging: Path, scratch_dir: Path) -> list[Path]:
+def write_temporal_variable(
+    plan: ValidatedBuildPlan,
+    variable: PlannedVariable,
+    staging: Path,
+    scratch_dir: Path,
+) -> list[Path]:
     layout = plan.layout
     keys = plan.axis.keys()
     written: list[Path] = []
@@ -138,9 +163,23 @@ def write_temporal_variable(plan: ValidatedBuildPlan, variable: PlannedVariable,
             first, last = layout.bounds(chunk)
             path = scratch_dir / f"{variable.id}--{chunk:05d}.tif"
             scratch_paths.append(path)
-            scratches.append(_prepare_scratch(path, plan, variable, last - first + 1, windows, list(keys[first : last + 1])))
-        log.info("%s: one pass over %d bands in %d x %d windows",
-                 variable.id, src.RasterCount, windows.window_width, windows.window_height)
+            scratches.append(
+                _prepare_scratch(
+                    path,
+                    plan,
+                    variable,
+                    last - first + 1,
+                    windows,
+                    list(keys[first : last + 1]),
+                )
+            )
+        log.info(
+            "%s: one pass over %d bands in %d x %d windows",
+            variable.id,
+            src.RasterCount,
+            windows.window_width,
+            windows.window_height,
+        )
         for x, y, w, h in windows:
             window = src.ReadAsArray(x, y, w, h)
             if window.ndim == 2:
@@ -148,17 +187,32 @@ def write_temporal_variable(plan: ValidatedBuildPlan, variable: PlannedVariable,
             for chunk, scratch in enumerate(scratches):
                 first, last = layout.bounds(chunk)
                 for offset, index in enumerate(range(first, last + 1), start=1):
-                    scratch.GetRasterBand(offset).WriteArray(_encode(window[index], variable), x, y)
+                    scratch.GetRasterBand(offset).WriteArray(
+                        _encode(window[index], variable), x, y
+                    )
             del window
         for scratch in scratches:
             scratch.Close()  # the COG step must read complete scratch files
         scratches.clear()
     options = cog_creation_options(plan, variable)
-    jobs = [(path, staging / layout.cog_path(variable.id, chunk)) for chunk, path in enumerate(scratch_paths)]
+    jobs = [
+        (path, staging / layout.cog_path(variable.id, chunk))
+        for chunk, path in enumerate(scratch_paths)
+    ]
     # Chunks are independent, so they may convert in parallel; bytes do not depend on the order.
-    parallel, threads = conversion_parallelism(_cpu_count(), os.environ.get("SKOPE_RELEASE_WORKERS"))
-    log.info("%s: converting %d chunks, %d at a time with %d threads each", variable.id, len(jobs), parallel, threads)
-    with ProcessPoolExecutor(max_workers=parallel, mp_context=multiprocessing.get_context("spawn")) as pool:
+    parallel, threads = conversion_parallelism(
+        _cpu_count(), os.environ.get("SKOPE_RELEASE_WORKERS")
+    )
+    log.info(
+        "%s: converting %d chunks, %d at a time with %d threads each",
+        variable.id,
+        len(jobs),
+        parallel,
+        threads,
+    )
+    with ProcessPoolExecutor(
+        max_workers=parallel, mp_context=multiprocessing.get_context("spawn")
+    ) as pool:
         futures = {
             pool.submit(_convert, str(scratch), str(target), options, threads): target
             for scratch, target in jobs
@@ -202,14 +256,21 @@ def _convert(scratch: str, target: str, options: list[str], threads: int) -> Non
     _to_cog(Path(scratch), Path(target), options, threads)
 
 
-def write_static_variable(plan: ValidatedBuildPlan, variable: PlannedVariable, staging: Path, scratch_dir: Path) -> list[Path]:
+def write_static_variable(
+    plan: ValidatedBuildPlan,
+    variable: PlannedVariable,
+    staging: Path,
+    scratch_dir: Path,
+) -> list[Path]:
     path = scratch_dir / f"{variable.id}.tif"
     with gdal.Open(variable.source_read_path) as src:
         windows = gdalio.source_windows(src, [variable.source_band])
         scratch = _prepare_scratch(path, plan, variable, 1, windows, [variable.id])
         band = src.GetRasterBand(variable.source_band)
         for x, y, w, h in windows:
-            scratch.GetRasterBand(1).WriteArray(_encode(band.ReadAsArray(x, y, w, h), variable), x, y)
+            scratch.GetRasterBand(1).WriteArray(
+                _encode(band.ReadAsArray(x, y, w, h), variable), x, y
+            )
         scratch.Close()
     target = staging / "cogs" / f"{variable.id}.tif"  # ORG-009
     _to_cog(path, target, cog_creation_options(plan, variable), _cpu_count())

@@ -1,4 +1,4 @@
-"""`skope-release pin`: the ledger, pin, and source checksum edits (spec §20.3, PIN-001, META-004)."""
+"""`skope-release pin`: the ledger, pin, and source checksum edits (spec §20.2, PIN-001, META-004)."""
 
 import json
 import re
@@ -45,11 +45,27 @@ def release(temporal_dataset, tmp_path):
 
 def pin(release, tmp_path, *extra):
     published, _, pins = release
-    return main(["--datasets", str(tmp_path / "datasets"), "pin", str(published.path), "--env", "staging", "--pins", str(pins), *extra])
+    return main(
+        [
+            "--datasets",
+            str(tmp_path / "datasets"),
+            "pin",
+            str(published.path),
+            "--env",
+            "staging",
+            "--pins",
+            str(pins),
+            *extra,
+        ]
+    )
 
 
 def snapshot(directory, pins):
-    files = [directory / "source-manifest.yml", directory / "releases.yml", pins / "staging.yml"]
+    files = [
+        directory / "source-manifest.yml",
+        directory / "releases.yml",
+        pins / "staging.yml",
+    ]
     return {p.name: p.read_text() if p.exists() else None for p in files}
 
 
@@ -58,7 +74,7 @@ def test_shows_the_edits_and_writes_nothing(release, tmp_path, capsys):
     before = snapshot(directory, pins)
     assert pin(release, tmp_path) == 0
     out = capsys.readouterr().out
-    assert f"+  - release_id: \"{published.release_id}\"" in out
+    assert f'+  - release_id: "{published.release_id}"' in out
     assert f"+    manifest_sha256: {published.manifest_sha256}" in out
     assert re.search(r'^\+\s+checksum: "1220', out, re.MULTILINE)
     assert "nothing written" in out
@@ -70,7 +86,12 @@ def test_writes_the_ledger_pin_and_checksums(release, tmp_path, capsys):
     assert pin(release, tmp_path, "--write") == 0
 
     ledger = yaml.safe_load((directory / "releases.yml").read_text())
-    assert ledger["releases"] == [{"release_id": published.release_id, "declaration_digest": published.declaration_digest}]
+    assert ledger["releases"] == [
+        {
+            "release_id": published.release_id,
+            "declaration_digest": published.declaration_digest,
+        }
+    ]
 
     text = (pins / "staging.yml").read_text()
     assert text.startswith("# The release set staging serves.") and text.endswith(OTHER)
@@ -85,10 +106,18 @@ def test_writes_the_ledger_pin_and_checksums(release, tmp_path, capsys):
     assert entries[1]["dataset"] == "other"
 
     manifest = json.loads((published.path / "release-manifest.json").read_text())
-    declared = {v["id"]: v["source"]["checksum"] for v in yaml.safe_load((directory / "source-manifest.yml").read_text())["variables"]}
+    declared = {
+        v["id"]: v["source"]["checksum"]
+        for v in yaml.safe_load((directory / "source-manifest.yml").read_text())[
+            "variables"
+        ]
+    }
     assert declared == {s["id"]: s["checksum"] for s in manifest["sources"]}
     # Declaring the measured checksums leaves the declaration, and so its digest, unchanged.
-    assert plan_for(directory, release_id=None).declaration_digest == published.declaration_digest
+    assert (
+        plan_for(directory, release_id=None).declaration_digest
+        == published.declaration_digest
+    )
 
     capsys.readouterr()
     assert pin(release, tmp_path) == 0
@@ -97,7 +126,9 @@ def test_writes_the_ledger_pin_and_checksums(release, tmp_path, capsys):
 
 def test_a_conflicting_ledger_entry_stops_everything(release, tmp_path, capsys):
     published, directory, pins = release
-    (directory / "releases.yml").write_text(f'releases:\n  - release_id: "{published.release_id}"\n    declaration_digest: "{"5" * 64}"\n')
+    (directory / "releases.yml").write_text(
+        f'releases:\n  - release_id: "{published.release_id}"\n    declaration_digest: "{"5" * 64}"\n'
+    )
     before = snapshot(directory, pins)
     assert pin(release, tmp_path, "--write") == 1
     assert "REL-006" in capsys.readouterr().out
@@ -118,7 +149,9 @@ def test_a_declared_checksum_that_differs_stops_everything(release, tmp_path, ca
 
 def test_a_dataset_not_pinned_yet_is_added(release, tmp_path):
     published, directory, pins = release
-    (pins / "staging.yml").write_text(f"release_root: /srv/datasets/releases\nreleases:\n{OTHER}")
+    (pins / "staging.yml").write_text(
+        f"release_root: /srv/datasets/releases\nreleases:\n{OTHER}"
+    )
     assert pin(release, tmp_path, "--write") == 0
     entries = yaml.safe_load((pins / "staging.yml").read_text())["releases"]
     assert [e["dataset"] for e in entries] == ["other", "synth"]

@@ -1,8 +1,8 @@
 # SKOPE Release Consumption Specification v1
 
-- Status: Proposed
-- Version: 0.1
-- Date: 2026-10-01
+- Status: Accepted
+- Version: 1.0
+- Date: 2026-11-21
 - Companion: [SKOPE Dataset Release Specification v1](dataset-release-v1.md)
 - Decision record: [ADR
   0006](../../.agents/decisions/0006-stac-authoritative-dataset-releases.md)
@@ -12,9 +12,8 @@ described by [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119) and
 [RFC 8174](https://www.rfc-editor.org/rfc/rfc8174) when, and only when, they
 appear in uppercase.
 
-This document specifies a target architecture. It does not describe current
-behavior, and it does not prescribe implementation code. The same approval gate
-as the release specification applies.
+This document specifies a target architecture. It does not prescribe
+implementation code.
 
 ## 1. Purpose and scope
 
@@ -371,9 +370,9 @@ Per variable:
 
 SKOPE UI is the only supported API consumer, so the API and UI move to this
 specification in one breaking, coordinated cutover with no compatibility period.
-Today the registries store `region.center` latitude first, the tile route names
-its timestep `year`, and SKOPE UI scales `max` by `COLOR_MAX_PCT`; DISP-006,
-PROTO-006, and PROTO-003 replace those behaviors.
+The application production still runs stores `region.center` latitude first,
+names the tile route's timestep `year`, and has SKOPE UI scale `max` by
+`COLOR_MAX_PCT`; DISP-006, PROTO-006, and PROTO-003 replace those behaviors.
 
 - **CUT-001:** The API and SKOPE UI MUST pass the complete staging acceptance
   suite as a pair before production, MUST be deployed as one recorded change,
@@ -384,8 +383,7 @@ PROTO-006, and PROTO-003 replace those behaviors.
 - **CUT-002:** The contract tests for `/metadata`, static and temporal tiles,
   extraction, summary statistics, grid-based request limits, display ranges,
   schema-version mismatch, environment pins, paired deployment, and paired
-  rollback MUST pass before `timeseries/metadata.yml` is deleted or the breaking
-  production cutover is deployed.
+  rollback MUST pass before the breaking production cutover is deployed.
 
 - **CUT-003:** The API and SKOPE UI MUST use the canonical PaleoCAR v3
   identifier `gdd_maize_may_sept`. The legacy `gdd_may_sept` alias MUST NOT be
@@ -393,9 +391,8 @@ PROTO-006, and PROTO-003 replace those behaviors.
 
 The cutover removes, from both the API and SKOPE UI: the legacy `wmsLayer`,
 `timeseriesServiceUri`, `min`, and `max` fields; the `gdd_may_sept` alias; the
-SRTM `2009` key; `COLOR_MAX_PCT`; the API's runtime colour fetch from TiTiler;
-and the checked-in `deploy/metadata/{dev,staging,prod}.yml` registries, whose
-content moves to release overviews, the display files, and the pin files.
+SRTM `2009` key; `COLOR_MAX_PCT`; and the API's runtime colour fetch from
+TiTiler.
 
 ## 10. Open questions
 

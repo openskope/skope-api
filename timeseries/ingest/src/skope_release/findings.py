@@ -44,7 +44,9 @@ class Report:
 
     findings: list[Finding] = field(default_factory=list)
 
-    def add(self, requirement: str, message: str, *, severity: Severity = "error", **context) -> None:
+    def add(
+        self, requirement: str, message: str, *, severity: Severity = "error", **context
+    ) -> None:
         self.findings.append(Finding(requirement, severity, message, **context))
 
     def warn(self, requirement: str, message: str, **context) -> None:
@@ -79,4 +81,6 @@ class ReleaseError(Exception):
         self.stage = stage
         self.report = report
         first = report.errors[0].to_text() if report.errors else "no findings"
-        super().__init__(f"{stage} failed with {len(report.errors)} error(s); first: {first}")
+        super().__init__(
+            f"{stage} failed with {len(report.errors)} error(s); first: {first}"
+        )

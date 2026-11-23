@@ -47,7 +47,13 @@ def toolchain(lock: Path = PYTHON_LOCK) -> dict:
     }
 
 
-def make_record(prepare: Prepare, script_sha256: str, tools: dict, inputs: list[dict], output_checksum: str) -> dict:
+def make_record(
+    prepare: Prepare,
+    script_sha256: str,
+    tools: dict,
+    inputs: list[dict],
+    output_checksum: str,
+) -> dict:
     return {
         "script": prepare.script,
         "script_sha256": script_sha256,
@@ -71,11 +77,16 @@ def write_record(output: Path, record: dict) -> None:
     partial.replace(target)
 
 
-def stale_reason(record: dict | None, prepare: Prepare, script_sha256: str, tools: dict) -> str | None:
+def stale_reason(
+    record: dict | None, prepare: Prepare, script_sha256: str, tools: dict
+) -> str | None:
     """Why a record no longer describes the declared preparation, or None when it does."""
     if record is None:
         return "there is no record"
-    if record.get("script") != prepare.script or record.get("script_sha256") != script_sha256:
+    if (
+        record.get("script") != prepare.script
+        or record.get("script_sha256") != script_sha256
+    ):
         return "the script changed"
     if record.get("toolchain") != tools:
         return "the toolchain changed"

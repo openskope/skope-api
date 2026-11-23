@@ -162,6 +162,36 @@ def test_timeseries_request_limits_geometry_coordinates(monkeypatch):
         TimeseriesRequest(**_make_request_dict(selected_area=polygon))
 
 
+def test_a_wrong_shape_gets_one_error_naming_it():
+    # The `type` tag picks the model: one error at the bad feature, not one per
+    # model the area could have been.
+    square = [[[-110.1, 37.9], [-110.0, 37.9], [-110.0, 38.0], [-110.1, 37.9]]]
+    line = [[-110.1, 37.9], [-110.0, 38.0]]
+    area = {
+        "type": "FeatureCollection",
+        "features": [
+            {"type": "Feature", "properties": {}, "geometry": geometry}
+            for geometry in (
+                {"type": "Polygon", "coordinates": square},
+                {"type": "LineString", "coordinates": line},
+            )
+        ],
+    }
+
+    with pytest.raises(ValidationError) as error:
+        TimeseriesRequest(**_make_request_dict(selected_area=area))
+
+    (only,) = error.value.errors()
+    assert only["loc"] == (
+        "selected_area",
+        "FeatureCollection",
+        "features",
+        1,
+        "geometry",
+    )
+    assert "LineString" in only["msg"]
+
+
 def test_series_needs_one_timestep_per_value():
     from pydantic import ValidationError
 

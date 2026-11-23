@@ -7,7 +7,7 @@ from app.telemetry import data_quality_fields, log_event
 from app.registry.compose import ServedRelease
 from app.schemas.timeseries import TimeseriesRequest
 from app.store.jobs import JobStore
-from app.core.timeseries_processing import execute_timeseries_job
+from app.core.zonal_stats import execute_timeseries_job
 from app.core.job_control import RecoverableJobs
 
 logger = logging.getLogger(__name__)
@@ -48,6 +48,7 @@ async def run_timeseries_pipeline_task(
                 timestep_list=timestep_list,
                 dataset_crs=grid.code,
                 dataset_transform_array=list(grid.transform),
+                dataset_shape=grid.shape,
             )
             fields = {
                 "result": response.model_dump(mode="json"),

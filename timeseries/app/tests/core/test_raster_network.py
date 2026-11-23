@@ -9,7 +9,7 @@ import pytest
 from rasterio.errors import RasterioIOError
 from rasterio.windows import Window
 
-from app.core.timeseries_processing import (
+from app.core.zonal_stats import (
     RASTERIO_ENV_KWARGS,
     extract_summarystat_timeseries,
 )

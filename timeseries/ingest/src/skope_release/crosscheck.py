@@ -11,7 +11,7 @@ import posixpath
 from pathlib import Path
 
 from .findings import Report
-from .plan import FinalObservation, require_observation
+from .plan import require_observation
 
 
 def check_stac_against_bytes(observation: object, root: Path, report: Report) -> None:
@@ -20,13 +20,19 @@ def check_stac_against_bytes(observation: object, root: Path, report: Report) ->
     ctx = {"dataset": obs.dataset_id}
     if obs.temporal:
         documents = {
-            f"items/{p.name}": json.loads(p.read_text("utf-8")) for p in sorted((root / "items").glob("*.json"))
+            f"items/{p.name}": json.loads(p.read_text("utf-8"))
+            for p in sorted((root / "items").glob("*.json"))
         }
         assets = [
-            (rel, vid, asset) for rel, item in documents.items() for vid, asset in item.get("assets", {}).items()
+            (rel, vid, asset)
+            for rel, item in documents.items()
+            for vid, asset in item.get("assets", {}).items()
         ]
     else:
-        assets = [("collection.json", vid, asset) for vid, asset in collection.get("assets", {}).items()]
+        assets = [
+            ("collection.json", vid, asset)
+            for vid, asset in collection.get("assets", {}).items()
+        ]
 
     observed = {a.path: a for a in obs.assets}
     seen = set()
@@ -52,15 +58,30 @@ def check_stac_against_bytes(observation: object, root: Path, report: Report) ->
             expected["nodata"] = fact.nodata
         for key, value in expected.items():
             if asset.get(key) != value:
-                report.add("AUTH-002", f"{key} is {asset.get(key)!r} in STAC but {value!r} in the bytes", **actx)
+                report.add(
+                    "AUTH-002",
+                    f"{key} is {asset.get(key)!r} in STAC but {value!r} in the bytes",
+                    **actx,
+                )
         stac_bands = [(b["name"], b["statistics"]) for b in asset.get("bands", [])]
         byte_bands = [(b.name, b.statistics) for b in fact.bands]
         if stac_bands != byte_bands:
-            report.add("STAC-008", "Band names or statistics in STAC differ from the bytes", **actx)
+            report.add(
+                "STAC-008",
+                "Band names or statistics in STAC differ from the bytes",
+                **actx,
+            )
     for missing in sorted(set(observed) - seen):
-        report.add("VAL-007", "an observed COG is not referenced by STAC", path=missing, **ctx)
+        report.add(
+            "VAL-007", "an observed COG is not referenced by STAC", path=missing, **ctx
+        )
 
     if obs.temporal:
         values = collection.get("cube:dimensions", {}).get("time", {}).get("values")
         if values != list(obs.axis.keys()):
-            report.add("VAL-007", "cube:dimensions.time.values differs from the observed axis", path="collection.json", **ctx)
+            report.add(
+                "VAL-007",
+                "cube:dimensions.time.values differs from the observed axis",
+                path="collection.json",
+                **ctx,
+            )

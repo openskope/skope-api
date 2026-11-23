@@ -3,7 +3,7 @@
 Each expected value is computed without the API's code: cells by testing cell
 centers with shapely, zonal statistics by brute-force NumPy in float64, and
 transforms and smoothers by plain loops over the definitions that
-`experiments/backend-math-validation/validate.py` checks against the source
+`tools/backend-math-validation/validate.py` checks against the source
 data. The API must agree with them to rounding.
 """
 
@@ -16,13 +16,9 @@ import rasterio
 from rasterio.transform import from_origin
 from shapely.geometry import Point, Polygon, box
 
-from app.core.timeseries_processing import (
-    apply_temporal_transform,
-    apply_zscore_transform,
-    calculate_spatial_coverage,
-    extract_summarystat_timeseries,
-)
-from app.core.validation import resolve_spatial_window
+from app.core.analysis import apply_temporal_transform, apply_zscore_transform
+from app.core.spatial import calculate_spatial_coverage, resolve_spatial_window
+from app.core.zonal_stats import extract_summarystat_timeseries
 from app.schemas.timeseries import (
     MovingAverageSmoother,
     TimeRange,
@@ -53,11 +49,9 @@ def _expected_cells(area, window):
 
 
 def _cells(area):
-    shapes, transform, window = resolve_spatial_window([area], GRID, "EPSG:4326")
-    mask, n_cells, _ = calculate_spatial_coverage(
-        shapes, transform, window, "EPSG:4326"
-    )
-    return window, mask, n_cells
+    selection = resolve_spatial_window([area], GRID, "EPSG:4326", (10, 10))
+    mask, n_cells, _ = calculate_spatial_coverage(selection, "EPSG:4326")
+    return selection.window, mask, n_cells
 
 
 def test_window_reaches_every_cell_the_bounds_touch():
@@ -278,6 +272,7 @@ def test_fixed_zscore_of_a_constant_reference_is_null():
     actual = apply_zscore_transform(series, ZScoreFixedInterval(time_range=None))
 
     assert actual.isna().all()
+    assert list(actual.index) == list(series.index)
 
 
 def test_fixed_zscore_needs_two_reference_values():

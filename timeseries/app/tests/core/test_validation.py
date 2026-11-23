@@ -1,11 +1,8 @@
 import pytest
-from shapely.geometry import box
+from shapely.geometry import Point, box
 
-from app.core.validation import (
-    estimate_cell_count,
-    validate_dataset_and_variable,
-    validate_geom_size,
-)
+from app.core.spatial import resolve_spatial_window
+from app.core.validation import validate_dataset_and_variable, validate_window_size
 
 # ---------------------------------------------------------------------------
 # validate_dataset_and_variable
@@ -28,53 +25,48 @@ def test_validate_dataset_and_variable_unknown_variable(served_registry):
 
 
 # ---------------------------------------------------------------------------
-# estimate_cell_count
-
-
-def test_estimate_cell_count_geographic():
-    # 1° × 1° box, 0.00833° pixels, EPSG:4326
-    shapes = [box(-110.0, 37.0, -109.0, 38.0)]
-    transform = [0.00833, 0.0, -115.0, 0.0, -0.00833, 43.0]
-    result = estimate_cell_count(shapes, transform, "EPSG:4326")
-    # The bounds span columns and rows 600.24 .. 720.29: cells 600 .. 720.
-    assert result == 121 * 121
-
-
-def test_estimate_cell_count_projected_uses_exact_crs_transform():
-    shapes = [box(-110.0, 37.0, -109.0, 38.0)]
-    transform = [800.0, 0.0, 200000.0, 0.0, -800.0, 4800000.0]
-    result = estimate_cell_count(shapes, transform, "EPSG:32612")
-
-    # The precise UTM footprint differs from the former square
-    # meters-per-degree approximation.
-    assert result == 114 * 141
-
-
-def test_estimate_cell_count_zero_area():
-    shapes = [box(0.0, 0.0, 0.0, 0.0)]
-    transform = [0.00833, 0.0, -115.0, 0.0, -0.00833, 43.0]
-    result = estimate_cell_count(shapes, transform, "EPSG:4326")
-    assert result == 1
-
-
-# ---------------------------------------------------------------------------
-# validate_geom_size
+# validate_window_size
 
 GRID = [0.00833, 0.0, -115.0, 0.0, -0.00833, 43.0]
+GRID_SHAPE = (1440, 1560)  # rows, columns: to -102.0 and 31.0
 
 
-def test_validate_geom_size_within_limit(small_polygon_shape):
-    validate_geom_size([small_polygon_shape], GRID, "EPSG:4326", max_cells=500_000)
+def _check(shapes, max_cells):
+    selection = resolve_spatial_window(shapes, GRID, "EPSG:4326", GRID_SHAPE)
+    validate_window_size(selection, max_cells)
 
 
-def test_validate_geom_size_exceeds_limit(large_polygon_shape):
+def test_validate_window_size_within_limit(small_polygon_shape):
+    _check([small_polygon_shape], max_cells=500_000)
+
+
+def test_validate_window_size_exceeds_limit(large_polygon_shape):
+    # Only the part on the grid counts: x -115 .. -110 reaches 601 columns,
+    # and the grid's 1440 rows.
+    with pytest.raises(ValueError, match="read window spans 865440 cells"):
+        _check([large_polygon_shape], max_cells=500_000)
+
+
+def test_validate_window_size_counts_the_window_between_shapes():
+    # Two small polygons far apart on the grid: the window between them spans
+    # many cells.
+    shapes = [box(-114.1, 37.9, -114.0, 38.0), box(-103.1, 31.9, -103.0, 32.0)]
     with pytest.raises(ValueError, match="too large"):
-        validate_geom_size([large_polygon_shape], GRID, "EPSG:4326", max_cells=500_000)
+        _check(shapes, max_cells=10)
 
 
-def test_validate_geom_size_multiple_shapes_uses_unary_union():
-    # Two small polygons placed far apart: unary_union bbox spans a large area
-    shape1 = box(-114.1, 37.9, -114.0, 38.0)
-    shape2 = box(-80.1, 29.9, -80.0, 30.0)
-    with pytest.raises(ValueError):
-        validate_geom_size([shape1, shape2], GRID, "EPSG:4326", max_cells=10)
+def test_validate_window_size_ignores_a_shape_off_the_grid():
+    # The far shape is off the grid, so it reads nothing: one small window.
+    _check(
+        [box(-114.1, 37.9, -114.0, 38.0), box(-80.1, 29.9, -80.0, 30.0)],
+        max_cells=500,
+    )
+
+
+def test_validate_window_size_accepts_a_point():
+    _check([Point(-110.0, 38.0)], max_cells=1)
+
+
+def test_validate_window_size_limits_points_far_apart():
+    with pytest.raises(ValueError, match="too large"):
+        _check([Point(-114.5, 42.5), Point(-102.5, 31.5)], max_cells=10)

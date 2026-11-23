@@ -47,15 +47,35 @@ def test_static_stac_is_valid(static_dataset, tmp_path):
 @pytest.mark.parametrize(
     "change,requirement",
     [
-        (lambda c: c["links"].append({"rel": "self", "href": "./collection.json"}), "REL-002"),
-        (lambda c: c["links"].append({"rel": "via", "href": "http://example.org"}), "REL-002"),
-        (lambda c: c["links"].append({"rel": "related", "href": "./missing.json"}), "OBS-010"),
-        (lambda c: c["stac_extensions"].append("https://stac-extensions.github.io/projection/v1.1.0/schema.json"), "STAC-002"),
+        (
+            lambda c: c["links"].append({"rel": "self", "href": "./collection.json"}),
+            "REL-002",
+        ),
+        (
+            lambda c: c["links"].append({"rel": "via", "href": "http://example.org"}),
+            "REL-002",
+        ),
+        (
+            lambda c: c["links"].append({"rel": "related", "href": "./missing.json"}),
+            "OBS-010",
+        ),
+        (
+            lambda c: c["stac_extensions"].append(
+                "https://stac-extensions.github.io/projection/v1.1.0/schema.json"
+            ),
+            "STAC-002",
+        ),
         (lambda c: c.pop("license"), "VAL-005"),
         (lambda c: c.update({"skope:style": "red"}), "SKOPE-001"),
-        (lambda c: c["skope:variables"].update({"gamma": {"category": "x"}}), "SKOPE-002"),
+        (
+            lambda c: c["skope:variables"].update({"gamma": {"category": "x"}}),
+            "SKOPE-002",
+        ),
         (lambda c: c["cube:dimensions"]["time"]["values"].reverse(), "STAC-011"),
-        (lambda c: c["extent"]["spatial"]["bbox"][0].__setitem__(0, -120.0), "STAC-004"),
+        (
+            lambda c: c["extent"]["spatial"]["bbox"][0].__setitem__(0, -120.0),
+            "STAC-004",
+        ),
     ],
 )
 def test_collection_problems_are_detected(staging, change, requirement):

@@ -1,6 +1,4 @@
-import json
 import os
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -48,17 +46,7 @@ def served_registry(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Transform / spatial fixtures
-
-
-@pytest.fixture
-def geo_transform_6():
-    return [0.00833, 0.0, -115.0, 0.0, -0.00833, 43.0]
-
-
-@pytest.fixture
-def proj_transform_6():
-    return [800.0, 0.0, 200000.0, 0.0, -800.0, 4800000.0]
+# Spatial fixtures
 
 
 @pytest.fixture
@@ -71,11 +59,6 @@ def small_polygon_shape():
 def large_polygon_shape():
     # 20° × 20° — guaranteed to exceed any reasonable max_cells
     return box(-130.0, 25.0, -110.0, 45.0)
-
-
-@pytest.fixture
-def dataset_bbox():
-    return box(-115.0, 31.0, -102.0, 43.0)
 
 
 # ---------------------------------------------------------------------------
@@ -122,20 +105,3 @@ def base_series():
     ]
     values = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
     return pd.Series(values, index=index)
-
-
-@pytest.fixture
-def constant_series():
-    index = [
-        "0100",
-        "0101",
-        "0102",
-        "0103",
-        "0104",
-        "0105",
-        "0106",
-        "0107",
-        "0108",
-        "0109",
-    ]
-    return pd.Series([5.0] * 10, index=index)

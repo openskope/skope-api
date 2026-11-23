@@ -50,7 +50,9 @@ def main() -> None:
         if url in seen:
             continue
         seen.add(url)
-        request = urllib.request.Request(url, headers={"User-Agent": "skope-release-schema-vendor"})
+        request = urllib.request.Request(
+            url, headers={"User-Agent": "skope-release-schema-vendor"}
+        )
         try:
             with urllib.request.urlopen(request) as response:
                 doc = json.load(response)
@@ -58,7 +60,10 @@ def main() -> None:
             raise SystemExit(f"cannot fetch {url}: {exc}") from exc
         path = local_path(url)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(doc, indent=2, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8")
+        path.write_text(
+            json.dumps(doc, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
         for ref in refs(doc):
             target = urllib.parse.urljoin(url, ref).split("#", 1)[0]
             if target and target not in seen:

@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-11
+- Amended by: [0006: Use STAC-Authoritative Immutable Dataset Releases](0006-stac-authoritative-dataset-releases.md); the tile route takes a canonical timestep key instead of a year
 
 ## Context
 

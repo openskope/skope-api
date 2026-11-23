@@ -1,6 +1,5 @@
 from functools import lru_cache
 from logging.config import dictConfig
-from typing import List, Optional, Tuple, Type
 from pydantic import Field
 from pydantic_settings import (
     BaseSettings,
@@ -16,11 +15,10 @@ logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
-    allowed_origins: List[str] = Field(default_factory=lambda: ["*"])
+    allowed_origins: list[str] = Field(default_factory=lambda: ["*"])
     environment: str = "dev"
     skope_build_id: str = "development"
     name: str = "SKOPE API Services (development)"
-    base_uri: str = "timeseries"
     max_processing_time: int = 20000  # in milliseconds
     # Deployment-wide extraction slots, coordinated by the job store.
     max_concurrent_jobs: int = Field(default=1, ge=1, le=32)
@@ -34,8 +32,8 @@ class Settings(BaseSettings):
     max_series_options: int = Field(default=10, ge=1, le=100)
     max_geometry_shapes: int = Field(default=100, ge=1, le=1_000)
     max_geometry_coordinates: int = Field(default=10_000, ge=4, le=1_000_000)
-    redis_url: Optional[str] = None
-    sentry_dsn: str = "https://9b9dc2f60562380edeb675c39fe1c896@sentry.comses.net/4"
+    redis_url: str | None = None
+    sentry_dsn: str = ""
     tile_server_url: str
     # The pin file and where the pin's release_root is mounted (PIN-001).
     release_pin_path: str = "config/releases.yml"
@@ -64,12 +62,12 @@ class Settings(BaseSettings):
     @classmethod
     def settings_customise_sources(
         cls,
-        settings_cls: Type[BaseSettings],
+        settings_cls: type[BaseSettings],
         init_settings: PydanticBaseSettingsSource,
         env_settings: PydanticBaseSettingsSource,
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
-    ) -> Tuple[PydanticBaseSettingsSource, ...]:
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
         return (
             init_settings,
             env_settings,

@@ -1,11 +1,17 @@
 import pytest
+from pydantic import ValidationError
 
-from app.exceptions import SelectedAreaOutOfBoundsError, SelectedAreaPolygonIsNotValid
+from app.exceptions import SelectedAreaPolygonIsNotValid
 from app.schemas.geometry import (
     SkopeFeatureCollectionModel,
+    SkopeFeatureModel,
+    SkopeMultiPolygonModel,
     SkopePointModel,
     SkopePolygonModel,
 )
+
+# Whether an area overlaps the dataset is checked on its grid: see
+# tests/core/test_spatial.py.
 
 
 def _box_coords(minx, miny, maxx, maxy):
@@ -19,71 +25,89 @@ def _box_coords(minx, miny, maxx, maxy):
     ]
 
 
-# ---------------------------------------------------------------------------
-# SkopePointModel.validate_geometry
+# A figure-8: valid GeoJSON, but its outline crosses itself.
+BOWTIE = [
+    [-110.0, 38.0],
+    [-109.0, 39.0],
+    [-109.0, 38.0],
+    [-110.0, 39.0],
+    [-110.0, 38.0],
+]
 
 
-def test_point_inside_bbox_no_error(dataset_bbox):
-    point = SkopePointModel(type="Point", coordinates=[-110.0, 38.0])
-    point.validate_geometry(dataset_bbox)  # no exception
-
-
-def test_point_outside_bbox_raises(dataset_bbox):
-    point = SkopePointModel(type="Point", coordinates=[-130.0, 38.0])
-    with pytest.raises(SelectedAreaOutOfBoundsError):
-        point.validate_geometry(dataset_bbox)
-
-
-def test_point_on_bbox_boundary_no_error(dataset_bbox):
-    # Shapely `covers` includes boundary points
-    point = SkopePointModel(type="Point", coordinates=[-115.0, 31.0])
-    point.validate_geometry(dataset_bbox)
+def _feature(geometry):
+    return {"type": "Feature", "geometry": geometry, "properties": {}}
 
 
 # ---------------------------------------------------------------------------
-# SkopePolygonModel.validate_geometry
+# validate_polygons
 
 
-def test_polygon_inside_bbox_no_error(dataset_bbox):
-    coords = [_box_coords(-113.0, 36.0, -111.0, 38.0)]
-    poly = SkopePolygonModel(type="Polygon", coordinates=coords)
-    poly.validate_geometry(dataset_bbox)
+@pytest.mark.parametrize(
+    "area",
+    [
+        SkopePointModel(type="Point", coordinates=[-110.0, 38.0]),
+        SkopePolygonModel(
+            type="Polygon", coordinates=[_box_coords(-113, 36, -111, 38)]
+        ),
+        SkopeMultiPolygonModel(
+            type="MultiPolygon", coordinates=[[_box_coords(-113, 36, -111, 38)]]
+        ),
+    ],
+    ids=["point", "polygon", "multipolygon"],
+)
+def test_a_valid_area_passes(area):
+    area.validate_polygons()
 
 
-def test_polygon_partially_overlapping_bbox_no_error(dataset_bbox):
-    # Extends east beyond the bbox boundary but has interior intersection
-    coords = [_box_coords(-110.0, 37.0, -98.0, 40.0)]
-    poly = SkopePolygonModel(type="Polygon", coordinates=coords)
-    poly.validate_geometry(dataset_bbox)
+@pytest.mark.parametrize(
+    "area",
+    [
+        SkopePolygonModel(type="Polygon", coordinates=[BOWTIE]),
+        SkopeFeatureModel(**_feature({"type": "Polygon", "coordinates": [BOWTIE]})),
+        SkopeFeatureCollectionModel(
+            type="FeatureCollection",
+            features=[
+                _feature({"type": "Point", "coordinates": [-110.0, 38.0]}),
+                _feature({"type": "Polygon", "coordinates": [BOWTIE]}),
+            ],
+        ),
+    ],
+    ids=["bare", "feature", "collection"],
+)
+def test_a_polygon_that_crosses_itself_is_rejected(area):
+    with pytest.raises(SelectedAreaPolygonIsNotValid, match="cross itself"):
+        area.validate_polygons()
 
 
-def test_polygon_outside_bbox_raises(dataset_bbox):
-    coords = [_box_coords(-130.0, 45.0, -120.0, 50.0)]
-    poly = SkopePolygonModel(type="Polygon", coordinates=coords)
-    with pytest.raises(SelectedAreaOutOfBoundsError):
-        poly.validate_geometry(dataset_bbox)
+# ---------------------------------------------------------------------------
+# The geometries a Feature may hold
 
 
-def test_polygon_invalid_self_intersecting_raises(dataset_bbox):
-    # Bowtie (figure-8) — valid GeoJSON ring but not a simple polygon
-    bowtie_coords = [
-        [-110.0, 38.0],
-        [-109.0, 39.0],
-        [-109.0, 38.0],
-        [-110.0, 39.0],
-        [-110.0, 38.0],
-    ]
-    poly = SkopePolygonModel(type="Polygon", coordinates=[bowtie_coords])
-    with pytest.raises(SelectedAreaPolygonIsNotValid):
-        poly.validate_geometry(dataset_bbox)
+@pytest.mark.parametrize("model", [SkopeFeatureModel, SkopeFeatureCollectionModel])
+@pytest.mark.parametrize(
+    "geometry",
+    [{"type": "LineString", "coordinates": [[-110, 38], [-109, 39]]}, None],
+    ids=["line", "null"],
+)
+def test_a_feature_without_a_point_or_polygon_is_not_a_selected_area(model, geometry):
+    feature = _feature(geometry)
+    body = (
+        feature
+        if model is SkopeFeatureModel
+        else {"type": "FeatureCollection", "features": [feature]}
+    )
+    with pytest.raises(ValidationError):
+        model(**body)
 
 
-def test_polygon_touching_bbox_edge_only_raises(dataset_bbox):
-    # Polygon immediately to the right of bbox, sharing only the right edge (x=-102)
-    coords = [_box_coords(-102.0, 31.0, -101.0, 43.0)]
-    poly = SkopePolygonModel(type="Polygon", coordinates=coords)
-    with pytest.raises(SelectedAreaOutOfBoundsError):
-        poly.validate_geometry(dataset_bbox)
+def test_a_point_has_the_same_shape_bare_or_in_a_feature():
+    point = {"type": "Point", "coordinates": [-102.0, 37.0]}
+
+    bare = SkopePointModel(**point)
+    wrapped = SkopeFeatureModel(**_feature(point))
+
+    assert [s.wkt for s in wrapped.shapes] == [s.wkt for s in bare.shapes]
 
 
 # ---------------------------------------------------------------------------
@@ -91,23 +115,13 @@ def test_polygon_touching_bbox_edge_only_raises(dataset_bbox):
 
 
 def test_feature_collection_shapes_returns_all():
-    feat1 = {
-        "type": "Feature",
-        "geometry": {
-            "type": "Polygon",
-            "coordinates": [_box_coords(-113.0, 36.0, -112.0, 37.0)],
-        },
-        "properties": {},
-    }
-    feat2 = {
-        "type": "Feature",
-        "geometry": {
-            "type": "Polygon",
-            "coordinates": [_box_coords(-111.0, 35.0, -110.0, 36.0)],
-        },
-        "properties": {},
-    }
-    fc = SkopeFeatureCollectionModel(type="FeatureCollection", features=[feat1, feat2])
+    fc = SkopeFeatureCollectionModel(
+        type="FeatureCollection",
+        features=[
+            _feature({"type": "Polygon", "coordinates": [_box_coords(*bounds)]})
+            for bounds in ((-113.0, 36.0, -112.0, 37.0), (-111.0, 35.0, -110.0, 36.0))
+        ],
+    )
     shapes = fc.shapes
     assert len(shapes) == 2
     assert all(hasattr(s, "geom_type") for s in shapes)

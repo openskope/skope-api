@@ -1,6 +1,7 @@
 """The release manifest and verification (AT-015; MAN-001 to MAN-008, REL-001, TXN-011)."""
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -8,7 +9,12 @@ import yaml
 
 from skope_release.findings import Report
 from skope_release.gdalio import sha256_multihash
-from skope_release.manifest import build_manifest, roles_for, verify_release, write_manifest
+from skope_release.manifest import (
+    build_manifest,
+    roles_for,
+    verify_release,
+    write_manifest,
+)
 from skope_release.overview import write_overview
 from skope_release.stac_serializer import write_stac
 
@@ -21,7 +27,12 @@ def release(temporal_dataset, tmp_path):
     root = tmp_path / "synth-r-2026.10.07"
     plan, obs = observed(temporal_dataset(), root)
     write_stac(obs, root)
-    write_overview(root, release_id=plan.release_id, declaration_digest=plan.declaration_digest, report=Report())
+    write_overview(
+        root,
+        release_id=plan.release_id,
+        declaration_digest=plan.declaration_digest,
+        report=Report(),
+    )
     report = Report()
     manifest = build_manifest(obs, root, report)
     assert manifest is not None, report.to_text()
@@ -32,15 +43,27 @@ def release(temporal_dataset, tmp_path):
 def test_manifest_content(release):
     root, obs = release
     manifest = json.loads((root / "release-manifest.json").read_text())
-    assert manifest["status"] == "complete" and manifest["release_id"] == "synth-r-2026.10.07"
+    assert (
+        manifest["status"] == "complete"
+        and manifest["release_id"] == "synth-r-2026.10.07"
+    )
     assert manifest["declaration"] == {
-        "identity_profile": "openskope-release-declaration-v1", "digest_algorithm": "sha256", "digest": obs.declaration_digest,
+        "identity_profile": "openskope-release-declaration-v1",
+        "digest_algorithm": "sha256",
+        "digest": obs.declaration_digest,
     }
     assert [s["id"] for s in manifest["sources"]] == ["alpha", "beta"]
     paths = [f["path"] for f in manifest["files"]]
     assert "release-manifest.json" not in paths  # MAN-006
     assert paths == sorted(paths) and len(paths) == 11
-    for forbidden in ('"crs"', '"transform"', '"nodata"', '"unit"', '"statistics"', '"bbox"'):
+    for forbidden in (
+        '"crs"',
+        '"transform"',
+        '"nodata"',
+        '"unit"',
+        '"statistics"',
+        '"bbox"',
+    ):
         assert forbidden not in json.dumps(manifest)  # MAN-004
 
 
@@ -68,7 +91,8 @@ def test_verification(release):
 
 
 @pytest.mark.parametrize(
-    "case", json.loads(Path("tests/contracts/release-identity.json").read_text()),
+    "case",
+    json.loads(Path("tests/contracts/release-identity.json").read_text()),
     ids=lambda case: case["name"],
 )
 def test_shared_release_identity_contract(release, case):
@@ -87,7 +111,10 @@ def test_shared_release_identity_contract(release, case):
     overview_path.write_text(yaml.safe_dump(documents["overview"]))
     for entry in documents["manifest"]["files"]:
         if entry["path"] == "overview.yml":
-            entry.update(size=overview_path.stat().st_size, checksum=sha256_multihash(overview_path))
+            entry.update(
+                size=overview_path.stat().st_size,
+                checksum=sha256_multihash(overview_path),
+            )
     manifest_path.write_text(json.dumps(documents["manifest"]))
     report = Report()
 
@@ -96,18 +123,65 @@ def test_shared_release_identity_contract(release, case):
         assert {finding.requirement for finding in report.errors} == {"AUTH-002"}
 
 
+CONTRACT = Path("tests/contracts/release-documents")
+ZERO_DIGEST = "0" * 64
+ZERO_MULTIHASH = "1220" + ZERO_DIGEST
+
+
+def _contract_form(manifest, overview):
+    """The documents without the values that depend on GDAL's bytes or the test's paths."""
+    for entry in manifest["files"]:
+        entry.update(size=0, checksum=ZERO_MULTIHASH)
+    for source in manifest["sources"]:
+        source.update(href=f"sources/{source['id']}.tif", checksum=ZERO_MULTIHASH)
+    manifest["declaration"]["digest"] = ZERO_DIGEST
+    overview["declaration_digest"] = ZERO_DIGEST
+    return manifest, overview
+
+
+def test_release_documents_match_the_shared_contract(release):
+    """The API's models parse these same files, so a format change reaches its tests."""
+    root, _ = release
+    manifest, overview = _contract_form(
+        json.loads((root / "release-manifest.json").read_text()),
+        yaml.safe_load((root / "overview.yml").read_text()),
+    )
+    if os.environ.get("UPDATE_CONTRACTS") == "1":
+        CONTRACT.mkdir(exist_ok=True)
+        (CONTRACT / "release-manifest.json").write_text(
+            json.dumps(manifest, indent=2) + "\n"
+        )
+        (CONTRACT / "overview.yml").write_text(
+            "# Written by `make test-ingest UPDATE_CONTRACTS=1`; see ../README.md.\n"
+            + yaml.safe_dump(overview, sort_keys=False, allow_unicode=True)
+        )
+        return
+    assert manifest == json.loads(
+        (CONTRACT / "release-manifest.json").read_text()
+    ), "the release manifest's format changed; run `make test-ingest UPDATE_CONTRACTS=1` and review the diff"
+    assert overview == yaml.safe_load(
+        (CONTRACT / "overview.yml").read_text()
+    ), "the overview's format changed; run `make test-ingest UPDATE_CONTRACTS=1` and review the diff"
+
+
 def test_verification_detects_tampering(release):
     root, _ = release
     extra = root / "notes.txt"
     extra.write_text("hello")
     report = Report()
-    assert verify_release(root, report) is None and "REL-001" in {f.requirement for f in report.errors}
+    assert verify_release(root, report) is None and "REL-001" in {
+        f.requirement for f in report.errors
+    }
     extra.unlink()
 
     cog = root / "cogs/alpha/synth--0100--0101.tif"
     data = bytearray(cog.read_bytes())
     data[-1] ^= 0xFF
     cog.write_bytes(bytes(data))
-    assert verify_release(root, Report(), full=False) is not None  # same size: the startup check passes
+    assert (
+        verify_release(root, Report(), full=False) is not None
+    )  # same size: the startup check passes
     full = Report()
-    assert verify_release(root, full) is None and "MAN-005" in {f.requirement for f in full.errors}
+    assert verify_release(root, full) is None and "MAN-005" in {
+        f.requirement for f in full.errors
+    }

@@ -32,7 +32,7 @@ WIDTH = 100
 
 
 # ---------------------------------------------------------------------------
-# Deterministic YAML emitter (REL-005, Section 20.3)
+# Deterministic YAML emitter (REL-005, Section 20.2)
 
 
 def _scalar(value: Any) -> str:
@@ -47,7 +47,9 @@ def _scalar(value: Any) -> str:
             raise ValueError("non-finite number in overview (REL-005)")
         return repr(value)
     if isinstance(value, str):
-        return json.dumps(value, ensure_ascii=False)  # a valid YAML double-quoted scalar
+        return json.dumps(
+            value, ensure_ascii=False
+        )  # a valid YAML double-quoted scalar
     raise TypeError(f"cannot emit {type(value).__name__}")
 
 
@@ -61,7 +63,9 @@ def _flow(items: list[Any], indent: int, prefix_len: int) -> str:
     for i, part in enumerate(parts):
         piece = part + ("," if i < len(parts) - 1 else "]")
         candidate = line + ("" if line in ("[", pad) else " ") + piece
-        limit = WIDTH - (prefix_len if not lines else 0)  # the first line follows its key
+        limit = WIDTH - (
+            prefix_len if not lines else 0
+        )  # the first line follows its key
         if len(candidate) > limit and line not in ("[", pad):
             lines.append(line)
             line = pad + piece
@@ -106,7 +110,9 @@ def emit(value: Any, indent: int = 0) -> str:
 def _external_links(links: list[dict]) -> list[dict]:
     out = []
     for link in links:
-        if link.get("rel") in STRUCTURAL_RELS or not link.get("href", "").startswith("https://"):
+        if link.get("rel") in STRUCTURAL_RELS or not link.get("href", "").startswith(
+            "https://"
+        ):
             continue
         entry = {"rel": link["rel"], "href": link["href"]}
         if link.get("title"):
@@ -121,12 +127,21 @@ def _variables(collection: dict, temporal: bool) -> dict[str, dict]:
     out = {}
     for vid in sorted(source):
         asset = source[vid]
-        entry: dict[str, Any] = {"title": asset["title"], "description": asset["description"], "unit": asset.get("unit", "unitless")}
+        entry: dict[str, Any] = {
+            "title": asset["title"],
+            "description": asset["description"],
+            "unit": asset.get("unit", "unitless"),
+        }
         meta = skope_vars.get(vid, {})
         if "category" in meta:
             entry["category"] = meta["category"]
         if "categories" in meta:
-            entry["categories"] = {int(k): v for k, v in sorted(meta["categories"].items(), key=lambda kv: int(kv[0]))}
+            entry["categories"] = {
+                int(k): v
+                for k, v in sorted(
+                    meta["categories"].items(), key=lambda kv: int(kv[0])
+                )
+            }
         entry["data_type"] = asset["data_type"]
         entry["nodata"] = asset.get("nodata")
         entry["scale"] = asset.get("raster:scale", 1.0)
@@ -143,10 +158,18 @@ def _load_items(root: Path) -> list[dict]:
     if not items_dir.is_dir():
         return []
     items = [json.loads(p.read_text("utf-8")) for p in sorted(items_dir.glob("*.json"))]
-    return sorted(items, key=lambda i: (i["properties"].get("start_datetime") or i["properties"]["datetime"], i["id"]))
+    return sorted(
+        items,
+        key=lambda i: (
+            i["properties"].get("start_datetime") or i["properties"]["datetime"],
+            i["id"],
+        ),
+    )
 
 
-def build_overview(root: Path, *, release_id: str, declaration_digest: str, report: Report) -> dict | None:
+def build_overview(
+    root: Path, *, release_id: str, declaration_digest: str, report: Report
+) -> dict | None:
     collection = json.loads((root / "collection.json").read_text("utf-8"))
     items = _load_items(root)
     temporal = "item_assets" in collection
@@ -190,7 +213,11 @@ def build_overview(root: Path, *, release_id: str, declaration_digest: str, repo
             axis = Axis.enumerated(values, precision)
         dataset["time"] = {
             "kind": axis.kind,
-            **({"origin": axis.origin, "step": axis.step} if axis.kind == "regular" else {"values": list(values)}),
+            **(
+                {"origin": axis.origin, "step": axis.step}
+                if axis.kind == "regular"
+                else {"values": list(values)}
+            ),
             "count": axis.count,
             "chunk_size": chunk_size,
             "precision": precision,
@@ -198,27 +225,47 @@ def build_overview(root: Path, *, release_id: str, declaration_digest: str, repo
             "timestep_meaning": semantics["timestep_meaning"],
             "endpoint_inclusion": semantics["endpoint_inclusion"],
         }
-        verify_rule(root, collection["id"], axis, chunk_size, items, list(collection["item_assets"]), report)
+        verify_rule(
+            root,
+            collection["id"],
+            axis,
+            chunk_size,
+            items,
+            list(collection["item_assets"]),
+            report,
+        )
 
     dataset["providers"] = [
-        {k: p[k] for k in ("name", "roles", "url") if k in p} for p in collection.get("providers", [])
+        {k: p[k] for k in ("name", "roles", "url") if k in p}
+        for p in collection.get("providers", [])
     ]
     for key, field in (("citation", "sci:citation"), ("doi", "sci:doi")):
         if field in collection:
             dataset[key] = collection[field]
-    lineage = [p["processing:lineage"] for p in collection.get("providers", []) if "processing:lineage" in p]
+    lineage = [
+        p["processing:lineage"]
+        for p in collection.get("providers", [])
+        if "processing:lineage" in p
+    ]
     if lineage:
         dataset["lineage"] = lineage[0]
     if "sci:publications" in collection:
         dataset["publications"] = collection["sci:publications"]
     if "skope:uncertainty" in collection:
         uncertainty = collection["skope:uncertainty"]
-        dataset["uncertainty"] = {"summary": uncertainty["summary"], "methodology_href": uncertainty["methodology_href"]}
+        dataset["uncertainty"] = {
+            "summary": uncertainty["summary"],
+            "methodology_href": uncertainty["methodology_href"],
+        }
     dataset["links"] = _external_links(collection.get("links", []))
     # Enforce the source on new projections, while older published overviews
     # remain readable even if their generator discarded license links.
-    if dataset["license"] == "other" and not any(link["rel"] == "license" for link in dataset["links"]):
-        report.add("API-010", "license `other` requires an HTTPS license source link", **ctx)
+    if dataset["license"] == "other" and not any(
+        link["rel"] == "license" for link in dataset["links"]
+    ):
+        report.add(
+            "API-010", "license `other` requires an HTTPS license source link", **ctx
+        )
         return None
 
     overview = {
@@ -228,20 +275,46 @@ def build_overview(root: Path, *, release_id: str, declaration_digest: str, repo
         "dataset": dataset,
         "variables": _variables(collection, temporal),
     }
-    if validate(Overview, overview, requirement="API-010", path="overview.yml", report=report, **ctx) is None:
+    if (
+        validate(
+            Overview,
+            overview,
+            requirement="API-010",
+            path="overview.yml",
+            report=report,
+            **ctx,
+        )
+        is None
+    ):
         return None
     return overview
 
 
-def verify_rule(root: Path, dataset_id: str, axis: Axis, chunk_size: int, items: list[dict], variables: list[str], report: Report) -> None:
+def verify_rule(
+    root: Path,
+    dataset_id: str,
+    axis: Axis,
+    chunk_size: int,
+    items: list[dict],
+    variables: list[str],
+    report: Report,
+) -> None:
     """The rule must reproduce STAC Band names, asset paths, and COG band counts (API-002, API-004)."""
     layout = ChunkLayout(dataset_id, axis, chunk_size)
     if len(items) != layout.chunk_count:
-        report.add("API-004", f"{len(items)} Items; the rule derives {layout.chunk_count} chunks", dataset=dataset_id)
+        report.add(
+            "API-004",
+            f"{len(items)} Items; the rule derives {layout.chunk_count} chunks",
+            dataset=dataset_id,
+        )
         return
     for chunk, item in enumerate(items):
         if item["id"] != layout.item_id(chunk):
-            report.add("API-004", f"Item {item['id']} should be {layout.item_id(chunk)}", dataset=dataset_id)
+            report.add(
+                "API-004",
+                f"Item {item['id']} should be {layout.item_id(chunk)}",
+                dataset=dataset_id,
+            )
         for variable in variables:
             asset = item["assets"].get(variable)
             ctx = {"dataset": dataset_id, "variable": variable, "chunk": item["id"]}
@@ -250,14 +323,24 @@ def verify_rule(root: Path, dataset_id: str, axis: Axis, chunk_size: int, items:
                 continue
             path = posixpath.normpath(posixpath.join("items", asset["href"]))
             if path != layout.cog_path(variable, chunk):
-                report.add("API-004", f"asset path {path} differs from the rule's {layout.cog_path(variable, chunk)}", **ctx)
+                report.add(
+                    "API-004",
+                    f"asset path {path} differs from the rule's {layout.cog_path(variable, chunk)}",
+                    **ctx,
+                )
             names = [b["name"] for b in asset.get("bands", [])]
             if tuple(names) != layout.chunk_keys(chunk):
-                report.add("API-004", "Band names differ from the rule's timesteps", **ctx)
+                report.add(
+                    "API-004", "Band names differ from the rule's timesteps", **ctx
+                )
             try:
                 with gdal.Open(str(root / path)) as ds:
                     if ds.RasterCount != len(names):
-                        report.add("API-004", f"COG has {ds.RasterCount} bands; STAC lists {len(names)}", **ctx)
+                        report.add(
+                            "API-004",
+                            f"COG has {ds.RasterCount} bands; STAC lists {len(names)}",
+                            **ctx,
+                        )
             except RuntimeError as exc:
                 report.add("API-004", f"cannot open {path}: {exc}", **ctx)
 
@@ -267,11 +350,20 @@ def render(overview: dict, temporal: bool) -> bytes:
     return (header + emit(overview) + "\n").encode("utf-8")
 
 
-def write_overview(root: Path, *, release_id: str, declaration_digest: str, report: Report) -> Path | None:
+def write_overview(
+    root: Path, *, release_id: str, declaration_digest: str, report: Report
+) -> Path | None:
     """Generate the overview as the build's final derived step (API-005)."""
-    overview = build_overview(root, release_id=release_id, declaration_digest=declaration_digest, report=report)
+    overview = build_overview(
+        root,
+        release_id=release_id,
+        declaration_digest=declaration_digest,
+        report=report,
+    )
     if overview is None or not report.ok:
         return None
     target = root / "overview.yml"
-    target.write_bytes(render(overview, overview["dataset"]["profile"] == "TemporalCubeDataset"))
+    target.write_bytes(
+        render(overview, overview["dataset"]["profile"] == "TemporalCubeDataset")
+    )
     return target

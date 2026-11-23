@@ -8,15 +8,13 @@ PULL ?= 1
 PR ?=
 export PR LOCAL_BUILD DEPLOY_IMAGES
 export FULL_VERIFICATION ?= 0
+UPDATE_CONTRACTS ?= 0
 RUNTIME_IMAGES_DIR ?= runtime-images
 RUNTIME_REFRESH ?= 0
 export RUNTIME_IMAGES_DIR RUNTIME_REFRESH
 # Bind-mounted source and generated files belong to the invoking operator.
 export SKOPE_OPERATOR_UID := $(shell id -u)
 export SKOPE_OPERATOR_GID := $(shell id -g)
-LEGACY_DATA_ROOT ?= /srv/ingest/incoming/skope
-MIGRATED_DATA_ROOT ?= timeseries/ingest/output/legacy-migration
-MIGRATION_SCRATCH_ROOT ?= timeseries/ingest/output/legacy-migration-scratch
 COMPOSE = docker compose --project-name $(COMPOSE_PROJECT_NAME) \
 	--project-directory . \
 	-f deploy/compose/base.yml \
@@ -35,8 +33,8 @@ TEST_COMPOSE = SKOPE_RELEASE_ROOT=$(CURDIR)/timeseries/app/tests/registry/data \
 	-f deploy/compose/dev.yml
 
 .PHONY: help check-environment check-verification-mode check-deploy-source check-release-pin verify-releases prepare prepare-release prepare-deploy config build deploy \
-	deploy-dev deploy-staging deploy-production down restart logs ps ingest release release-fetch release-pin \
-	preflight-legacy-data migrate-legacy-data test test-api test-ingest test-runtime scan-runtime-images export-runtime-images maintenance-candidate
+	deploy-dev deploy-staging deploy-production down restart logs ps release release-fetch release-pin \
+	test test-api test-ingest test-runtime scan-runtime-images export-runtime-images maintenance-candidate
 
 # Make 'help' the default target if someone just types `make`
 .DEFAULT_GOAL := help
@@ -147,11 +145,6 @@ logs: check-environment ##- Follow logs for the selected environment
 ps: check-environment ##- Show service status for the selected environment
 	$(COMPOSE) ps
 
-ingest: prepare ##- Build and run the local COG/STAC ingest pipeline container
-	@mkdir -p cog-input timeseries/ingest/output
-	$(COMPOSE) --profile ingest build ingest
-	$(COMPOSE) --profile ingest run --rm ingest
-
 RELEASE_ROOT ?= ./timeseries/ingest/output/releases
 RELEASE_AUDIT_ROOT ?= ./timeseries/ingest/output/audit
 RELEASE_SOURCE_MIRROR ?= ./cog-input
@@ -184,18 +177,6 @@ release-pin: prepare-release ##- Show the edits that pin a release, e.g. make re
 		release --datasets /pin/datasets pin /pin/release-manifest.json \
 		--env $(PIN_ENV) --pins /pin/releases $(if $(WRITE),--write)
 
-preflight-legacy-data: ##- Validate all legacy migration inputs without creating output
-	MIGRATION_PREFLIGHT_ONLY=true ./scripts/migrate-legacy-datasets.sh \
-		"$(LEGACY_DATA_ROOT)" \
-		"$(MIGRATED_DATA_ROOT)" \
-		"$(MIGRATION_SCRATCH_ROOT)"
-
-migrate-legacy-data: ##- Preflight and transform legacy cubes into dataset packages
-	./scripts/migrate-legacy-datasets.sh \
-		"$(LEGACY_DATA_ROOT)" \
-		"$(MIGRATED_DATA_ROOT)" \
-		"$(MIGRATION_SCRATCH_ROOT)"
-
 ##
 ## Testing
 ##
@@ -215,11 +196,16 @@ test-api: prepare ##- Build the development image and run the API tests
 		'black --check --extend-exclude "app/vendor/" app && pytest -o cache_dir=/tmp/pytest-cache -c app/pytest.ini app/tests'
 
 test-ingest: override ENVIRONMENT=dev
-test-ingest: prepare ##- Build and run the ingest tests
+# UPDATE_CONTRACTS=1 rewrites tests/contracts/release-documents from the release tool's output.
+test-ingest: prepare ##- Build and run the ingest tests (UPDATE_CONTRACTS=1 rewrites the shared release documents)
+	@case "$(UPDATE_CONTRACTS)" in 0|1) ;; *) echo 'UPDATE_CONTRACTS must be 0 or 1' >&2; exit 2;; esac
 	@$(TEST_COMPOSE) --profile test config --quiet
 	$(TEST_COMPOSE) --profile test build $(BUILD_FLAGS) ingest-test
 	@trap '$(TEST_COMPOSE) --profile test down --remove-orphans' EXIT INT TERM; \
-		$(TEST_COMPOSE) --profile test run --rm --no-deps ingest-test
+		$(TEST_COMPOSE) --profile test run --rm --no-deps \
+		-v "$(CURDIR)/tests/contracts:/ingest/tests/contracts$(if $(filter 1,$(UPDATE_CONTRACTS)),,:ro)" \
+		-e UPDATE_CONTRACTS=$(UPDATE_CONTRACTS) ingest-test \
+		sh -c 'black --check src scripts tests && pytest tests'
 
 test-runtime: prepare ##- Build fresh runtime images and exercise real tiles, extraction and analysis
 	python3 -m unittest discover -s tests -p test_runtime_images.py

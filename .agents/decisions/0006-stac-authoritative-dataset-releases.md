@@ -1,11 +1,11 @@
 # 0006: Use STAC-Authoritative Immutable Dataset Releases
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-09-11
 - Revised: 2026-10-01
 - Specifications: [SKOPE Dataset Release Specification v1](../../docs/specs/dataset-release-v1.md) and [SKOPE Release Consumption Specification v1](../../docs/specs/release-consumption-v1.md)
-- Supersedes, on acceptance: [0001: Separate Dataset Metadata From Storage Lookups](0001-dataset-registry-and-lookup-contract.md)
-- Amends, on acceptance: [0002: Mediate COG Tiles Through Skope API](0002-api-mediated-cog-tiles.md)
+- Supersedes: [0001: Separate Dataset Metadata From Storage Lookups](0001-dataset-registry-and-lookup-contract.md)
+- Amends: [0002: Mediate COG Tiles Through Skope API](0002-api-mediated-cog-tiles.md)
 
 ## Context
 
@@ -39,39 +39,37 @@ Datacube, Versioning, and Processing extensions provide standards-based homes
 for most published metadata. COG headers describe the encoded bytes directly.
 Release completion and integrity are operational facts, not geospatial metadata.
 
-## Proposed decision
+## Decision
 
-Subject to approval of the linked specifications:
-
-- STAC Collections and Items will be the published metadata authority. COG
-  headers will be authoritative for byte-level raster properties, and the
-  corresponding STAC fields will be validated projections of them.
-- A release will package exactly one dataset, with that dataset's Collection as
-  its root STAC object, and exactly one manifest recording integrity,
-  provenance, inventory, identity, and completion only. Its identifier will
-  carry the dataset identifier and will not be a dataset version.
+- STAC Collections and Items are the published metadata authority. COG headers
+  are authoritative for byte-level raster properties, and the corresponding
+  STAC fields are validated projections of them.
+- A release packages exactly one dataset, with that dataset's Collection as its
+  root STAC object, and exactly one manifest recording integrity, provenance,
+  inventory, identity, and completion only. Its identifier carries the dataset
+  identifier and is not a dataset version.
 - Several datasets are served together through a per-environment pin of each
   release's ID, declaration digest, and manifest digest, and discovered through a
   mutable STAC Catalog published outside releases. No aggregate release exists,
   and a multi-dataset build is a batch of independent releases.
-- Each release will carry one overview generated from its validated STAC,
-  readable by people and read once at startup by the application. It will carry
-  the time-to-band rule: one axis and chunk size per dataset, from which the COG
-  path and band of any timestep are computed. `lookup.json` will not be emitted.
-- The build will separate an immutable `ValidatedBuildPlan`, consumed by the COG
+- Each release carries one overview generated from its validated STAC, readable
+  by people and read once at startup by the application. It carries the
+  time-to-band rule: one axis and chunk size per dataset, from which the COG
+  path and band of any timestep are computed. `lookup.json` is not emitted.
+- The build separates an immutable `ValidatedBuildPlan`, consumed by the COG
   writer, from an immutable `FinalObservation` of the written bytes, consumed by
   metadata serializers.
-- A dataset will declare a temporal-cube or static-raster profile; static
-  rasters get no synthetic time.
-- Published releases will be immutable and become eligible only once a valid
+- A dataset declares a temporal-cube or static-raster profile; static rasters
+  get no synthetic time.
+- Published releases are immutable and become eligible only once a valid
   manifest, written last, commits them.
-- Curated metadata will be authored as one `curated.yml` per dataset, compiled
-  to STAC, and will never contain observed facts.
-- Presentation will not be a release artifact. It will live in display files in
-  the skope-api repository (`deploy/display/`), and the API will serve explicit
+- Curated metadata is authored as one `curated.yml` per dataset, compiled to
+  STAC, and never contains observed facts.
+- Presentation is not a release artifact. It lives in display files in the
+  skope-api repository (`deploy/display/`), and the API serves explicit
   rendering fields.
-- TiTiler will remain internal and API-mediated (ADR 0002). The public metadata
-  and time parameters will change in one coordinated API/UI cutover, with no
+- TiTiler remains internal and API-mediated (ADR 0002). The public metadata and
+  time parameters change in one coordinated API/UI cutover, with no
   compatibility period.
 
 ## Consequences
@@ -94,13 +92,6 @@ Subject to approval of the linked specifications:
   must migrate together to explicit rendering fields.
 - Candidate STAC extensions require pinned versions and serialization adapters,
   and ambiguous legacy fields require human review.
-- On acceptance, this ADR supersedes ADR 0001 at the coordinated cutover (release
-  consumption specification CUT-002), and amends ADR 0002: the tile route's
-  `year` parameter becomes a canonical timestep key.
-
-## Approval gate
-
-This ADR remains Proposed. No production implementation phase may begin until
-the linked specifications' unresolved decisions are reviewed and this ADR is
-accepted or revised. Non-publishing Phase 0 experiments may run solely to
-gather decision evidence.
+- This ADR supersedes ADR 0001 at the coordinated cutover (release consumption
+  specification CUT-002), and amends ADR 0002: the tile route's `year`
+  parameter becomes a canonical timestep key.

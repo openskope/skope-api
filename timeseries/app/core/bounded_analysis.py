@@ -8,7 +8,7 @@ from anyio import to_process
 from app.telemetry import data_quality_fields, log_event
 from app.config import get_settings
 from app.core.job_control import JobContractError
-from app.core.timeseries_processing import execute_analyze_request
+from app.core.analysis import execute_analyze_request
 
 
 def _analyze(payload, base_series, metadata):

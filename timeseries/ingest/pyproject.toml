@@ -3,33 +3,34 @@ requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "cog-stac-pipeline"
+name = "skope-release"
 version = "0.1.0"
 description = "Build SKOPE dataset releases: COGs, STAC, overviews, and release manifests."
 requires-python = ">=3.12"
 dependencies = [
-    "boto3",
     "jsonschema",
     "netCDF4",  # prepare scripts read NetCDF sources (META-013)
     "numpy<3",
     "packaging==26.3",  # pinned SPDX license list
     "pydantic>=2.9,<3",
-    "pystac",
-    "python-dateutil",
     "PyYAML",
     "referencing",
     "rfc8785",
-    "rio-stac",
 ]
 
 [project.scripts]
-cog-stac-pipeline = "cog_stac_pipeline.main:main"
 skope-release = "skope_release.cli:main"
 
 [dependency-groups]
 dev = [
+    "black==26.10.1",
     "pytest",
 ]
+
+[tool.black]
+# A prepare script's SHA-256 is part of each prepared source's provenance
+# (META-013), so reformatting one would make its published records stale.
+extend-exclude = "^/scripts/prepare_"
 
 [tool.setuptools.packages.find]
 where = ["src"]

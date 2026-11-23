@@ -21,11 +21,30 @@ GT = (-115.0, 0.01, 0.0, 43.0, 0.0, -0.01)
 CREATED = "2026-10-07T12:00:00Z"
 
 
-def write_source(path: Path, keys: list[str], *, width=40, height=30, dtype=gdal.GDT_UInt32, nodata=UINT32_NODATA,
-                 seed=0, categories=None, geotransform=GT, epsg=4269, empty=()) -> np.ndarray:
+def write_source(
+    path: Path,
+    keys: list[str],
+    *,
+    width=40,
+    height=30,
+    dtype=gdal.GDT_UInt32,
+    nodata=UINT32_NODATA,
+    seed=0,
+    categories=None,
+    geotransform=GT,
+    epsg=4269,
+    empty=(),
+) -> np.ndarray:
     """Bands whose key is in `empty` hold only nodata."""
     rng = np.random.default_rng(seed)
-    ds = gdal.GetDriverByName("GTiff").Create(str(path), width, height, len(keys), dtype, options=["INTERLEAVE=PIXEL", "TILED=YES", "BLOCKXSIZE=16", "BLOCKYSIZE=16"])
+    ds = gdal.GetDriverByName("GTiff").Create(
+        str(path),
+        width,
+        height,
+        len(keys),
+        dtype,
+        options=["INTERLEAVE=PIXEL", "TILED=YES", "BLOCKXSIZE=16", "BLOCKYSIZE=16"],
+    )
     ds.SetGeoTransform(geotransform)
     srs = osr.SpatialReference()
     srs.ImportFromEPSG(epsg)
@@ -57,7 +76,15 @@ def years(start: int, count: int) -> list[str]:
     return [f"{start + i:04d}" for i in range(count)]
 
 
-def curated_doc(dataset_id: str, variables: list[str], *, profile="TemporalCubeDataset", origin="0100", end="0104", **overrides) -> dict:
+def curated_doc(
+    dataset_id: str,
+    variables: list[str],
+    *,
+    profile="TemporalCubeDataset",
+    origin="0100",
+    end="0104",
+    **overrides,
+) -> dict:
     doc = {
         "schema_version": "0.1.0",
         "id": dataset_id,
@@ -68,12 +95,20 @@ def curated_doc(dataset_id: str, variables: list[str], *, profile="TemporalCubeD
         "license": "CC-BY-4.0",
         "region_name": "Testland",
         "providers": [{"name": "Test Lab", "roles": ["producer", "licensor"]}],
-        "publications": [{"citation": "Author, A. 2014. A paper.", "doi": "10.1038/ncomms6618"}],
+        "publications": [
+            {"citation": "Author, A. 2014. A paper.", "doi": "10.1038/ncomms6618"}
+        ],
         "lineage": "Made up for tests.",
         "uncertainty": {"summary": "None; synthetic.", "methodology_href": None},
         "links": [{"rel": "via", "href": "https://example.org/source"}],
         "variables": [
-            {"id": v, "title": f"Variable {v}", "description": f"Synthetic {v}.", "unit": "mm", "category": "precipitation"}
+            {
+                "id": v,
+                "title": f"Variable {v}",
+                "description": f"Synthetic {v}.",
+                "unit": "mm",
+                "category": "precipitation",
+            }
             for v in variables
         ],
     }
@@ -94,19 +129,38 @@ def curated_doc(dataset_id: str, variables: list[str], *, profile="TemporalCubeD
     return doc
 
 
-def manifest_doc(dataset_id: str, sources: dict[str, str], *, chunk_size=2, data_type="uint32", nodata=UINT32_NODATA,
-                 static=False, resampling="AVERAGE", predictor=2, **overrides) -> dict:
+def manifest_doc(
+    dataset_id: str,
+    sources: dict[str, str],
+    *,
+    chunk_size=2,
+    data_type="uint32",
+    nodata=UINT32_NODATA,
+    static=False,
+    resampling="AVERAGE",
+    predictor=2,
+    **overrides,
+) -> dict:
     doc = {
         "schema_version": "0.1.0",
         "dataset": dataset_id,
         "release": {
             "created": CREATED,
-            "cog": {"blocksize": 256, "interleave": "BAND", "compress": "ZSTD", "level": 9, "bigtiff": "IF_SAFER"},
+            "cog": {
+                "blocksize": 256,
+                "interleave": "BAND",
+                "compress": "ZSTD",
+                "level": 9,
+                "bigtiff": "IF_SAFER",
+            },
         },
         "variables": [
             {
                 "id": vid,
-                "source": {"uri": uri, **({"band": 1} if static else {"bands": "descriptions"})},
+                "source": {
+                    "uri": uri,
+                    **({"band": 1} if static else {"bands": "descriptions"}),
+                },
                 "encoding": {
                     "data_type": data_type,
                     "nodata": nodata,
@@ -128,8 +182,10 @@ def manifest_doc(dataset_id: str, sources: dict[str, str], *, chunk_size=2, data
 def write_dataset(root: Path, dataset_id: str, curated: dict, manifest: dict) -> Path:
     directory = root / "datasets" / dataset_id
     directory.mkdir(parents=True, exist_ok=True)
-    (directory / "curated.yml").write_text(yaml.safe_dump(curated, sort_keys=False, allow_unicode=True))
-    (directory / "source-manifest.yml").write_text(yaml.safe_dump(manifest, sort_keys=False))
+    (directory / "curated.yml").write_text(
+        yaml.safe_dump(curated, sort_keys=False, allow_unicode=True)
+    )
+    (directory / "source-manifest.yml").write_text(
+        yaml.safe_dump(manifest, sort_keys=False)
+    )
     return directory
-
-

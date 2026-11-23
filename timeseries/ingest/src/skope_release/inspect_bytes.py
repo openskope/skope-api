@@ -16,7 +16,9 @@ from pathlib import Path
 
 import numpy as np
 from osgeo import gdal, gdal_array
-from osgeo_utils.samples.validate_cloud_optimized_geotiff import validate as validate_cog
+from osgeo_utils.samples.validate_cloud_optimized_geotiff import (
+    validate as validate_cog,
+)
 
 from . import gdalio
 from .cog_writer import workers
@@ -36,7 +38,7 @@ log = logging.getLogger(__name__)
 # Inspection reads each block once, so a small block cache is enough; the
 # build's 512 MB per process would multiply by the number of workers.
 INSPECT_CACHEMAX_MB = 64
-STAT_RELATIVE_TOLERANCE = 1e-10  # GDAL serializes ~13 significant digits (Section 20.3)
+STAT_RELATIVE_TOLERANCE = 1e-10  # GDAL serializes ~13 significant digits (Section 20.2)
 VALID_PERCENT_TOLERANCE = 0.005
 LOSSLESS = {"ZSTD", "DEFLATE", "LZW"}
 
@@ -55,7 +57,13 @@ def _recompute(band, nodata) -> tuple[float, float, float, float, float] | None:
     if values.size == 0:
         return None
     as64 = values.astype(np.float64)
-    return (float(as64.min()), float(as64.max()), float(as64.mean()), float(as64.std()), 100.0 * values.size / total)
+    return (
+        float(as64.min()),
+        float(as64.max()),
+        float(as64.mean()),
+        float(as64.std()),
+        100.0 * values.size / total,
+    )
 
 
 def inspect_asset(
@@ -78,8 +86,16 @@ def inspect_asset(
     is slower but never runs the host out of memory.
     """
     _read_through(path)
-    return _inspect(str(path), path, rel_path, plan=plan, variable=variable, chunk=chunk,
-                    expected_names=expected_names, report=report)
+    return _inspect(
+        str(path),
+        path,
+        rel_path,
+        plan=plan,
+        variable=variable,
+        chunk=chunk,
+        expected_names=expected_names,
+        report=report,
+    )
 
 
 def _read_through(path: Path, chunk: int = 8 << 20) -> None:
@@ -111,7 +127,10 @@ def _inspect(
     for message in warnings:
         report.warn("COG-001", message, **ctx)
     # A sidecar next to the file to be published fails COG-005; it never sits next to the copy.
-    for sidecar in (path.with_suffix(path.suffix + ".aux.xml"), path.with_suffix(path.suffix + ".ovr")):
+    for sidecar in (
+        path.with_suffix(path.suffix + ".aux.xml"),
+        path.with_suffix(path.suffix + ".ovr"),
+    ):
         if sidecar.exists():
             report.add("COG-005", f"sidecar {sidecar.name} must not exist", **ctx)
 
@@ -120,35 +139,65 @@ def _inspect(
         structure = ds.GetMetadata("IMAGE_STRUCTURE")
         compression = structure.get("COMPRESSION", "NONE")
         if compression not in LOSSLESS:
-            report.add("COG-003", f"compression {compression} is not an approved lossless method", **ctx)
+            report.add(
+                "COG-003",
+                f"compression {compression} is not an approved lossless method",
+                **ctx,
+            )
         interleave = structure.get("INTERLEAVE", "")
         resampling = structure.get("OVERVIEW_RESAMPLING", "")
         if first_overviews(ds) and resampling.upper() != enc.overview_resampling:
-            report.add("COG-007", f"overview resampling {resampling!r} differs from the declared {enc.overview_resampling}", **ctx)
+            report.add(
+                "COG-007",
+                f"overview resampling {resampling!r} differs from the declared {enc.overview_resampling}",
+                **ctx,
+            )
 
         if tuple(ds.GetGeoTransform()) != plan.grid.geotransform:
-            report.add("COG-006", f"geotransform {ds.GetGeoTransform()} differs from the canonical grid", **ctx)
+            report.add(
+                "COG-006",
+                f"geotransform {ds.GetGeoTransform()} differs from the canonical grid",
+                **ctx,
+            )
         srs = ds.GetSpatialRef()
         code = gdalio.crs_code(srs) if srs is not None else None
         if code != plan.grid.crs_code:
-            report.add("COG-006", f"CRS {code} differs from {plan.grid.crs_code}", **ctx)
+            report.add(
+                "COG-006", f"CRS {code} differs from {plan.grid.crs_code}", **ctx
+            )
         if (ds.RasterYSize, ds.RasterXSize) != plan.grid.shape:
             report.add("OBS-003", "shape differs from the canonical grid", **ctx)
         if ds.RasterCount != len(expected_names):
-            report.add("STAC-011", f"{ds.RasterCount} bands; expected {len(expected_names)}", **ctx)
+            report.add(
+                "STAC-011",
+                f"{ds.RasterCount} bands; expected {len(expected_names)}",
+                **ctx,
+            )
 
         first = ds.GetRasterBand(1)
         blocksize = first.GetBlockSize()[0]
         overview_count = first.GetOverviewCount()
         if max(ds.RasterXSize, ds.RasterYSize) > blocksize:
-            smallest = first.GetOverview(overview_count - 1) if overview_count else first
+            smallest = (
+                first.GetOverview(overview_count - 1) if overview_count else first
+            )
             if max(smallest.XSize, smallest.YSize) > blocksize:
-                report.add("COG-002", "overviews do not reach a level no larger than one block", **ctx)
+                report.add(
+                    "COG-002",
+                    "overviews do not reach a level no larger than one block",
+                    **ctx,
+                )
 
         bands: list[BandObservation] = []
-        data_type = gdalio.GDAL_TO_STAC_TYPE.get(first.DataType, gdal.GetDataTypeName(first.DataType))
+        data_type = gdalio.GDAL_TO_STAC_TYPE.get(
+            first.DataType, gdal.GetDataTypeName(first.DataType)
+        )
         if data_type != enc.data_type:
-            report.add("COG-016", f"data type {data_type} differs from the declared {enc.data_type}", **ctx)
+            report.add(
+                "COG-016",
+                f"data type {data_type} differs from the declared {enc.data_type}",
+                **ctx,
+            )
         unit = first.GetUnitType()
         for i, name in enumerate(expected_names, start=1):
             if i > ds.RasterCount:
@@ -156,16 +205,32 @@ def _inspect(
             band = ds.GetRasterBand(i)
             bctx = {**ctx, "band": i}
             if band.GetDescription() != name:
-                report.add("COG-006", f"band description {band.GetDescription()!r} should be {name!r}", **bctx)
+                report.add(
+                    "COG-006",
+                    f"band description {band.GetDescription()!r} should be {name!r}",
+                    **bctx,
+                )
             if not gdalio_same(band.GetNoDataValue(), enc.nodata):
-                report.add("COG-006", f"nodata {band.GetNoDataValue()} differs from {enc.nodata}", **bctx)
-            # GDAL encodes an identity scale (1) or offset (0) by omitting it (Section 20.3).
+                report.add(
+                    "COG-006",
+                    f"nodata {band.GetNoDataValue()} differs from {enc.nodata}",
+                    **bctx,
+                )
+            # GDAL encodes an identity scale (1) or offset (0) by omitting it (Section 20.2).
             scale = band.GetScale() if band.GetScale() is not None else 1.0
             offset = band.GetOffset() if band.GetOffset() is not None else 0.0
             if scale != enc.scale or offset != enc.offset:
-                report.add("COG-006", f"scale/offset ({scale}, {offset}) differ from ({enc.scale}, {enc.offset})", **bctx)
+                report.add(
+                    "COG-006",
+                    f"scale/offset ({scale}, {offset}) differ from ({enc.scale}, {enc.offset})",
+                    **bctx,
+                )
             if band.GetUnitType() != variable.curated.unit:
-                report.add("COG-006", f"unit {band.GetUnitType()!r} differs from {variable.curated.unit!r}", **bctx)
+                report.add(
+                    "COG-006",
+                    f"unit {band.GetUnitType()!r} differs from {variable.curated.unit!r}",
+                    **bctx,
+                )
             meta = band.GetMetadata()
             # GDAL embeds only the valid percent for a band with no valid pixels,
             # so it decides which statistics COG-004 requires.
@@ -177,19 +242,37 @@ def _inspect(
             declared_empty = name in plan.empty_timesteps
             if evalid == 0:
                 if not declared_empty:
-                    report.add("OBS-007", "band has no valid pixels and is not a declared empty timestep", **bctx)
+                    report.add(
+                        "OBS-007",
+                        "band has no valid pixels and is not a declared empty timestep",
+                        **bctx,
+                    )
                 elif _recompute(band, enc.nodata) is not None:
-                    report.add("COG-004", "embedded valid percent is 0 but the band has valid pixels", **bctx)
+                    report.add(
+                        "COG-004",
+                        "embedded valid percent is 0 but the band has valid pixels",
+                        **bctx,
+                    )
                 else:
                     bands.append(BandObservation(name, None, None, None, None, 0.0))
                 continue
             if declared_empty:
-                report.add("OBS-007", f"declared empty timestep has valid pixels ({evalid}%)", **bctx)
+                report.add(
+                    "OBS-007",
+                    f"declared empty timestep has valid pixels ({evalid}%)",
+                    **bctx,
+                )
                 continue
             try:
-                embedded = tuple(float(meta[key]) for key in (
-                    "STATISTICS_MINIMUM", "STATISTICS_MAXIMUM", "STATISTICS_MEAN", "STATISTICS_STDDEV"
-                )) + (evalid,)
+                embedded = tuple(
+                    float(meta[key])
+                    for key in (
+                        "STATISTICS_MINIMUM",
+                        "STATISTICS_MAXIMUM",
+                        "STATISTICS_MEAN",
+                        "STATISTICS_STDDEV",
+                    )
+                ) + (evalid,)
             except (KeyError, ValueError):
                 report.add("COG-004", "embedded statistics are missing", **bctx)
                 continue
@@ -198,20 +281,40 @@ def _inspect(
                 continue
             measured = _recompute(band, enc.nodata)
             if measured is None:
-                report.add("COG-004", f"embedded valid percent is {evalid} but the band has no valid pixels", **bctx)
+                report.add(
+                    "COG-004",
+                    f"embedded valid percent is {evalid} but the band has no valid pixels",
+                    **bctx,
+                )
                 continue
             emin, emax, emean, estd, evalid = embedded
             mmin, mmax, mmean, mstd, mvalid = measured
             # GDAL writes the extremes as ~14-digit text. Read back as float64, a float32
             # extreme is off in the digits the text dropped; in the band's own type the
             # two are the same number.
-            as_band = np.dtype(gdal_array.GDALTypeCodeToNumericTypeCode(band.DataType)).type
+            as_band = np.dtype(
+                gdal_array.GDALTypeCodeToNumericTypeCode(band.DataType)
+            ).type
             if as_band(emin) != as_band(mmin) or as_band(emax) != as_band(mmax):
-                report.add("COG-004", f"embedded min/max ({emin}, {emax}) differ from measured ({mmin}, {mmax})", **bctx)
-            if not _close(emean, mmean, STAT_RELATIVE_TOLERANCE) or not _close(estd, mstd, STAT_RELATIVE_TOLERANCE):
-                report.add("COG-004", f"embedded mean/stddev ({emean}, {estd}) differ from measured ({mmean}, {mstd})", **bctx)
+                report.add(
+                    "COG-004",
+                    f"embedded min/max ({emin}, {emax}) differ from measured ({mmin}, {mmax})",
+                    **bctx,
+                )
+            if not _close(emean, mmean, STAT_RELATIVE_TOLERANCE) or not _close(
+                estd, mstd, STAT_RELATIVE_TOLERANCE
+            ):
+                report.add(
+                    "COG-004",
+                    f"embedded mean/stddev ({emean}, {estd}) differ from measured ({mmean}, {mstd})",
+                    **bctx,
+                )
             if abs(evalid - mvalid) > VALID_PERCENT_TOLERANCE:
-                report.add("COG-004", f"embedded valid percent {evalid} differs from measured {mvalid}", **bctx)
+                report.add(
+                    "COG-004",
+                    f"embedded valid percent {evalid} differs from measured {mvalid}",
+                    **bctx,
+                )
             bands.append(BandObservation(name, emin, emax, emean, estd, evalid))
 
     if len(report.errors) > start:
@@ -236,7 +339,9 @@ def _inspect(
         interleave=interleave,
         compression=compression,
         overview_count=overview_count,
-        overview_resampling=resampling.upper() if overview_count else enc.overview_resampling,
+        overview_resampling=(
+            resampling.upper() if overview_count else enc.overview_resampling
+        ),
     )
 
 
@@ -246,7 +351,15 @@ def _inspect_job(args) -> tuple[AssetObservation | None, list]:
     gdal.SetConfigOption("GDAL_CACHEMAX", str(INSPECT_CACHEMAX_MB))
     report = Report()
     variable = next(v for v in plan.variables if v.id == variable_id)
-    asset = inspect_asset(Path(staging) / rel, rel, plan=plan, variable=variable, chunk=chunk, expected_names=names, report=report)
+    asset = inspect_asset(
+        Path(staging) / rel,
+        rel,
+        plan=plan,
+        variable=variable,
+        chunk=chunk,
+        expected_names=names,
+        report=report,
+    )
     return asset, report.findings
 
 
@@ -270,12 +383,24 @@ def observe(plan: object, staging: Path, report: Report) -> FinalObservation | N
     for variable in plan.variables:
         if plan.temporal:
             for chunk in range(plan.layout.chunk_count):
-                jobs.append((variable.id, chunk, plan.layout.cog_path(variable.id, chunk), list(plan.layout.chunk_keys(chunk))))
+                jobs.append(
+                    (
+                        variable.id,
+                        chunk,
+                        plan.layout.cog_path(variable.id, chunk),
+                        list(plan.layout.chunk_keys(chunk)),
+                    )
+                )
         else:
             jobs.append((variable.id, None, f"cogs/{variable.id}.tif", [variable.id]))
     results = [None] * len(jobs)
-    with ProcessPoolExecutor(max_workers=workers(), mp_context=multiprocessing.get_context("spawn")) as pool:
-        futures = {pool.submit(_inspect_job, (plan, str(staging), *job)): i for i, job in enumerate(jobs)}
+    with ProcessPoolExecutor(
+        max_workers=workers(), mp_context=multiprocessing.get_context("spawn")
+    ) as pool:
+        futures = {
+            pool.submit(_inspect_job, (plan, str(staging), *job)): i
+            for i, job in enumerate(jobs)
+        }
         # Progress in completion order; results stay in job order.
         for done, future in enumerate(as_completed(futures), 1):
             i = futures[future]
@@ -299,7 +424,9 @@ def observe(plan: object, staging: Path, report: Report) -> FinalObservation | N
         crs_code=plan.grid.crs_code,
         shape=plan.grid.shape,
         transform=plan.grid.affine,
-        bbox_wgs84=gdalio.wgs84_bbox(plan.grid.crs_wkt, plan.grid.geotransform, plan.grid.width, plan.grid.height),
+        bbox_wgs84=gdalio.wgs84_bbox(
+            plan.grid.crs_wkt, plan.grid.geotransform, plan.grid.width, plan.grid.height
+        ),
         axis=plan.axis,
         layout=plan.layout,
         assets=tuple(assets),

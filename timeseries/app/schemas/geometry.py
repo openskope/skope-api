@@ -1,25 +1,28 @@
 import logging
-from abc import ABCMeta, abstractmethod
-from typing import List
+from typing import Annotated, Union
 
-from pydantic import ConfigDict
-from geojson_pydantic import Feature, FeatureCollection, Point, Polygon
+from pydantic import ConfigDict, Field
+from geojson_pydantic import Feature, FeatureCollection, MultiPolygon, Point, Polygon
 from shapely import geometry as geom, get_num_coordinates
 from shapely.validation import explain_validity
 
 from app.config import get_settings
-from app.exceptions import (
-    SelectedAreaOutOfBoundsError,
-    SelectedAreaPolygonIsNotValid,
-)
+from app.exceptions import SelectedAreaPolygonIsNotValid
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
+# The geometries a selected area may hold, bare or in a Feature: the ones the
+# app draws and imports. The `type` tag picks the model, so a wrong shape gets
+# one error naming it, not one per model tried.
+AreaGeometry = Annotated[
+    Union[Point, Polygon, MultiPolygon], Field(discriminator="type")
+]
 
-class SkopeGeometry(metaclass=ABCMeta):
+
+class SkopeGeometry:
     @property
-    def shapes(self) -> List[geom.base.BaseGeometry]:
+    def shapes(self) -> list[geom.base.BaseGeometry]:
         """Converts the GeoJSON Pydantic model into a list of Shapely geometries."""
         return [geom.shape(self)]
 
@@ -37,52 +40,41 @@ class SkopeGeometry(metaclass=ABCMeta):
                 f"{coordinate_count} coordinates; maximum is {max_coordinates}."
             )
 
-    @abstractmethod
-    def validate_geometry(self, dataset_bbox: geom.Polygon):
-        """Validates that the geometry intersects the dataset's bounding box."""
-        pass
+    def validate_polygons(self) -> None:
+        """Raise if a polygon in the area is invalid. Whether the area overlaps
+        the dataset is checked on its grid, by `resolve_spatial_window`."""
+        for shape in self.shapes:
+            if not shape.is_valid:
+                raise SelectedAreaPolygonIsNotValid(
+                    "The selected area is not a valid polygon "
+                    f"({explain_validity(shape).lower()}): an outline must not "
+                    "cross itself. Redraw it or fix the file."
+                )
 
 
 class SkopePointModel(Point, SkopeGeometry):
-    def validate_geometry(self, dataset_bbox: geom.Polygon):
-        point = geom.Point(self.coordinates)
-        if not dataset_bbox.covers(point):
-            raise SelectedAreaOutOfBoundsError(
-                "Selected area is not covered by the dataset region."
-            )
-
     model_config = ConfigDict(
         json_schema_extra={"example": {"type": "Point", "coordinates": [-120, 42.5]}}
     )
 
 
-class BaseSkopePolygonModel(SkopeGeometry):
-    def validate_geometry(self, dataset_bbox: geom.Polygon):
-        for shape in self.shapes:
-            if not shape.is_valid:
-                raise SelectedAreaPolygonIsNotValid(
-                    f"Selected area is not a valid polygon: {explain_validity(shape).lower()}"
-                )
-
-            # DE-9IM format: 'T********' indicates the interior of the bounding box
-            # must intersect the interior of the selected area.
-            if not dataset_bbox.relate_pattern(shape, "T********"):
-                raise SelectedAreaOutOfBoundsError(
-                    "No interior point of the selected area intersects the dataset region."
-                )
-
-
-class SkopePolygonModel(Polygon, BaseSkopePolygonModel):
+class SkopePolygonModel(Polygon, SkopeGeometry):
     pass
 
 
-class SkopeFeatureModel(Feature, BaseSkopePolygonModel):
+class SkopeMultiPolygonModel(MultiPolygon, SkopeGeometry):
+    pass
+
+
+class SkopeFeatureModel(Feature[AreaGeometry, dict | None], SkopeGeometry):
+    geometry: AreaGeometry  # a selected area needs a shape: not null
+
     @property
-    def shapes(self) -> List[geom.base.BaseGeometry]:
+    def shapes(self) -> list[geom.base.BaseGeometry]:
         return [geom.shape(self.geometry)]
 
 
-class SkopeFeatureCollectionModel(FeatureCollection, BaseSkopePolygonModel):
+class SkopeFeatureCollectionModel(FeatureCollection[SkopeFeatureModel], SkopeGeometry):
     @property
-    def shapes(self) -> List[geom.base.BaseGeometry]:
+    def shapes(self) -> list[geom.base.BaseGeometry]:
         return [geom.shape(feature.geometry) for feature in self.features]

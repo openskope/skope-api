@@ -74,13 +74,19 @@ class ValidatedBuildPlan:
     layout: ChunkLayout | None
     variables: tuple[PlannedVariable, ...]
     producer: Producer
-    empty_timesteps: frozenset[str]  # declared, and verified against every source (OBS-007)
-    prepare_scripts: dict[str, str]  # variable ID -> SHA-256 of its prepare script (MAN-002)
+    empty_timesteps: frozenset[
+        str
+    ]  # declared, and verified against every source (OBS-007)
+    prepare_scripts: dict[
+        str, str
+    ]  # variable ID -> SHA-256 of its prepare script (MAN-002)
     _issuer: object
 
     def __post_init__(self):
         if self._issuer is not _PLAN_ISSUER:
-            raise StateError("a ValidatedBuildPlan is issued only by source preflight (OBS-012)")
+            raise StateError(
+                "a ValidatedBuildPlan is issued only by source preflight (OBS-012)"
+            )
 
     @property
     def dataset_id(self) -> str:
@@ -158,12 +164,16 @@ class FinalObservation:
     axis: Axis | None
     layout: ChunkLayout | None
     assets: tuple[AssetObservation, ...]
-    prepare_scripts: dict[str, str]  # variable ID -> SHA-256 of its prepare script (MAN-002)
+    prepare_scripts: dict[
+        str, str
+    ]  # variable ID -> SHA-256 of its prepare script (MAN-002)
     _issuer: object
 
     def __post_init__(self):
         if self._issuer is not _OBSERVATION_ISSUER:
-            raise StateError("a FinalObservation is issued only by byte inspection (OBS-012)")
+            raise StateError(
+                "a FinalObservation is issued only by byte inspection (OBS-012)"
+            )
 
     @property
     def dataset_id(self) -> str:
@@ -182,11 +192,15 @@ class FinalObservation:
 
 def require_plan(value: object) -> ValidatedBuildPlan:
     if not isinstance(value, ValidatedBuildPlan):
-        raise StateError(f"the COG writer consumes only a ValidatedBuildPlan, not {type(value).__name__} (OBS-013)")
+        raise StateError(
+            f"the COG writer consumes only a ValidatedBuildPlan, not {type(value).__name__} (OBS-013)"
+        )
     return value
 
 
 def require_observation(value: object) -> FinalObservation:
     if not isinstance(value, FinalObservation):
-        raise StateError(f"serializers consume only a FinalObservation, not {type(value).__name__} (OBS-013)")
+        raise StateError(
+            f"serializers consume only a FinalObservation, not {type(value).__name__} (OBS-013)"
+        )
     return value

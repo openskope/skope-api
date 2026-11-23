@@ -1,6 +1,6 @@
 # 0001: Separate Dataset Metadata From Storage Lookups
 
-- Status: Accepted
+- Status: Superseded by [0006: Use STAC-Authoritative Immutable Dataset Releases](0006-stac-authoritative-dataset-releases.md)
 - Date: 2026-08-11
 
 ## Context

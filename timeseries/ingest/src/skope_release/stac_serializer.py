@@ -59,8 +59,10 @@ def _used_extensions(obj: dict[str, Any]) -> list[str]:
     return sorted(EXTENSIONS[p] for p in prefixes if p in EXTENSIONS)
 
 
-def _period(obs: FinalObservation, first_key: str, last_key: str) -> tuple[datetime, datetime]:
-    """Inclusive start and end instants of a run of timesteps (ORG-004, Section 20.3)."""
+def _period(
+    obs: FinalObservation, first_key: str, last_key: str
+) -> tuple[datetime, datetime]:
+    """Inclusive start and end instants of a run of timesteps (ORG-004, Section 20.2)."""
     temporal = obs.curated.temporal
     start = parse_key(first_key, obs.axis.precision)
     last = parse_key(last_key, obs.axis.precision)
@@ -71,7 +73,12 @@ def _period(obs: FinalObservation, first_key: str, last_key: str) -> tuple[datet
 
 def _asset_common(obs: FinalObservation, variable_id: str) -> dict[str, Any]:
     var = next(v for v in obs.curated.variables if v.id == variable_id)
-    return {"type": COG_MEDIA_TYPE, "roles": ["data"], "title": var.title, "description": var.description}
+    return {
+        "type": COG_MEDIA_TYPE,
+        "roles": ["data"],
+        "title": var.title,
+        "description": var.description,
+    }
 
 
 def _asset_encoding(asset: AssetObservation) -> dict[str, Any]:
@@ -109,7 +116,9 @@ def _footprint(bbox: tuple[float, float, float, float]) -> dict[str, Any]:
     west, south, east, north = bbox
     return {
         "type": "Polygon",
-        "coordinates": [[[west, south], [east, south], [east, north], [west, north], [west, south]]],
+        "coordinates": [
+            [[west, south], [east, south], [east, north], [west, north], [west, south]]
+        ],
     }
 
 
@@ -119,7 +128,11 @@ def build_items(obs: FinalObservation) -> list[dict[str, Any]]:
     for chunk in range(layout.chunk_count):
         keys = layout.chunk_keys(chunk)
         start, end = _period(obs, keys[0], keys[-1])
-        properties: dict[str, Any] = {"datetime": None, "start_datetime": rfc3339(start), "end_datetime": rfc3339(end)}
+        properties: dict[str, Any] = {
+            "datetime": None,
+            "start_datetime": rfc3339(start),
+            "end_datetime": rfc3339(end),
+        }
         if start == end:
             properties = {"datetime": rfc3339(start)}
         item = {
@@ -131,12 +144,28 @@ def build_items(obs: FinalObservation) -> list[dict[str, Any]]:
             "bbox": list(obs.bbox_wgs84),
             "properties": properties,
             "links": [
-                {"rel": "collection", "href": "../collection.json", "type": "application/json"},
-                {"rel": "parent", "href": "../collection.json", "type": "application/json"},
-                {"rel": "root", "href": "../collection.json", "type": "application/json"},
+                {
+                    "rel": "collection",
+                    "href": "../collection.json",
+                    "type": "application/json",
+                },
+                {
+                    "rel": "parent",
+                    "href": "../collection.json",
+                    "type": "application/json",
+                },
+                {
+                    "rel": "root",
+                    "href": "../collection.json",
+                    "type": "application/json",
+                },
             ],
             "assets": {
-                variable.id: _asset(obs, obs.asset(variable.id, chunk), f"../{layout.cog_path(variable.id, chunk)}")
+                variable.id: _asset(
+                    obs,
+                    obs.asset(variable.id, chunk),
+                    f"../{layout.cog_path(variable.id, chunk)}",
+                )
                 for variable in sorted(obs.curated.variables, key=lambda v: v.id)
             },
         }
@@ -158,7 +187,9 @@ def build_collection(obs: FinalObservation) -> dict[str, Any]:
             provider["description"] = p.description
         providers.append(provider)
 
-    links: list[dict[str, Any]] = [{"rel": "root", "href": "./collection.json", "type": "application/json"}]
+    links: list[dict[str, Any]] = [
+        {"rel": "root", "href": "./collection.json", "type": "application/json"}
+    ]
     if cur.license_href:
         links.append({"rel": "license", "href": cur.license_href})
     if cur.doi:
@@ -183,18 +214,24 @@ def build_collection(obs: FinalObservation) -> dict[str, Any]:
         "skope:region_name": cur.region_name,
     }
     # Processing 1.2.0 places its fields on a processor (or producer) provider.
-    processing = {"processing:software": {"skope-release": __version__, "GDAL": obs.gdal_version}}
+    processing = {
+        "processing:software": {"skope-release": __version__, "GDAL": obs.gdal_version}
+    }
     if cur.lineage:
         processing["processing:lineage"] = cur.lineage
     target = next((p for p in providers if "processor" in p["roles"]), None)
-    target = target or next((p for p in providers if "producer" in p["roles"]), providers[0])
+    target = target or next(
+        (p for p in providers if "producer" in p["roles"]), providers[0]
+    )
     target.update(processing)
     if cur.citation:
         collection["sci:citation"] = cur.citation
     if cur.doi:
         collection["sci:doi"] = cur.doi
     if cur.publications:
-        collection["sci:publications"] = [p.model_dump(exclude_none=True) for p in cur.publications]
+        collection["sci:publications"] = [
+            p.model_dump(exclude_none=True) for p in cur.publications
+        ]
     if cur.uncertainty:
         collection["skope:uncertainty"] = {
             "summary": cur.uncertainty.summary,
@@ -206,7 +243,9 @@ def build_collection(obs: FinalObservation) -> dict[str, Any]:
         if v.category:
             entry["category"] = v.category
         if v.categories:
-            entry["categories"] = {str(k): label for k, label in sorted(v.categories.items())}
+            entry["categories"] = {
+                str(k): label for k, label in sorted(v.categories.items())
+            }
         if entry:
             skope_vars[v.id] = entry
     if skope_vars:
@@ -224,33 +263,74 @@ def build_collection(obs: FinalObservation) -> dict[str, Any]:
             "endpoint_inclusion": t.endpoint_inclusion,
             "description": t.description,
         }
-        collection["extent"] = {"spatial": {"bbox": [bbox]}, "temporal": {"interval": [[rfc3339(start), rfc3339(end)]]}}
+        collection["extent"] = {
+            "spatial": {"bbox": [bbox]},
+            "temporal": {"interval": [[rfc3339(start), rfc3339(end)]]},
+        }
         a, _, c, _, e, f = obs.transform
         height, width = obs.shape
-        epsg = int(obs.crs_code.split(":")[1]) if obs.crs_code.startswith("EPSG:") else obs.crs_code
-        time_dimension: dict[str, Any] = {"type": "temporal", "extent": [rfc3339(start), rfc3339(end)], "values": list(keys)}
+        epsg = (
+            int(obs.crs_code.split(":")[1])
+            if obs.crs_code.startswith("EPSG:")
+            else obs.crs_code
+        )
+        time_dimension: dict[str, Any] = {
+            "type": "temporal",
+            "extent": [rfc3339(start), rfc3339(end)],
+            "values": list(keys),
+        }
         if obs.axis.step:
             time_dimension["step"] = obs.axis.step
         collection["cube:dimensions"] = {
-            "x": {"type": "spatial", "axis": "x", "extent": [c, c + a * width], "step": a, "reference_system": epsg},
-            "y": {"type": "spatial", "axis": "y", "extent": [f + e * height, f], "step": e, "reference_system": epsg},
+            "x": {
+                "type": "spatial",
+                "axis": "x",
+                "extent": [c, c + a * width],
+                "step": a,
+                "reference_system": epsg,
+            },
+            "y": {
+                "type": "spatial",
+                "axis": "y",
+                "extent": [f + e * height, f],
+                "step": e,
+                "reference_system": epsg,
+            },
             "time": time_dimension,
         }
         collection["cube:variables"] = {
-            v.id: {"dimensions": ["time", "y", "x"], "type": "data", "description": v.description, "unit": v.unit}
+            v.id: {
+                "dimensions": ["time", "y", "x"],
+                "type": "data",
+                "description": v.description,
+                "unit": v.unit,
+            }
             for v in variables
         }
         first_chunk = {v.id: obs.asset(v.id, 0) for v in variables}
         collection["item_assets"] = {
-            v.id: {**_asset_common(obs, v.id), **_asset_encoding(first_chunk[v.id])} for v in variables
+            v.id: {**_asset_common(obs, v.id), **_asset_encoding(first_chunk[v.id])}
+            for v in variables
         }
         for chunk in range(obs.layout.chunk_count):
-            links.append({"rel": "item", "href": f"./items/{obs.layout.item_id(chunk)}.json", "type": "application/geo+json"})
+            links.append(
+                {
+                    "rel": "item",
+                    "href": f"./items/{obs.layout.item_id(chunk)}.json",
+                    "type": "application/geo+json",
+                }
+            )
     else:
-        interval = list(cur.temporal_extent) if cur.temporal_extent else [None, None]  # STAC-004
-        collection["extent"] = {"spatial": {"bbox": [bbox]}, "temporal": {"interval": [interval]}}
+        interval = (
+            list(cur.temporal_extent) if cur.temporal_extent else [None, None]
+        )  # STAC-004
+        collection["extent"] = {
+            "spatial": {"bbox": [bbox]},
+            "temporal": {"interval": [interval]},
+        }
         collection["assets"] = {
-            v.id: _asset(obs, obs.asset(v.id, None), f"./cogs/{v.id}.tif") for v in variables  # STAC-012
+            v.id: _asset(obs, obs.asset(v.id, None), f"./cogs/{v.id}.tif")
+            for v in variables  # STAC-012
         }
     collection["links"] = links
     collection["stac_extensions"] = _used_extensions(collection)

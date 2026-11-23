@@ -14,14 +14,9 @@ import pytest
 import rasterio
 from rasterio.transform import from_origin
 
-from app.core.timeseries_processing import (
-    apply_temporal_transform,
-    execute_analyze_request,
-    execute_timeseries_job,
-    summarize_series,
-)
+from app.core.analysis import execute_analyze_request, summarize_series
+from app.core.zonal_stats import execute_timeseries_job
 from app.schemas.timeseries import (
-    MovingAverageSmoother,
     NoSmoother,
     NoTransform,
     SeriesOptions,
@@ -60,31 +55,6 @@ def test_statistics_of_no_values_are_null():
     stat = summarize_series("raw", pd.Series([np.nan, np.nan], index=TIMESTEPS[:2]))
 
     assert (stat.mean, stat.median, stat.stdev) == (None, None, None)
-
-
-# ---------------------------------------------------------------------------
-# Smoothing
-
-
-@pytest.mark.parametrize(
-    "method, null_positions",
-    [
-        # Trailing: the first 2 lack a full window, and the gap at 4 reaches
-        # the 2 timesteps after it.
-        ("trailing", [0, 1, 4, 5, 6]),
-        # Centered: 1 at each end, and the gap reaches 1 on either side.
-        ("centered", [0, 3, 4, 5, 8]),
-    ],
-)
-def test_smoothing_needs_a_full_window(method, null_positions):
-    values = [1.0, 2.0, 3.0, 4.0, np.nan, 6.0, 7.0, 8.0, 9.0]
-    series = pd.Series(values, index=[f"{year:04d}" for year in range(1, 10)])
-
-    smoothed = apply_temporal_transform(
-        series, MovingAverageSmoother(method=method, width=3)
-    )
-
-    assert list(np.flatnonzero(smoothed.isna())) == null_positions
 
 
 # ---------------------------------------------------------------------------
@@ -205,6 +175,7 @@ async def _extract(path, timesteps):
         timestep_list=timesteps,
         dataset_crs="EPSG:4326",
         dataset_transform_array=[1.0, 0.0, -110.0, 0.0, -1.0, 40.0],
+        dataset_shape=(4, 4),
     )
 
 

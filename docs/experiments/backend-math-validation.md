@@ -2,7 +2,7 @@
 
 - Run: 2026-11-06, against the dev API and the `paleocar_v3-r-2026.10.07` release (`ppt_annual`,
   `gdd_cotton_annual`)
-- Harness: [`experiments/backend-math-validation/`](../../experiments/backend-math-validation/)
+- Harness: [`tools/backend-math-validation/`](../../tools/backend-math-validation/)
 - Result: **three bugs found and fixed; after the fixes, 16 of 16 extractions and 1,440 of 1,440 analyze cases match
   the reference**
 
@@ -24,7 +24,7 @@ plausible whether or not the right cells, the right years or the right windows w
 - **Transforms and smoothers:** plain loops over the definitions in the script's docstring, applied to the whole
   axis and then cut to the range.
 
-The cases: 8 areas (see the [harness README](../../experiments/backend-math-validation/README.md)) × 2 variables, each
+The cases: 8 areas (see the [harness README](../../tools/backend-math-validation/README.md)) × 2 variables, each
 extracted over the whole axis and compared, then 90 `/analyze` cases each: mean and median × 5 transforms (none,
 z-score on the selected range, fixed reference 1000–1100, fixed reference inside the empty years 0450–0500, moving
 window 10) × 3 smoothers (none, trailing 5, centered 7) × 3 ranges (all, 0350–0700 across the empty years 0417–0589
@@ -43,8 +43,8 @@ covers a fixed bug fails on the code before the fix.
    short, and cells whose centers lie inside the area were never read. Of the 8 areas, 3 lost cells: a 20 × 20 box
    gave 361 cells instead of 400, a 100 × 100 box 9,801 instead of 10,000, and the 5 × 5 test box 16 instead of 25.
    Values differed by up to 1.5%. Any user-drawn area could be affected, always on its east or south edge. The window
-   now runs from the floor of the bounds' start to the ceiling of their end. `estimate_cell_count` uses the same
-   window, so the size check before an extraction counts one more row and column than before.
+   now runs from the floor of the bounds' start to the ceiling of their end. The size check before an extraction
+   uses the same window, so it counts one more row and column than before.
 2. **Zonal means were summed in float32.** Their relative error was about 6e-8, small by itself, but moving z-scores
    divide by a window's spread and turned it into differences of up to 4e-4. Means now accumulate in float64; the
    data still reads as float32, so memory is unchanged. Medians were already exact.

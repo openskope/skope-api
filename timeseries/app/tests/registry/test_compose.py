@@ -298,17 +298,24 @@ def test_shared_release_identity_contract(root, annual, case):
         assert "overview checksum" not in checks
 
 
-def test_rule_names_the_real_release_cogs():
-    """The paleocar_v3 prototype's overview and manifest agree on every COG path."""
+@pytest.mark.parametrize(
+    "documents",
+    [
+        Path(__file__).parent / "data" / "paleocar_v3-r-2026.11.04",
+        Path("tests/contracts/release-documents"),
+    ],
+    ids=["real-release", "release-tool-contract"],
+)
+def test_rule_names_every_release_cog(documents):
+    """A release's overview and manifest agree on every COG path."""
     from app.registry.compose import _layout
     from app.registry.models import Overview, ReleaseManifest
 
-    real = Path(__file__).parent / "data" / "paleocar_v3-r-2026.10.07"
     overview = Overview.model_validate(
-        yaml.safe_load((real / "overview.yml").read_text())
+        yaml.safe_load((documents / "overview.yml").read_text())
     )
     manifest = ReleaseManifest.model_validate_json(
-        (real / "release-manifest.json").read_text()
+        (documents / "release-manifest.json").read_text()
     )
     layout = _layout(overview)
 
@@ -318,7 +325,17 @@ def test_rule_names_the_real_release_cogs():
         for c in range(layout.chunk_count)
     }
     assert named == {f.path for f in manifest.files if f.path.startswith("cogs/")}
-    assert layout.resolve("ppt_annual", "0417") == (
-        "cogs/ppt_annual/paleocar_v3--0403--0502.tif",
-        15,
+
+
+def test_rule_resolves_a_real_release_timestep():
+    from app.registry.compose import _layout
+    from app.registry.models import Overview
+
+    real = Path(__file__).parent / "data" / "paleocar_v3-r-2026.11.04"
+    overview = Overview.model_validate(
+        yaml.safe_load((real / "overview.yml").read_text())
+    )
+    assert _layout(overview).resolve("ppt_annual", "0417") == (
+        "cogs/ppt_annual/paleocar_v3--0353--0602.tif",
+        65,
     )

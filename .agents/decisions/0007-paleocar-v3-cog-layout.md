@@ -1,6 +1,6 @@
 # 0007: Encode PaleoCAR v3 COGs In 128-Pixel Tile-Interleaved Chunks Of 250 Timesteps
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-11-03
 - Specifications: [SKOPE Dataset Release Specification v1](../../docs/specs/dataset-release-v1.md), EXP-002 to EXP-004
 - Evidence: [PaleoCAR v3 COG encoding experiment](../../docs/experiments/paleocar-v3-encoding.md)
