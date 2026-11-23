@@ -1,9 +1,4 @@
-from typing import Sequence
-
-from shapely.geometry import Point as ShapelyPoint
-from shapely.geometry.base import BaseGeometry
-
-from app.core.spatial import estimate_cell_count
+from app.core.spatial import SpatialSelection
 from app.registry.compose import AppRegistry, ServedRelease
 
 # ---------------------------------------------------------------------------
@@ -28,25 +23,15 @@ def validate_dataset_and_variable(
 
 
 # ---------------------------------------------------------------------------
-# Geometry size validation to prevent excessively large queries
+# Read-window size validation to prevent excessively large queries
 
 
-def validate_geom_size(
-    shapes: list[BaseGeometry],
-    transform: Sequence[float],
-    dataset_crs: str,
-    grid_shape: Sequence[int],
-    max_cells: int,
-) -> None:
-    """
-    Validates that the geometry does not exceed a maximum number of cells when rasterized
-    on the dataset's grid. Raises ValueError if the geometry is too large.
-    """
-    if all(isinstance(s, ShapelyPoint) for s in shapes):
-        return  # A point is exactly 1 cell — always within limits
-    estimated_cells = estimate_cell_count(shapes, transform, dataset_crs, grid_shape)
-
-    if estimated_cells > max_cells:
+def validate_window_size(selection: SpatialSelection, max_cells: int) -> None:
+    """Raise ValueError if the area's read window holds more than `max_cells`
+    cells: shapes far apart read every cell between them, however few they
+    select."""
+    if selection.window_cells > max_cells:
         raise ValueError(
-            f"Selected area is too large. Estimated cell count: {estimated_cells}, maximum allowed: {max_cells}."
+            "Selected area is too large: its read window spans "
+            f"{selection.window_cells} cells, maximum allowed: {max_cells}."
         )

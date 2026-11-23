@@ -44,7 +44,7 @@ def calculate_safe_chunk_size(
     n_bands_per_chunk = max_cells // n_cells_per_band
     if n_bands_per_chunk == 0:
         raise SelectedAreaPolygonIsTooLarge(
-            n_cells=n_cells_per_band, max_cells=max_cells
+            window_cells=n_cells_per_band, max_cells=max_cells
         )
 
     return n_bands_per_chunk
@@ -129,16 +129,14 @@ async def execute_timeseries_job(
     if not uris:
         raise ValueError("No matching files found in the requested time range.")
 
-    reprojected_shapes, dataset_transform, window = resolve_spatial_window(
+    selection = resolve_spatial_window(
         request.selected_area.shapes,
         dataset_transform_array,
         dataset_crs,
         dataset_shape,
     )
-
-    mask, n_cells, total_area = calculate_spatial_coverage(
-        reprojected_shapes, dataset_transform, window, dataset_crs
-    )
+    window = selection.window
+    mask, n_cells, total_area = calculate_spatial_coverage(selection, dataset_crs)
     chunk_size = calculate_safe_chunk_size(
         width=int(window.width), height=int(window.height)
     )
@@ -178,7 +176,7 @@ async def execute_timeseries_job(
             outcome=outcome,
             duration_ms=round((time.monotonic() - started) * 1000, 3),
             cells=n_cells,
-            window_cells=int(window.width * window.height),
+            window_cells=selection.window_cells,
             timesteps=len(timestep_list),
             files=len(file_mapping),
             chunk_bands=chunk_size,

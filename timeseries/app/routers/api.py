@@ -11,7 +11,6 @@ from fastapi import (
 )
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ValidationError
-from shapely.geometry import box
 
 from app.config import get_settings
 from app.telemetry import log_event
@@ -35,7 +34,7 @@ from app.vendor.timeaxis import MalformedTimestep, UnknownTimestep, parse_key
 from app.store.jobs import JobStore, get_job_store
 from app.core.validation import (
     validate_dataset_and_variable,
-    validate_geom_size,
+    validate_window_size,
 )
 from app.core.job_control import (
     RecoverableJobs,
@@ -44,6 +43,7 @@ from app.core.job_control import (
     request_fingerprint,
     submission_id,
 )
+from app.core.spatial import resolve_spatial_window
 from app.core.tiles import stream_tile
 from app.core.timeseries_tasks import run_timeseries_pipeline_task
 from app.core.bounded_analysis import analyze_bounded
@@ -265,19 +265,15 @@ async def create_timeseries_job(
 
     _check_windows(payload, release)
 
-    # An area must overlap the dataset and be a valid polygon; a 422 otherwise.
-    payload.selected_area.validate_geometry(box(*release.overview.dataset.extent.bbox))
-
-    # Pre-flight geometry size check on the dataset's grid
+    # A 422 unless every polygon is valid, the area overlaps the dataset's
+    # grid, and its read window fits.
+    payload.selected_area.validate_polygons()
     grid = release.overview.dataset.grid
+    selection = resolve_spatial_window(
+        payload.selected_area.shapes, grid.transform, grid.code, grid.shape
+    )
     try:
-        validate_geom_size(
-            shapes=payload.selected_area.shapes,
-            transform=grid.transform,
-            dataset_crs=grid.code,
-            grid_shape=grid.shape,
-            max_cells=settings.default_max_cells,
-        )
+        validate_window_size(selection, settings.default_max_cells)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 

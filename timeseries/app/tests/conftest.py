@@ -61,11 +61,6 @@ def large_polygon_shape():
     return box(-130.0, 25.0, -110.0, 45.0)
 
 
-@pytest.fixture
-def dataset_bbox():
-    return box(-115.0, 31.0, -102.0, 43.0)
-
-
 # ---------------------------------------------------------------------------
 # Job store fixtures
 

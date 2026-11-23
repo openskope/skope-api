@@ -49,13 +49,9 @@ def _expected_cells(area, window):
 
 
 def _cells(area):
-    shapes, transform, window = resolve_spatial_window(
-        [area], GRID, "EPSG:4326", (10, 10)
-    )
-    mask, n_cells, _ = calculate_spatial_coverage(
-        shapes, transform, window, "EPSG:4326"
-    )
-    return window, mask, n_cells
+    selection = resolve_spatial_window([area], GRID, "EPSG:4326", (10, 10))
+    mask, n_cells, _ = calculate_spatial_coverage(selection, "EPSG:4326")
+    return selection.window, mask, n_cells
 
 
 def test_window_reaches_every_cell_the_bounds_touch():

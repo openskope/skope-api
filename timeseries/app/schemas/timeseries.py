@@ -13,6 +13,7 @@ from app.config import get_settings
 from .geometry import (
     SkopeFeatureCollectionModel,
     SkopeFeatureModel,
+    SkopeMultiPolygonModel,
     SkopePointModel,
     SkopePolygonModel,
 )
@@ -189,9 +190,12 @@ class TimeseriesResponse(BaseModel):
     dataset_id: str
     variable_id: str
     area: float = Field(
-        ..., description="Area of cells in selected area in square meters"
+        ...,
+        description="Area of the selected area overlapping the dataset, in square meters",
     )
-    n_cells: int = Field(..., description="Number of cells in selected area")
+    n_cells: int = Field(
+        ..., description="Number of dataset cells the selected area selects"
+    )
     summary_stats: list[SummaryStat]
     series: list[Series]
     transform: Transform
@@ -265,11 +269,15 @@ class SeriesOptionsRequest(BaseModel):
 class TimeseriesRequest(SeriesOptionsRequest):
     dataset_id: str = Field(..., pattern=r"^[\w-]+$", description="Dataset ID")
     variable_id: str = Field(..., pattern=r"^[\w-]+$", description="Variable ID")
-    selected_area: Union[
-        SkopePointModel,
-        SkopePolygonModel,
-        SkopeFeatureModel,
-        SkopeFeatureCollectionModel,
+    selected_area: Annotated[
+        Union[
+            SkopePointModel,
+            SkopePolygonModel,
+            SkopeMultiPolygonModel,
+            SkopeFeatureModel,
+            SkopeFeatureCollectionModel,
+        ],
+        Field(discriminator="type"),
     ]
     zonal_statistic: ZonalStatistic
     transform: Transform
